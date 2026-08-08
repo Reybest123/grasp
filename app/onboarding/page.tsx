@@ -89,7 +89,7 @@ export default function Onboarding() {
               ))}
             </ul>
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push("/home")}
               className="mt-8 w-full rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
             >
               Go to my notebooks →
@@ -101,7 +101,7 @@ export default function Onboarding() {
         )}
 
         <p className="mt-10 text-center text-sm text-slate-500">
-          <Link href="/dashboard" className="font-medium text-brand-700 hover:underline">
+          <Link href="/home" className="font-medium text-brand-700 hover:underline">
             Skip — just show me a sample notebook
           </Link>
         </p>

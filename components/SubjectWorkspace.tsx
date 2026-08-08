@@ -13,22 +13,44 @@ import {
 
 type Tab = "notes" | "quizzes" | "resources";
 
-export function SubjectWorkspace({ subject }: { subject: Subject }) {
+export function SubjectWorkspace({
+  subject,
+  onBack,
+}: {
+  subject: Subject;
+  onBack?: () => void;
+}) {
   const [tab, setTab] = useState<Tab>("notes");
+  // Embedded mode: rendered inside the /home shell, which supplies its own
+  // top header — so we skip ours and offer an in-page back action instead.
+  const embedded = typeof onBack === "function";
 
   return (
-    <main className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Logo />
-            <DemoBadge />
+    <main className={embedded ? "" : "min-h-screen"}>
+      {!embedded && (
+        <header className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-3">
+              <Logo />
+              <DemoBadge />
+            </div>
+            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-ink">
+              ← All notebooks
+            </Link>
           </div>
-          <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-ink">
+        </header>
+      )}
+
+      {embedded && (
+        <div className="mx-auto max-w-5xl px-6 pt-4">
+          <button
+            onClick={onBack}
+            className="text-sm font-medium text-slate-500 transition hover:text-ink"
+          >
             ← All notebooks
-          </Link>
+          </button>
         </div>
-      </header>
+      )}
 
       {/* Subject banner */}
       <div className={`bg-gradient-to-r ${subject.color}`}>

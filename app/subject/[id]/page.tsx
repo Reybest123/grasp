@@ -1,18 +1,6 @@
-import { notFound } from "next/navigation";
-import { getSubject, SUBJECTS } from "@/lib/demoData";
-import { SubjectWorkspace } from "@/components/SubjectWorkspace";
+import { redirect } from "next/navigation";
 
-export function generateStaticParams() {
-  return SUBJECTS.map((s) => ({ id: s.id }));
-}
-
-export default async function SubjectPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const subject = getSubject(id);
-  if (!subject) notFound();
-  return <SubjectWorkspace subject={subject} />;
+// Subjects now open inside the single-page /home shell (no per-subject URL).
+export default function SubjectRedirect() {
+  redirect("/home");
 }

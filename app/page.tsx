@@ -35,10 +35,10 @@ export default function Home() {
             Features
           </Link>
           <Link
-            href="/onboarding"
+            href="/home"
             className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700"
           >
-            Try the demo
+            Log in
           </Link>
         </nav>
       </header>
@@ -66,7 +66,7 @@ export default function Home() {
               Start with your timetable →
             </Link>
             <Link
-              href="/dashboard"
+              href="/home"
               className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-ink transition hover:border-slate-400"
             >
               Skip to a sample notebook
