@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-slate-50 text-ink antialiased;
+}
+
+/* Highlight-to-explain: the selection glow inside notes */
+.hl-active::selection {
+  background: #ffe08a;
+  color: #0f1222;
+}
+
+.grid-bg {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(98, 87, 239, 0.12) 1px, transparent 0);
+  background-size: 28px 28px;
+}
