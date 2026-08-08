@@ -1,12 +1,11 @@
-// Mock AI layer for the demo.
+// AI layer for Grasp.
 //
-// Every function here is where a real OpenAI / Whisper call goes in production
-// (see CLAUDE.md §5). For the first demo they return deterministic canned
-// responses after a short delay so the UX feels real without needing API keys.
+// These functions call server-side API routes under /app/api/*, which in turn
+// call the OpenAI API with your key (never exposed to the browser). See §5 of
+// CLAUDE.md.
 //
-// To go live: replace each body with a fetch to /api/... that calls the OpenAI
-// API server-side (GPT-4o-mini for cleanup, a stronger model for quizzes,
-// Whisper for transcription, a vision model for the timetable screenshot).
+// extractTimetable() is still mocked because it needs image-upload handling
+// (a vision model reading a screenshot) — wire that up next.
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -17,7 +16,10 @@ export type QuizQuestion = {
   why: string;
 };
 
+export type NoteContext = { title: string; body: string };
+
 // §2 Onboarding — vision model reads the timetable screenshot -> subjects JSON.
+// STILL MOCKED (needs image upload) — returns a sample set after a short delay.
 export async function extractTimetable(): Promise<
   { name: string; emoji: string; slots: string }[]
 > {
@@ -31,58 +33,44 @@ export async function extractTimetable(): Promise<
   ];
 }
 
-// §3.2 Highlight to Explain — contextual explanation anchored to a selection.
+// §3.2 Highlight to Explain — real GPT-4o-mini call via /api/explain.
 export async function explainHighlight(text: string): Promise<string> {
-  await wait(900);
   const t = text.trim();
   if (t.length < 3) return "Highlight a full phrase or sentence and I'll explain it.";
-  return `"${t.length > 80 ? t.slice(0, 80) + "…" : t}" — in plain terms: this is one of the key ideas in this note. Think of it as the "why it matters" behind the definition. A common exam trap here is confusing it with a related term, so make sure you can state it in your own words and give one example. Want me to turn this into a flashcard?`;
+  const res = await fetch("/api/explain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: t }),
+  });
+  const data = await res.json();
+  if (!res.ok) return `⚠️ ${data.error ?? "Something went wrong."}`;
+  return data.explanation as string;
 }
 
-// §3.1 Notes — AI cleanup / expansion of a rough note.
+// §3.1 Notes — real AI cleanup / expansion via /api/enhance.
 export async function enhanceNote(body: string): Promise<string> {
-  await wait(1100);
-  return (
-    body.trim() +
-    "\n\n— Key takeaways (added by Grasp AI) —\n• Restate each definition in one sentence you could write from memory.\n• Watch the distinction between the terms above — a frequent source of lost marks.\n• Try the linked quiz to check you can apply, not just recall, these ideas."
-  );
+  const res = await fetch("/api/enhance", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+  const data = await res.json();
+  if (!res.ok) return body + `\n\n⚠️ ${data.error ?? "Enhancement failed."}`;
+  return data.enhanced as string;
 }
 
-// §3.3 Subject Quiz Mode — questions generated from the student's own notes.
+// §3.3 Subject Quiz Mode — real quiz generation from the student's notes via /api/quiz.
 export async function generateQuiz(
   topics: string[],
-  instructions: string
+  instructions: string,
+  notes: NoteContext[] = []
 ): Promise<QuizQuestion[]> {
-  await wait(1500);
-  const base: QuizQuestion[] = [
-    {
-      question: "Which process moves water across a partially permeable membrane?",
-      options: ["Diffusion", "Osmosis", "Active transport", "Respiration"],
-      answerIndex: 1,
-      why: "Osmosis is specifically the movement of water; diffusion is the general term for particles.",
-    },
-    {
-      question: "The discriminant b²−4ac is negative. How many real roots?",
-      options: ["Two", "One repeated", "None", "Infinite"],
-      answerIndex: 2,
-      why: "A negative discriminant means no real roots (the parabola never crosses the x-axis).",
-    },
-    {
-      question: "What does MAIN stand for as causes of WW1?",
-      options: [
-        "Money, Armies, Israel, Nations",
-        "Militarism, Alliances, Imperialism, Nationalism",
-        "Maps, Allies, Industry, Navy",
-        "Munitions, Austria, Italy, Neutrality",
-      ],
-      answerIndex: 1,
-      why: "MAIN = Militarism, Alliances, Imperialism, Nationalism — the standard long-term-causes acronym.",
-    },
-  ];
-  // Instructions would steer the real model; here we just surface that it was received.
-  return base.map((q) =>
-    instructions.trim()
-      ? { ...q, why: q.why + ` (Focus applied: "${instructions.trim()}".)` }
-      : q
-  );
+  const res = await fetch("/api/quiz", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ topics, instructions, notes }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Quiz generation failed.");
+  return data.questions as QuizQuestion[];
 }

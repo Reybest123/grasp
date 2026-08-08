@@ -230,6 +230,7 @@ function QuizzesTab({ subject }: { subject: Subject }) {
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [error, setError] = useState("");
 
   function toggle(topic: string) {
     setSelected((cur) =>
@@ -241,8 +242,17 @@ function QuizzesTab({ subject }: { subject: Subject }) {
     setLoading(true);
     setQuiz(null);
     setAnswers({});
-    const q = await generateQuiz(selected, instructions);
-    setQuiz(q);
+    setError("");
+    try {
+      const q = await generateQuiz(
+        selected,
+        instructions,
+        subject.notes.map((n) => ({ title: n.title, body: n.body }))
+      );
+      setQuiz(q);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Quiz generation failed.");
+    }
     setLoading(false);
   }
 
@@ -298,7 +308,12 @@ function QuizzesTab({ subject }: { subject: Subject }) {
 
       {/* Quiz output */}
       <div>
-        {!quiz && !loading && (
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        {!quiz && !loading && !error && (
           <div className="grid h-full place-items-center rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
             Pick your topics and hit <b className="mx-1">Generate quiz</b> to start.
           </div>
