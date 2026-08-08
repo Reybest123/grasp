@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import Link from "next/link";
-import { Logo, DemoBadge } from "@/components/Logo";
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { JSX } from "react";
 import type { Subject } from "@/lib/demoData";
 import {
   explainHighlight,
@@ -10,8 +9,29 @@ import {
   generateQuiz,
   type QuizQuestion,
 } from "@/lib/ai";
+import {
+  NoteIcon,
+  QuizIcon,
+  BankIcon,
+  SparkleIcon,
+  MicIcon,
+  PlusIcon,
+  CloseIcon,
+  BackIcon,
+  FileIcon,
+} from "@/components/icons";
 
 type Tab = "notes" | "quizzes" | "resources";
+
+function Monogram({ name, color }: { name: string; color: string }) {
+  return (
+    <span
+      className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${color} text-2xl font-bold text-white shadow-sm`}
+    >
+      {name.charAt(0)}
+    </span>
+  );
+}
 
 export function SubjectWorkspace({
   subject,
@@ -21,44 +41,33 @@ export function SubjectWorkspace({
   onBack?: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("notes");
-  // Embedded mode: rendered inside the /home shell, which supplies its own
-  // top header — so we skip ours and offer an in-page back action instead.
-  const embedded = typeof onBack === "function";
+
+  const tabs: [Tab, string, (c: string) => JSX.Element][] = [
+    ["notes", "Notes", (c) => <NoteIcon className={c} />],
+    ["quizzes", "Quizzes", (c) => <QuizIcon className={c} />],
+    ["resources", "Resource Bank", (c) => <BankIcon className={c} />],
+  ];
 
   return (
-    <main className={embedded ? "" : "min-h-screen"}>
-      {!embedded && (
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-3">
-              <Logo />
-              <DemoBadge />
-            </div>
-            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-ink">
-              ← All notebooks
-            </Link>
-          </div>
-        </header>
-      )}
-
-      {embedded && (
-        <div className="mx-auto max-w-5xl px-6 pt-4">
+    <div>
+      {onBack && (
+        <div className="mx-auto max-w-6xl px-6 pt-5">
           <button
             onClick={onBack}
-            className="text-sm font-medium text-slate-500 transition hover:text-ink"
+            className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
           >
-            ← All notebooks
+            <BackIcon className="h-4 w-4" /> All notebooks
           </button>
         </div>
       )}
 
-      {/* Subject banner */}
-      <div className={`bg-gradient-to-r ${subject.color}`}>
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-8 text-white">
-          <span className="text-5xl">{subject.emoji}</span>
+      {/* Subject header */}
+      <div className="mx-auto max-w-6xl px-6 pb-6 pt-5">
+        <div className="flex items-center gap-4">
+          <Monogram name={subject.name} color={subject.color} />
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{subject.name}</h1>
-            <p className="text-white/80">
+            <h1 className="text-2xl font-bold tracking-tight text-ink">{subject.name}</h1>
+            <p className="text-sm text-slate-500">
               {subject.teacher} · {subject.slots}
             </p>
           </div>
@@ -66,36 +75,31 @@ export function SubjectWorkspace({
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl gap-1 px-6">
-          {(
-            [
-              ["notes", "📝 Notes"],
-              ["quizzes", "🧠 Quizzes"],
-              ["resources", "📚 Resource Bank"],
-            ] as [Tab, string][]
-          ).map(([key, label]) => (
+      <div className="border-b border-slate-200">
+        <div className="mx-auto flex max-w-6xl gap-1 px-6">
+          {tabs.map(([key, label, icon]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold transition ${
+              className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
                 tab === key
                   ? "border-brand-600 text-brand-700"
                   : "border-transparent text-slate-500 hover:text-ink"
               }`}
             >
+              {icon("h-4 w-4")}
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      <section className="mx-auto max-w-5xl px-6 py-8">
+      <section className="mx-auto max-w-6xl px-6 py-8">
         {tab === "notes" && <NotesTab subject={subject} />}
         {tab === "quizzes" && <QuizzesTab subject={subject} />}
         {tab === "resources" && <ResourcesTab subject={subject} />}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -108,31 +112,54 @@ function NotesTab({ subject }: { subject: Subject }) {
   const [body, setBody] = useState(active?.body ?? "");
   const [enhancing, setEnhancing] = useState(false);
 
-  // Highlight-to-explain state
-  const [selection, setSelection] = useState("");
+  // Highlight-to-explain (Google-AI-mode style)
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [selectedText, setSelectedText] = useState("");
+  const [pill, setPill] = useState<{ top: number; left: number } | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [explanation, setExplanation] = useState("");
   const [explaining, setExplaining] = useState(false);
-  const bodyRef = useRef<HTMLDivElement>(null);
 
   function switchNote(id: string) {
     setActiveId(id);
     const n = subject.notes.find((x) => x.id === id);
     setBody(n?.body ?? "");
-    setSelection("");
-    setExplanation("");
+    setPill(null);
+    setSelectedText("");
   }
 
-  function onMouseUp() {
-    const sel = window.getSelection()?.toString() ?? "";
-    setSelection(sel.trim());
-    if (!sel.trim()) return;
-  }
+  const updatePill = useCallback(() => {
+    const sel = window.getSelection();
+    const text = sel?.toString().trim() ?? "";
+    if (!sel || sel.isCollapsed || !text || !bodyRef.current) {
+      setPill(null);
+      return;
+    }
+    // only react to selections inside the note body
+    if (!bodyRef.current.contains(sel.anchorNode)) {
+      setPill(null);
+      return;
+    }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    setSelectedText(text);
+    setPill({ top: rect.top - 46, left: rect.left + rect.width / 2 });
+  }, []);
 
-  async function explain() {
-    if (!selection) return;
+  // Hide the pill when the user scrolls (its anchor would drift)
+  useEffect(() => {
+    function onScroll() {
+      setPill(null);
+    }
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, []);
+
+  async function openExplain() {
+    setPanelOpen(true);
+    setPill(null);
     setExplaining(true);
     setExplanation("");
-    const res = await explainHighlight(selection);
+    const res = await explainHighlight(selectedText);
     setExplanation(res);
     setExplaining(false);
   }
@@ -150,7 +177,9 @@ function NotesTab({ subject }: { subject: Subject }) {
       <aside>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>
-          <button className="text-brand-600 hover:text-brand-700" title="New note">＋</button>
+          <button className="text-slate-400 transition hover:text-brand-600" title="New note">
+            <PlusIcon className="h-4 w-4" />
+          </button>
         </div>
         <ul className="space-y-1">
           {subject.notes.map((n) => (
@@ -170,77 +199,129 @@ function NotesTab({ subject }: { subject: Subject }) {
           ))}
         </ul>
 
-        <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-brand-300 px-3 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
-          🎙️ Record lecture
+        <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-3 text-sm font-semibold text-slate-600 transition hover:border-brand-400 hover:text-brand-700">
+          <MicIcon className="h-4 w-4" /> Record lecture
         </button>
-        <p className="mt-2 text-center text-[11px] text-slate-400">
-          Whisper transcribes → AI drafts notes
-        </p>
       </aside>
 
-      {/* Editor + margin */}
-      <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-ink">{active?.title}</h2>
-            <button
-              onClick={enhance}
-              disabled={enhancing}
-              className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-            >
-              {enhancing ? "Enhancing…" : "✨ AI enhance"}
-            </button>
-          </div>
-
-          <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            Tip: select any sentence below, then click <b>Explain</b> to get a margin explanation.
-          </div>
-
-          <div
-            ref={bodyRef}
-            onMouseUp={onMouseUp}
-            className="hl-active mt-4 space-y-4 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700"
+      {/* Full-width editor */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="text-2xl font-bold text-ink">{active?.title}</h2>
+          <button
+            onClick={enhance}
+            disabled={enhancing}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
-            {body.split("\n\n").map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
-          </div>
+            <SparkleIcon className="h-4 w-4" />
+            {enhancing ? "Enhancing…" : "AI enhance"}
+          </button>
         </div>
 
-        {/* Highlight-to-explain margin */}
-        <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            Highlight to explain
-          </h3>
-          {!selection && !explanation && (
-            <p className="mt-3 text-sm text-slate-500">
-              Select text in your note and Grasp will explain it right here — threaded like a margin
-              note, not a separate chatbot.
-            </p>
-          )}
-          {selection && (
-            <div className="mt-3">
-              <p className="rounded-lg border-l-4 border-accent-400 bg-white px-3 py-2 text-sm italic text-slate-600">
-                “{selection.length > 90 ? selection.slice(0, 90) + "…" : selection}”
-              </p>
-              <button
-                onClick={explain}
-                disabled={explaining}
-                className="mt-3 w-full rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-              >
-                {explaining ? "Thinking…" : "Explain this"}
-              </button>
-            </div>
-          )}
-          {explanation && (
-            <div className="mt-4 rounded-lg bg-white p-3 text-sm text-slate-700 shadow-sm">
-              <p className="mb-1 font-semibold text-brand-700">Grasp AI</p>
-              {explanation}
-            </div>
-          )}
-        </aside>
+        <div
+          ref={bodyRef}
+          onMouseUp={updatePill}
+          className="hl-active mt-6 max-w-[70ch] space-y-5 whitespace-pre-wrap text-[15px] leading-7 text-slate-700"
+        >
+          {body.split("\n\n").map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </div>
       </div>
+
+      {/* Floating "Explain" pill (appears on selection, like Google AI mode) */}
+      {pill && (
+        <button
+          onMouseDown={(e) => e.preventDefault()} // keep the selection alive
+          onClick={openExplain}
+          style={{ top: pill.top, left: pill.left }}
+          className="fixed z-40 -translate-x-1/2 animate-[fadeIn_120ms_ease-out] rounded-full bg-ink px-3.5 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-black"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <SparkleIcon className="h-3.5 w-3.5" /> Explain
+          </span>
+        </button>
+      )}
+
+      {/* Slide-in explanation panel */}
+      <ExplainPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        selected={selectedText}
+        explanation={explanation}
+        loading={explaining}
+      />
     </div>
+  );
+}
+
+function ExplainPanel({
+  open,
+  onClose,
+  selected,
+  explanation,
+  loading,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selected: string;
+  explanation: string;
+  loading: boolean;
+}) {
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (open) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  return (
+    <>
+      {/* dim scrim */}
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-200 ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+      <aside
+        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[400px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center gap-2 font-semibold text-ink">
+            <SparkleIcon className="h-4 w-4 text-brand-600" /> Explanation
+          </div>
+          <button
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"
+            aria-label="Close explanation"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5">
+          <p className="rounded-xl border-l-4 border-accent-400 bg-amber-50 px-4 py-3 text-sm italic text-slate-600">
+            “{selected.length > 160 ? selected.slice(0, 160) + "…" : selected}”
+          </p>
+
+          {loading ? (
+            <div className="mt-6 space-y-2.5">
+              <div className="h-3 w-4/5 animate-pulse rounded bg-slate-200" />
+              <div className="h-3 w-full animate-pulse rounded bg-slate-200" />
+              <div className="h-3 w-11/12 animate-pulse rounded bg-slate-200" />
+              <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200" />
+            </div>
+          ) : (
+            <div className="mt-5 text-[15px] leading-7 text-slate-700">{explanation}</div>
+          )}
+        </div>
+      </aside>
+    </>
   );
 }
 
@@ -400,13 +481,13 @@ function ResourcesTab({ subject }: { subject: Subject }) {
       <div className="flex items-end justify-between">
         <div>
           <h3 className="text-xl font-bold text-ink">Resource Bank</h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Upload assessment criteria, term planners, past papers & rubrics. Grasp references these
             when writing notes, explanations and quizzes — so it&apos;s assessment-aware.
           </p>
         </div>
-        <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700">
-          + Upload
+        <button className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700">
+          <PlusIcon className="h-4 w-4" /> Upload
         </button>
       </div>
 
@@ -414,7 +495,9 @@ function ResourcesTab({ subject }: { subject: Subject }) {
         {subject.resources.map((r) => (
           <div key={r.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-50 text-lg">📄</span>
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-50 text-brand-600">
+                <FileIcon className="h-5 w-5" />
+              </span>
               <div>
                 <p className="font-semibold text-ink">{r.name}</p>
                 <span className="text-xs font-medium text-brand-600">{r.kind}</span>
@@ -426,9 +509,9 @@ function ResourcesTab({ subject }: { subject: Subject }) {
           </div>
         ))}
 
-        <button className="grid place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 transition hover:border-brand-400 hover:text-brand-600">
-          <span className="text-3xl">＋</span>
-          <span className="mt-1 text-sm font-medium">Add a document</span>
+        <button className="grid place-items-center gap-1 rounded-2xl border-2 border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 transition hover:border-brand-400 hover:text-brand-600">
+          <PlusIcon className="h-6 w-6" />
+          <span className="text-sm font-medium">Add a document</span>
         </button>
       </div>
     </div>

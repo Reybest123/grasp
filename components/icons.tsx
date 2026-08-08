@@ -1,0 +1,97 @@
+// Consistent inline SVG icon set (Lucide-style, 1.75 stroke).
+// Replaces all emoji per the design system's no-emoji-icons rule.
+
+type IconProps = { className?: string };
+
+const base = (className?: string) => ({
+  width: 20,
+  height: 20,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.75,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  className,
+});
+
+export function NoteIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+      <path d="M14 4v5h5" />
+      <path d="M8 13h7M8 17h5" />
+    </svg>
+  );
+}
+
+export function QuizIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M9.1 9a3 3 0 1 1 4 2.8c-.9.4-1.6 1.2-1.6 2.2v.3" />
+      <path d="M12 18h.01" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+
+export function BankIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 19V6a1 1 0 0 1 1-1h9l6 6v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+      <path d="M14 5v5h5" />
+    </svg>
+  );
+}
+
+export function SparkleIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
+      <path d="M19 15l.7 1.9L21.6 17.6 19.7 18.3 19 20.2 18.3 18.3 16.4 17.6 18.3 16.9 19 15z" />
+    </svg>
+  );
+}
+
+export function MicIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0" />
+      <path d="M12 18v3" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+export function BackIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M15 6l-6 6 6 6" />
+    </svg>
+  );
+}
+
+export function FileIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M14 3v4h4" />
+    </svg>
+  );
+}

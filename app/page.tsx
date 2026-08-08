@@ -1,24 +1,26 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { FileIcon, MicIcon, SparkleIcon, QuizIcon } from "@/components/icons";
+import type { JSX } from "react";
 
-const FEATURES = [
+const FEATURES: { icon: JSX.Element; title: string; body: string }[] = [
   {
-    emoji: "📅",
+    icon: <FileIcon className="h-6 w-6" />,
     title: "Upload your timetable, get set up",
     body: "Screenshot your school timetable. Grasp reads it and auto-creates a notebook for every subject — zero manual setup.",
   },
   {
-    emoji: "🎙️",
-    title: "Record a lecture → structured notes",
+    icon: <MicIcon className="h-6 w-6" />,
+    title: "Record a lecture, get structured notes",
     body: "Hit record in class. Grasp transcribes and turns it into clean, organised notes you can actually study from.",
   },
   {
-    emoji: "✨",
+    icon: <SparkleIcon className="h-6 w-6" />,
     title: "Highlight anything to understand it",
-    body: "Confused by a line? Highlight it right in your notes and Grasp explains it in the margin — no separate chatbot.",
+    body: "Confused by a line? Highlight it right in your notes and Grasp explains it in a side panel — no separate chatbot.",
   },
   {
-    emoji: "🧠",
+    icon: <QuizIcon className="h-6 w-6" />,
     title: "Quizzes from your own notes",
     body: "Get quizzed on your material, weighted toward what your assessment criteria actually reward.",
   },
@@ -107,8 +109,8 @@ export default function Home() {
               key={f.title}
               className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-soft"
             >
-              <div className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-2xl">
-                {f.emoji}
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-brand-600">
+                {f.icon}
               </div>
               <h3 className="mt-4 text-lg font-bold text-ink">{f.title}</h3>
               <p className="mt-2 text-slate-600">{f.body}</p>

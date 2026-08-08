@@ -77,8 +77,8 @@ export default function Onboarding() {
                   key={s.name}
                   className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm"
                 >
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 text-2xl">
-                    {s.emoji}
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-100 text-lg font-bold text-brand-700">
+                    {s.name.charAt(0)}
                   </span>
                   <div>
                     <p className="font-semibold text-ink">{s.name}</p>

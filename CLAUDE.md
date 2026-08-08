@@ -118,6 +118,35 @@ Platform: **Website** (not a native app) — no app store fees, no OCR SDK neede
 
 No native app, no OCR SDK, no persistent audio storage. Functional over polished — this is a test of concept, not a finished product.
 
+---
+
+## 11. Implementation Status & Changelog
+
+> Keep this section current: whenever something is built, changed, or renamed, record it here (e.g. name changes, features shipped, features still mocked).
+
+**Stack as built:** Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS. Repo: `github.com/Reybest123/grasp`. Hosted on Vercel (`grasp-indol.vercel.app`).
+
+**Routing:** Landing page at `/`. The entire logged-in app lives at `/home` as a single-page shell — selecting a subject swaps the view in place without changing the URL. Legacy `/dashboard` and `/subject/[id]` routes redirect to `/home`.
+
+**Built & working:**
+- Landing page (school-focused positioning)
+- Onboarding UI: timetable upload → subject list → notebooks (extraction still mocked)
+- Subject notebooks grid (`/home`)
+- Notes: manual editing, **AI enhance** (real GPT-4o-mini via `/api/enhance`)
+- **Highlight-to-explain**: Google-AI-mode style — floating "Explain" pill on text selection opens a closable slide-in side panel (real GPT-4o-mini via `/api/explain`)
+- **Quiz mode**: topic selection + focus instructions → questions grounded in the subject's own notes (real GPT-4o-mini via `/api/quiz`)
+- Resource Bank UI (display only; upload not wired yet)
+- Terms of Service + Privacy Policy pages
+
+**Still mocked / not yet built:**
+- Timetable screenshot extraction (needs image upload + vision model)
+- Lecture recording → Whisper transcription
+- Auth / accounts, Postgres persistence, Resource Bank file upload, usage-limit enforcement
+
+**Design conventions:** No emojis anywhere in the UI — all icons are inline SVG (`components/icons.tsx`). Subjects are represented by a monogram (first letter) on a colored gradient tile, not an emoji.
+
+**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*`; the OpenAI key (`OPENAI_API_KEY`) is only read server-side, never exposed to the browser.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
