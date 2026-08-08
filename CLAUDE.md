@@ -128,6 +128,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 
 **Routing:** Landing page at `/`. The entire logged-in app lives at `/home` as a single-page shell — selecting a subject swaps the view in place without changing the URL. Legacy `/dashboard` and `/subject/[id]` routes redirect to `/home`.
 
+**Landing page:** top nav has How it works / Features / Pricing anchor links plus **Log in** (→ `/home`) and **Sign up** (→ `/onboarding`) buttons. Hero CTA "Start with your timetable" → `/onboarding`. Includes a How-it-works section and a placeholder Pricing section (Free $0 / Pro $6/mo — not final). All "demo" labeling has been removed from the landing and the `/home` header.
+
 **Built & working:**
 - Landing page (school-focused positioning)
 - Onboarding UI: timetable upload → subject list → notebooks (extraction still mocked)
