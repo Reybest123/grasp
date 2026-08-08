@@ -33,6 +33,28 @@ export async function extractTimetable(): Promise<
   ];
 }
 
+export type ChatMsg = { role: "user" | "assistant"; content: string };
+
+// §3.2 Highlight to Explain (threaded) — the student can ask follow-up questions,
+// and the AI may return a corrected version of the whole note (e.g. if the
+// student catches a mistake). Real GPT-4o-mini call via /api/explain-chat.
+export async function explainChat(
+  noteBody: string,
+  highlight: string,
+  history: ChatMsg[]
+): Promise<{ reply: string; revisedNote: string | null }> {
+  const res = await fetch("/api/explain-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ noteBody, highlight, history }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    return { reply: `⚠️ ${data.error ?? "Something went wrong."}`, revisedNote: null };
+  }
+  return { reply: data.reply as string, revisedNote: (data.revisedNote as string) ?? null };
+}
+
 // §3.2 Highlight to Explain — real GPT-4o-mini call via /api/explain.
 export async function explainHighlight(text: string): Promise<string> {
   const t = text.trim();

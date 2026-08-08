@@ -26,6 +26,13 @@ body {
   background-size: 28px 28px;
 }
 
+/* contentEditable placeholder for empty notes */
+.editor:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

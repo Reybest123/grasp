@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { JSX } from "react";
-import type { Subject } from "@/lib/demoData";
+import type { Subject, Note } from "@/lib/demoData";
 import {
-  explainHighlight,
+  explainChat,
   enhanceNote,
   generateQuiz,
   type QuizQuestion,
+  type ChatMsg,
 } from "@/lib/ai";
 import {
   NoteIcon,
@@ -21,7 +22,7 @@ import {
   FileIcon,
 } from "@/components/icons";
 
-type Tab = "notes" | "quizzes" | "resources";
+type Tab = "notes" | "record" | "quizzes" | "resources";
 
 function Monogram({ name, color }: { name: string; color: string }) {
   return (
@@ -41,9 +42,25 @@ export function SubjectWorkspace({
   onBack?: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("notes");
+  // Notes are lifted here so both the Notes tab and the Record tab can add to them.
+  const [notes, setNotes] = useState<Note[]>(subject.notes);
+  const [activeId, setActiveId] = useState<string | undefined>(subject.notes[0]?.id);
+
+  const updateNote = useCallback((id: string, patch: Partial<Note>) => {
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
+  }, []);
+
+  const addNote = useCallback((title: string, body: string) => {
+    const id = "n" + Date.now();
+    setNotes((prev) => [{ id, title, body, updated: "just now" }, ...prev]);
+    setActiveId(id);
+    setTab("notes");
+    return id;
+  }, []);
 
   const tabs: [Tab, string, (c: string) => JSX.Element][] = [
     ["notes", "Notes", (c) => <NoteIcon className={c} />],
+    ["record", "Record", (c) => <MicIcon className={c} />],
     ["quizzes", "Quizzes", (c) => <QuizIcon className={c} />],
     ["resources", "Resource Bank", (c) => <BankIcon className={c} />],
   ];
@@ -95,8 +112,18 @@ export function SubjectWorkspace({
       </div>
 
       <section className="mx-auto max-w-6xl px-6 py-8">
-        {tab === "notes" && <NotesTab subject={subject} />}
-        {tab === "quizzes" && <QuizzesTab subject={subject} />}
+        {tab === "notes" && (
+          <NotesTab
+            notes={notes}
+            activeId={activeId}
+            setActiveId={setActiveId}
+            updateNote={updateNote}
+            addNote={addNote}
+            goRecord={() => setTab("record")}
+          />
+        )}
+        {tab === "record" && <RecordTab subjectName={subject.name} onAddNote={addNote} />}
+        {tab === "quizzes" && <QuizzesTab subject={subject} notes={notes} />}
         {tab === "resources" && <ResourcesTab subject={subject} />}
       </section>
     </div>
@@ -105,38 +132,48 @@ export function SubjectWorkspace({
 
 /* ------------------------------- NOTES TAB ------------------------------- */
 
-function NotesTab({ subject }: { subject: Subject }) {
-  const [activeId, setActiveId] = useState(subject.notes[0]?.id);
-  const active = subject.notes.find((n) => n.id === activeId) ?? subject.notes[0];
+function NotesTab({
+  notes,
+  activeId,
+  setActiveId,
+  updateNote,
+  addNote,
+  goRecord,
+}: {
+  notes: Note[];
+  activeId: string | undefined;
+  setActiveId: (id: string) => void;
+  updateNote: (id: string, patch: Partial<Note>) => void;
+  addNote: (title: string, body: string) => string;
+  goRecord: () => void;
+}) {
+  const active = notes.find((n) => n.id === activeId) ?? notes[0];
 
-  const [body, setBody] = useState(active?.body ?? "");
   const [enhancing, setEnhancing] = useState(false);
 
-  // Highlight-to-explain (Google-AI-mode style)
-  const bodyRef = useRef<HTMLDivElement>(null);
+  // Highlight-to-explain
+  const editorRef = useRef<HTMLDivElement>(null);
   const [selectedText, setSelectedText] = useState("");
   const [pill, setPill] = useState<{ top: number; left: number } | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [explanation, setExplanation] = useState("");
-  const [explaining, setExplaining] = useState(false);
 
-  function switchNote(id: string) {
-    setActiveId(id);
-    const n = subject.notes.find((x) => x.id === id);
-    setBody(n?.body ?? "");
-    setPill(null);
-    setSelectedText("");
-  }
+  // Keep the contentEditable in sync when the note changes programmatically
+  // (switching notes, AI enhance, AI note revision). Typing doesn't trigger a
+  // rewrite because innerText already equals the stored body.
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerText !== (active?.body ?? "")) {
+      editorRef.current.innerText = active?.body ?? "";
+    }
+  }, [active?.id, active?.body]);
 
   const updatePill = useCallback(() => {
     const sel = window.getSelection();
     const text = sel?.toString().trim() ?? "";
-    if (!sel || sel.isCollapsed || !text || !bodyRef.current) {
+    if (!sel || sel.isCollapsed || !text || !editorRef.current) {
       setPill(null);
       return;
     }
-    // only react to selections inside the note body
-    if (!bodyRef.current.contains(sel.anchorNode)) {
+    if (!editorRef.current.contains(sel.anchorNode)) {
       setPill(null);
       return;
     }
@@ -145,7 +182,6 @@ function NotesTab({ subject }: { subject: Subject }) {
     setPill({ top: rect.top - 46, left: rect.left + rect.width / 2 });
   }, []);
 
-  // Hide the pill when the user scrolls (its anchor would drift)
   useEffect(() => {
     function onScroll() {
       setPill(null);
@@ -154,60 +190,74 @@ function NotesTab({ subject }: { subject: Subject }) {
     return () => window.removeEventListener("scroll", onScroll, true);
   }, []);
 
-  async function openExplain() {
-    setPanelOpen(true);
-    setPill(null);
-    setExplaining(true);
-    setExplanation("");
-    const res = await explainHighlight(selectedText);
-    setExplanation(res);
-    setExplaining(false);
+  async function enhance() {
+    if (!active) return;
+    setEnhancing(true);
+    const res = await enhanceNote(active.body);
+    updateNote(active.id, { body: res, updated: "just now" });
+    setEnhancing(false);
   }
 
-  async function enhance() {
-    setEnhancing(true);
-    const res = await enhanceNote(body);
-    setBody(res);
-    setEnhancing(false);
+  if (!active) {
+    return (
+      <div className="grid place-items-center rounded-2xl border border-dashed border-slate-300 bg-white p-16 text-center text-slate-500">
+        <p>No notes yet.</p>
+        <button
+          onClick={() => addNote("Untitled note", "")}
+          className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+        >
+          New note
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
       {/* Note list */}
       <aside>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>
-          <button className="text-slate-400 transition hover:text-brand-600" title="New note">
-            <PlusIcon className="h-4 w-4" />
-          </button>
-        </div>
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>
         <ul className="space-y-1">
-          {subject.notes.map((n) => (
+          {notes.map((n) => (
             <li key={n.id}>
               <button
-                onClick={() => switchNote(n.id)}
+                onClick={() => setActiveId(n.id)}
                 className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
-                  n.id === activeId
+                  n.id === active.id
                     ? "bg-brand-50 font-semibold text-brand-700"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                {n.title}
+                {n.title || "Untitled note"}
                 <span className="block text-xs font-normal text-slate-400">{n.updated}</span>
               </button>
             </li>
           ))}
         </ul>
 
-        <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-3 text-sm font-semibold text-slate-600 transition hover:border-brand-400 hover:text-brand-700">
+        <button
+          onClick={() => addNote("Untitled note", "")}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+        >
+          <PlusIcon className="h-4 w-4" /> New note
+        </button>
+        <button
+          onClick={goRecord}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-brand-400 hover:text-brand-700"
+        >
           <MicIcon className="h-4 w-4" /> Record lecture
         </button>
       </aside>
 
-      {/* Full-width editor */}
+      {/* Editor */}
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-2xl font-bold text-ink">{active?.title}</h2>
+          <input
+            value={active.title}
+            onChange={(e) => updateNote(active.id, { title: e.target.value })}
+            placeholder="Untitled note"
+            className="w-full min-w-0 border-none bg-transparent text-2xl font-bold text-ink outline-none placeholder:text-slate-300"
+          />
           <button
             onClick={enhance}
             disabled={enhancing}
@@ -219,21 +269,27 @@ function NotesTab({ subject }: { subject: Subject }) {
         </div>
 
         <div
-          ref={bodyRef}
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={() => updateNote(active.id, { body: editorRef.current?.innerText ?? "" })}
           onMouseUp={updatePill}
-          className="hl-active mt-6 max-w-[70ch] space-y-5 whitespace-pre-wrap text-[15px] leading-7 text-slate-700"
-        >
-          {body.split("\n\n").map((para, i) => (
-            <p key={i}>{para}</p>
-          ))}
-        </div>
+          data-placeholder="Start typing your notes, or record a lecture…"
+          className="hl-active editor mt-6 min-h-[300px] max-w-[70ch] whitespace-pre-wrap text-[15px] leading-7 text-slate-700 outline-none"
+        />
+        <p className="mt-4 text-xs text-slate-400">
+          Tip: select any text to explain it, ask follow-ups, and let Grasp fix the note.
+        </p>
       </div>
 
-      {/* Floating "Explain" pill (appears on selection, like Google AI mode) */}
+      {/* Floating "Explain" pill */}
       {pill && (
         <button
-          onMouseDown={(e) => e.preventDefault()} // keep the selection alive
-          onClick={openExplain}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setPanelOpen(true);
+            setPill(null);
+          }}
           style={{ top: pill.top, left: pill.left }}
           className="fixed z-40 -translate-x-1/2 animate-[fadeIn_120ms_ease-out] rounded-full bg-ink px-3.5 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-black"
         >
@@ -243,32 +299,68 @@ function NotesTab({ subject }: { subject: Subject }) {
         </button>
       )}
 
-      {/* Slide-in explanation panel */}
       <ExplainPanel
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         selected={selectedText}
-        explanation={explanation}
-        loading={explaining}
+        noteBody={active.body}
+        onApplyRevision={(revised) => updateNote(active.id, { body: revised, updated: "just now" })}
       />
     </div>
   );
 }
 
+/* --------------------------- EXPLAIN CHAT PANEL -------------------------- */
+
 function ExplainPanel({
   open,
   onClose,
   selected,
-  explanation,
-  loading,
+  noteBody,
+  onApplyRevision,
 }: {
   open: boolean;
   onClose: () => void;
   selected: string;
-  explanation: string;
-  loading: boolean;
+  noteBody: string;
+  onApplyRevision: (revised: string) => void;
 }) {
-  // Close on Escape
+  const [history, setHistory] = useState<ChatMsg[]>([]);
+  const [pending, setPending] = useState(false);
+  const [input, setInput] = useState("");
+  const [noteUpdated, setNoteUpdated] = useState(false);
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  // Kick off the initial explanation when the panel opens for a new selection.
+  useEffect(() => {
+    if (!open || !selected) return;
+    let cancelled = false;
+    const seed: ChatMsg[] = [
+      { role: "user", content: "Explain the highlighted passage from my notes." },
+    ];
+    setHistory(seed);
+    setNoteUpdated(false);
+    setPending(true);
+    (async () => {
+      const { reply, revisedNote } = await explainChat(noteBody, selected, seed);
+      if (cancelled) return;
+      setHistory([...seed, { role: "assistant", content: reply }]);
+      if (revisedNote && revisedNote.trim() && revisedNote !== noteBody) {
+        onApplyRevision(revisedNote);
+        setNoteUpdated(true);
+      }
+      setPending(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selected]);
+
+  useEffect(() => {
+    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+  }, [history, pending]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -277,9 +369,27 @@ function ExplainPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  async function send() {
+    const text = input.trim();
+    if (!text || pending) return;
+    const next = [...history, { role: "user" as const, content: text }];
+    setHistory(next);
+    setInput("");
+    setPending(true);
+    const { reply, revisedNote } = await explainChat(noteBody, selected, next);
+    setHistory([...next, { role: "assistant", content: reply }]);
+    if (revisedNote && revisedNote.trim() && revisedNote !== noteBody) {
+      onApplyRevision(revisedNote);
+      setNoteUpdated(true);
+    }
+    setPending(false);
+  }
+
+  // Hide the seed user message; show the conversation from the first answer on.
+  const shown = history[0]?.role === "user" ? history.slice(1) : history;
+
   return (
     <>
-      {/* dim scrim */}
       <div
         onClick={onClose}
         className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-200 ${
@@ -287,47 +397,267 @@ function ExplainPanel({
         }`}
       />
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[400px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[420px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-2 font-semibold text-ink">
-            <SparkleIcon className="h-4 w-4 text-brand-600" /> Explanation
+            <SparkleIcon className="h-4 w-4 text-brand-600" /> Explain
           </div>
           <button
             onClick={onClose}
             className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"
-            aria-label="Close explanation"
+            aria-label="Close"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div ref={threadRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
           <p className="rounded-xl border-l-4 border-accent-400 bg-amber-50 px-4 py-3 text-sm italic text-slate-600">
             “{selected.length > 160 ? selected.slice(0, 160) + "…" : selected}”
           </p>
 
-          {loading ? (
-            <div className="mt-6 space-y-2.5">
+          {noteUpdated && (
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+              <SparkleIcon className="h-4 w-4" /> Your note was updated from this conversation.
+            </div>
+          )}
+
+          {shown.map((m, i) =>
+            m.role === "assistant" ? (
+              <div key={i} className="text-[15px] leading-7 text-slate-700">
+                <p className="mb-1 text-xs font-semibold text-brand-700">Grasp AI</p>
+                {m.content}
+              </div>
+            ) : (
+              <div key={i} className="ml-8 rounded-2xl bg-brand-600 px-4 py-2 text-sm text-white">
+                {m.content}
+              </div>
+            )
+          )}
+
+          {pending && (
+            <div className="space-y-2.5">
               <div className="h-3 w-4/5 animate-pulse rounded bg-slate-200" />
               <div className="h-3 w-full animate-pulse rounded bg-slate-200" />
-              <div className="h-3 w-11/12 animate-pulse rounded bg-slate-200" />
               <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200" />
             </div>
-          ) : (
-            <div className="mt-5 text-[15px] leading-7 text-slate-700">{explanation}</div>
           )}
+        </div>
+
+        <div className="border-t border-slate-200 p-3">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              rows={1}
+              placeholder="Ask a follow-up, or correct the note…"
+              className="max-h-32 flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+            <button
+              onClick={send}
+              disabled={pending || !input.trim()}
+              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+            >
+              Send
+            </button>
+          </div>
+          <p className="mt-1.5 px-1 text-[11px] text-slate-400">
+            If you catch a mistake, tell Grasp — it can fix the note.
+          </p>
         </div>
       </aside>
     </>
   );
 }
 
+/* ------------------------------- RECORD TAB ------------------------------ */
+
+const LIVE_SCRIPT = [
+  "Lecture started — capturing audio and drafting notes live.",
+  "",
+  "Main topic introduced: the lecturer outlined today's focus and why it matters for the assessment.",
+  "",
+  "Key definition: the core term was defined, then restated in simpler language.",
+  "",
+  "Worked example: the teacher walked through an example step by step, highlighting where students usually go wrong.",
+  "",
+  "Important distinction: two related concepts were contrasted — a common exam trap.",
+  "",
+  "Summary: the lecturer tied the ideas together and flagged what to review before the test.",
+];
+
+function RecordTab({
+  subjectName,
+  onAddNote,
+}: {
+  subjectName: string;
+  onAddNote: (title: string, body: string) => string;
+}) {
+  type Phase = "idle" | "recording" | "naming";
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [seconds, setSeconds] = useState(0);
+  const [lines, setLines] = useState<string[]>([]);
+  const [name, setName] = useState("");
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scriptRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function clearTimers() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (scriptRef.current) clearInterval(scriptRef.current);
+    timerRef.current = null;
+    scriptRef.current = null;
+  }
+  useEffect(() => () => clearTimers(), []);
+
+  function start() {
+    setPhase("recording");
+    setSeconds(0);
+    setLines([]);
+    timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+    let i = 0;
+    scriptRef.current = setInterval(() => {
+      setLines((prev) => [...prev, LIVE_SCRIPT[i]]);
+      i += 1;
+      if (i >= LIVE_SCRIPT.length && scriptRef.current) {
+        clearInterval(scriptRef.current);
+        scriptRef.current = null;
+      }
+    }, 1400);
+  }
+
+  function stop() {
+    clearTimers();
+    setPhase("naming");
+    setName(`${subjectName} lecture — ${new Date().toLocaleDateString()}`);
+  }
+
+  function save() {
+    const body = lines.join("\n").trim();
+    onAddNote(name.trim() || "Untitled recording", body); // switches to Notes tab
+  }
+
+  function discard() {
+    clearTimers();
+    setPhase("idle");
+    setLines([]);
+    setSeconds(0);
+  }
+
+  const mmss = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      {phase === "idle" && (
+        <div className="grid place-items-center rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-brand-50 text-brand-600">
+            <MicIcon className="h-8 w-8" />
+          </span>
+          <h3 className="mt-5 text-xl font-bold text-ink">Record a lecture</h3>
+          <p className="mt-2 max-w-md text-sm text-slate-600">
+            Grasp transcribes as you go and drafts structured notes live. When you stop, name it and
+            it&apos;s saved straight into your notes — the audio is never stored.
+          </p>
+          <button
+            onClick={start}
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
+          >
+            <MicIcon className="h-4 w-4" /> Start recording
+          </button>
+          <p className="mt-3 text-[11px] text-slate-400">
+            Free plan: 1 × 5-min recording / week
+          </p>
+        </div>
+      )}
+
+      {phase !== "idle" && (
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              {phase === "recording" ? (
+                <>
+                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+                  <span className="text-red-600">Recording</span>
+                </>
+              ) : (
+                <span className="text-slate-500">Recording finished</span>
+              )}
+            </div>
+            <span className="font-mono text-sm tabular-nums text-slate-500">{mmss}</span>
+          </div>
+
+          {/* Live note-taking view */}
+          <div className="mt-4 min-h-[240px] rounded-2xl bg-slate-50 p-5">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+              Live notes
+            </p>
+            {lines.length === 0 && phase === "recording" ? (
+              <p className="text-sm text-slate-400">Listening…</p>
+            ) : (
+              <div className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700">
+                {lines.join("\n")}
+                {phase === "recording" && (
+                  <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-brand-500 align-middle" />
+                )}
+              </div>
+            )}
+          </div>
+
+          {phase === "recording" && (
+            <div className="mt-5 flex justify-center gap-3">
+              <button
+                onClick={stop}
+                className="rounded-xl bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:bg-black"
+              >
+                Stop recording
+              </button>
+            </div>
+          )}
+
+          {phase === "naming" && (
+            <div className="mt-5">
+              <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                Name this note
+              </label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+                className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500"
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={discard}
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={save}
+                  className="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+                >
+                  Save to notes
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------------ QUIZZES TAB ------------------------------ */
 
-function QuizzesTab({ subject }: { subject: Subject }) {
+function QuizzesTab({ subject, notes }: { subject: Subject; notes: Note[] }) {
   const [selected, setSelected] = useState<string[]>([subject.quizTopics[0]]);
   const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
@@ -350,7 +680,7 @@ function QuizzesTab({ subject }: { subject: Subject }) {
       const q = await generateQuiz(
         selected,
         instructions,
-        subject.notes.map((n) => ({ title: n.title, body: n.body }))
+        notes.map((n) => ({ title: n.title, body: n.body }))
       );
       setQuiz(q);
     } catch (e) {
@@ -361,7 +691,6 @@ function QuizzesTab({ subject }: { subject: Subject }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      {/* Config */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="font-bold text-ink">Build a quiz</h3>
         <p className="mt-1 text-sm text-slate-500">
@@ -409,7 +738,6 @@ function QuizzesTab({ subject }: { subject: Subject }) {
         </p>
       </div>
 
-      {/* Quiz output */}
       <div>
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

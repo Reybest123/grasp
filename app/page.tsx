@@ -96,25 +96,29 @@ export default function Home() {
       {/* Nav */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Logo />
-        <nav className="flex items-center gap-1 sm:gap-2">
+        {/* Centered section links */}
+        <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
           <Link
             href="#how-it-works"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink sm:block"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
           >
             How it works
           </Link>
           <Link
             href="#features"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink sm:block"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
           >
             Features
           </Link>
           <Link
             href="#pricing"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink sm:block"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
           >
             Pricing
           </Link>
+        </nav>
+        {/* Auth on the right */}
+        <div className="flex items-center gap-1 sm:gap-2">
           <Link
             href="/home"
             className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
@@ -127,7 +131,7 @@ export default function Home() {
           >
             Sign up
           </Link>
-        </nav>
+        </div>
       </header>
 
       {/* Hero */}

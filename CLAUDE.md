@@ -25,12 +25,14 @@ Platform: **Website** (not a native app) — no app store fees, no OCR SDK neede
 ### 3.1 Notes
 - AI-enhanced notes: cleanup, formatting, expansion
 - Record lecture → AI transcribes (Whisper) → auto-generates structured notes
-- Manual note-taking also fully supported
+- **Live note-taking:** while a lecture is recording, the student sees the AI notes being drafted in real time (not just at the end). When the student stops, they name the recording and the AI-generated notes (not the audio) are saved into that subject's notes.
+- Manual note-taking also fully supported — notes are directly editable
 - Ask AI to explain or correct notes if wrong/confusing
 
 ### 3.2 Highlight to Explain
 - User highlights any line/section directly within their notes (not a separate chatbot tab)
 - AI shows a contextual explanation anchored to that highlight, threaded like a margin conversation
+- **Follow-up questions:** the highlight explanation is a thread — the student can ask follow-ups, and the AI can edit the note as a result (e.g. if the student catches a hallucination/error, the AI agrees and corrects the note in place)
 - Keeps AI help embedded in the notes UX rather than feeling like a bolted-on chat feature
 
 ### 3.3 Subject Quiz Mode
@@ -134,8 +136,10 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - Landing page (school-focused positioning)
 - Onboarding UI: timetable upload → subject list → notebooks (extraction still mocked)
 - Subject notebooks grid (`/home`)
-- Notes: manual editing, **AI enhance** (real GPT-4o-mini via `/api/enhance`)
-- **Highlight-to-explain**: Google-AI-mode style — floating "Explain" pill on text selection opens a closable slide-in side panel (real GPT-4o-mini via `/api/explain`)
+- Notes: fully editable (contentEditable), working **New note** button (manual creation), **AI enhance** (real GPT-4o-mini via `/api/enhance`)
+- Subject workspace tabs: **Notes / Record / Quizzes / Resource Bank**
+- **Record** tab: live note-taking (notes stream in while "recording"), then name-and-save into Notes. Transcription itself is still simulated — real Whisper capture not yet wired.
+- **Highlight-to-explain**: Google-AI-mode style — floating "Explain" pill on text selection opens a closable slide-in side panel that is a **chat thread** (ask follow-ups; the AI can revise the note in place if the student corrects it). Real GPT-4o-mini via `/api/explain-chat`.
 - **Quiz mode**: topic selection + focus instructions → questions grounded in the subject's own notes (real GPT-4o-mini via `/api/quiz`)
 - Resource Bank UI (display only; upload not wired yet)
 - Terms of Service + Privacy Policy pages
