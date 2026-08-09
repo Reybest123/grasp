@@ -1,6 +1,10 @@
-// Demo data for the Grasp first-demo build.
-// In production this comes from Postgres (see CLAUDE.md §5). Here it's in-memory
-// so the demo runs with zero setup and no API keys.
+// Seed data for the Grasp build.
+// In production this comes from Postgres (see CLAUDE.md §5). Here it's seeded
+// in-memory and then persisted to localStorage by lib/subjectsStore.tsx, so the
+// app runs with zero setup and no API keys.
+
+import type { ClassSlot } from "@/lib/schedule";
+import { autoColorKey } from "@/lib/subjectColors";
 
 export type Note = {
   id: string;
@@ -19,23 +23,55 @@ export type Resource = {
 export type Subject = {
   id: string;
   name: string;
-  emoji: string;
-  color: string; // tailwind gradient stops
-  teacher: string;
-  slots: string; // when it happens, from the timetable
+  /** key into SUBJECT_COLORS — assigned automatically, editable by the student */
+  colorKey: string;
+  teacher?: string;
+  /** weekly class times from the timetable; all optional */
+  classes: ClassSlot[];
+  /** ISO "YYYY-MM-DD" */
+  examDate?: string;
+  examTitle?: string;
   notes: Note[];
   resources: Resource[];
   quizTopics: string[];
 };
 
+let seq = 0;
+const uid = (p: string) => `${p}${Date.now().toString(36)}${(seq++).toString(36)}`;
+
+export function makeSlot(day: number, start: string, end?: string): ClassSlot {
+  return { id: uid("c"), day, start, end };
+}
+
+/** A fresh, empty subject. Colour is auto-assigned from its position in the grid. */
+export function createSubject(name: string, index: number): Subject {
+  return {
+    id: uid("s"),
+    name: name.trim() || "Untitled subject",
+    colorKey: autoColorKey(index),
+    classes: [],
+    notes: [],
+    resources: [],
+    quizTopics: [],
+  };
+}
+
+/** Seed exam dates are relative so the countdown never goes stale in the demo. */
+function inDays(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export const SUBJECTS: Subject[] = [
   {
     id: "biology",
     name: "Biology",
-    emoji: "🧬",
-    color: "from-emerald-400 to-teal-500",
+    colorKey: "emerald",
     teacher: "Ms. Fournier",
-    slots: "Mon 9:00 · Wed 11:00 · Fri 9:00",
+    classes: [makeSlot(1, "09:00", "10:00"), makeSlot(3, "11:00", "12:00"), makeSlot(5, "09:00", "10:00")],
+    examDate: inDays(5),
+    examTitle: "Paper 2 mock",
     quizTopics: ["Cell structure", "Osmosis & diffusion", "Enzymes", "Photosynthesis"],
     notes: [
       {
@@ -67,10 +103,11 @@ Active transport moves substances against the concentration gradient and require
   {
     id: "history",
     name: "History",
-    emoji: "🏛️",
-    color: "from-amber-400 to-orange-500",
+    colorKey: "amber",
     teacher: "Mr. Owens",
-    slots: "Tue 10:00 · Thu 13:00",
+    classes: [makeSlot(2, "10:00", "11:00"), makeSlot(4, "13:00", "14:00")],
+    examDate: inDays(19),
+    examTitle: "Source analysis essay",
     quizTopics: ["Causes of WW1", "Treaty of Versailles", "Rise of dictators"],
     notes: [
       {
@@ -91,10 +128,9 @@ The trigger (short-term cause) was the assassination of Archduke Franz Ferdinand
   {
     id: "maths",
     name: "Mathematics",
-    emoji: "📐",
-    color: "from-sky-400 to-indigo-500",
+    colorKey: "sky",
     teacher: "Dr. Patel",
-    slots: "Mon 13:00 · Wed 9:00 · Fri 11:00",
+    classes: [makeSlot(1, "13:00", "14:00"), makeSlot(3, "09:00", "10:00"), makeSlot(5, "11:00", "12:00")],
     quizTopics: ["Quadratics", "Trigonometry", "Simultaneous equations"],
     notes: [
       {
@@ -113,7 +149,3 @@ The discriminant b²-4ac tells you how many real roots there are: positive = two
     ],
   },
 ];
-
-export function getSubject(id: string): Subject | undefined {
-  return SUBJECTS.find((s) => s.id === id);
-}

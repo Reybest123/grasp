@@ -135,7 +135,11 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 **Built & working:**
 - Landing page (school-focused positioning)
 - Onboarding UI: timetable upload → subject list → notebooks (extraction still mocked)
-- Subject notebooks grid (`/home`)
+- Subject notebooks grid (`/home`) — cards lead with the subject name at the top (monogram + name + teacher), then the **next class only** (never the full week), an exam countdown chip, content counts, and an **Open notes** / **Edit** action row. An **Add a subject** tile sits at the end of the grid and drops straight into the editor. Above the grid, a "Next up" strip shows the soonest class and nearest exam across all subjects.
+- **Edit subject** slide-in panel: rename, teacher, colour swatch picker, weekly class times (day + start/end, add/remove rows), exam date + title, and delete with a two-step confirm. Everything except the name is optional.
+- **Subject colours** (`lib/subjectColors.ts`): 9-colour palette, auto-assigned by grid position on creation so students never have to pick, editable afterwards.
+- **Schedule model** (`lib/schedule.ts`): `ClassSlot[]` per subject plus optional exam date/title; derives "Next class tomorrow at 9:00am", exam countdowns, and a `subjectContext()` string. That context is passed to `/api/quiz` and `/api/explain-chat`, so the AI knows the student's week and upcoming assessment.
+- **Persistence**: `lib/subjectsStore.tsx` — React context over localStorage (`grasp.subjects.v1`), standing in for Postgres. Date-dependent UI is gated on a client-only `useNow()` clock to avoid SSR hydration drift.
 - Notes: fully editable (contentEditable), working **New note** button (manual creation), **AI enhance** (real GPT-4o-mini via `/api/enhance`)
 - Subject workspace tabs: **Notes / Record / Quizzes / Resource Bank**
 - **Record** tab: live note-taking (notes stream in while "recording"), then name-and-save into Notes. Transcription itself is still simulated — real Whisper capture not yet wired.
@@ -147,9 +151,15 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 **Still mocked / not yet built:**
 - Timetable screenshot extraction (needs image upload + vision model)
 - Lecture recording → Whisper transcription
-- Auth / accounts, Postgres persistence, Resource Bank file upload, usage-limit enforcement
+- Auth / accounts, Postgres persistence (subjects currently persist to localStorage only), Resource Bank file upload, usage-limit enforcement
 
-**Design conventions:** No emojis anywhere in the UI — all icons are inline SVG (`components/icons.tsx`). Subjects are represented by a monogram (first letter) on a colored gradient tile, not an emoji.
+**Design conventions:**
+
+- **Absolutely no emojis. Anywhere. Ever.** Not in UI copy, not in placeholder or seed data, not in AI-generated output shown to the user, not in code comments, not in commit messages, not in chat replies about this project. Emojis make the product read as AI-generated and cheapen it. This rule has no exceptions — if something needs a glyph, it gets an inline SVG icon.
+- All icons live in `components/icons.tsx` as inline SVG (Lucide-style, 1.75 stroke). Add to that file rather than reaching for a character.
+- No decorative Unicode substitutes for emojis either — no `✓`, `✗`, `→`, `⚠️`, `★`. Use an SVG icon, or plain words.
+- Subjects are represented by a monogram (first letter) on a coloured gradient tile.
+- Subject colours come from `lib/subjectColors.ts` and are auto-assigned on creation, then editable per subject.
 
 **API layer:** `lib/ai.ts` calls server-side routes under `app/api/*`; the OpenAI key (`OPENAI_API_KEY`) is only read server-side, never exposed to the browser.
 

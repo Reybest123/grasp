@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
 export async function POST(req: NextRequest) {
-  const { noteBody, highlight, history } = await req.json();
+  const { noteBody, highlight, context, history } = await req.json();
   if (typeof noteBody !== "string" || typeof highlight !== "string" || !Array.isArray(history)) {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
@@ -13,7 +13,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "OPENAI_API_KEY is not set" }, { status: 500 });
   }
 
+  const schedule =
+    typeof context === "string" && context.trim()
+      ? `\n\nThe student's schedule for this subject: ${context.trim()}
+Use this naturally when it genuinely helps — e.g. tying revision advice to an upcoming exam or their next class. Do not force it in or mention it in every reply.`
+      : "";
+
   const system = `You are Grasp, a study assistant embedded directly in a student's notes. The student highlighted a passage and is asking about it. Answer clearly and conversationally, and keep replies fairly short.
+
+Never use emojis.${schedule}
 
 Important: you can also CORRECT the student's note. If the student points out an error in the note, or you realise the note is factually wrong or misleading, agree and produce a corrected version of the FULL note. Preserve the note's structure and everything that was already correct — only change what needs fixing. If no change is warranted, do not revise.
 

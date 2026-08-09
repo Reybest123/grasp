@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { FileIcon, MicIcon, SparkleIcon, QuizIcon } from "@/components/icons";
+import { FileIcon, MicIcon, SparkleIcon, QuizIcon, ArrowRightIcon } from "@/components/icons";
 import type { JSX } from "react";
 
 const FEATURES: { icon: JSX.Element; title: string; body: string }[] = [
@@ -155,9 +155,9 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/onboarding"
-              className="rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
             >
-              Start with your timetable →
+              Start with your timetable <ArrowRightIcon className="h-5 w-5" />
             </Link>
             <Link
               href="#how-it-works"

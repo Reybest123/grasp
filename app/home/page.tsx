@@ -2,15 +2,45 @@
 
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
-import { SUBJECTS, getSubject } from "@/lib/demoData";
+import { SubjectsProvider, useSubjects, useNow } from "@/lib/subjectsStore";
 import { SubjectWorkspace } from "@/components/SubjectWorkspace";
-import { NoteIcon, QuizIcon, BankIcon } from "@/components/icons";
+import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
+import { SubjectEditor } from "@/components/SubjectEditor";
+import {
+  examStatus,
+  nextClassAcross,
+  relativeDay,
+  formatTime,
+  type ExamStatus,
+} from "@/lib/schedule";
+import type { Subject } from "@/lib/demoData";
+import { ClockIcon, ExamIcon } from "@/components/icons";
 
-export default function HomeApp() {
+export default function HomePage() {
+  return (
+    <SubjectsProvider>
+      <HomeApp />
+    </SubjectsProvider>
+  );
+}
+
+function HomeApp() {
   // The whole logged-in app lives at /home. Selecting a subject swaps the view
   // in place — the URL never changes.
+  const { subjects, addSubject, updateSubject, removeSubject } = useSubjects();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedId ? getSubject(selectedId) : undefined;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const now = useNow();
+
+  const selected = subjects.find((s) => s.id === selectedId);
+  const editing = subjects.find((s) => s.id === editingId) ?? null;
+
+  function handleAdd() {
+    // Create it empty and drop the student straight into the editor to fill in
+    // whatever they want — nothing is required beyond the name.
+    const created = addSubject("New subject");
+    setEditingId(created.id);
+  }
 
   return (
     <main className="min-h-screen">
@@ -36,49 +66,106 @@ export default function HomeApp() {
       </header>
 
       {selected ? (
-        <SubjectWorkspace subject={selected} onBack={() => setSelectedId(null)} />
+        <SubjectWorkspace
+          subject={selected}
+          now={now}
+          onBack={() => setSelectedId(null)}
+          onEdit={() => setEditingId(selected.id)}
+        />
       ) : (
         <section className="mx-auto max-w-6xl px-6 py-10">
-          <div className="flex items-end justify-between">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-ink">Your notebooks</h1>
-              <p className="mt-1 text-slate-600">One space per subject, built from your timetable.</p>
+              <p className="mt-1 text-slate-600">
+                One space per subject, built from your timetable.
+              </p>
             </div>
           </div>
 
+          <UpNext subjects={subjects} now={now} onOpen={setSelectedId} />
+
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {SUBJECTS.map((s) => (
-              <button
+            {subjects.map((s) => (
+              <SubjectCard
                 key={s.id}
-                onClick={() => setSelectedId(s.id)}
-                className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft"
-              >
-                <div className={`flex items-center bg-gradient-to-br ${s.color} px-5 py-6`}>
-                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-white/20 text-2xl font-bold text-white backdrop-blur-sm">
-                    {s.name.charAt(0)}
-                  </span>
-                </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-bold text-ink">{s.name}</h3>
-                  <p className="text-sm text-slate-500">{s.teacher}</p>
-                  <p className="mt-3 text-xs text-slate-400">{s.slots}</p>
-                  <div className="mt-4 flex gap-4 text-xs font-medium text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <NoteIcon className="h-3.5 w-3.5" /> {s.notes.length}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <BankIcon className="h-3.5 w-3.5" /> {s.resources.length}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <QuizIcon className="h-3.5 w-3.5" /> {s.quizTopics.length}
-                    </span>
-                  </div>
-                </div>
-              </button>
+                subject={s}
+                now={now}
+                onOpen={() => setSelectedId(s.id)}
+                onEdit={() => setEditingId(s.id)}
+              />
             ))}
+            <AddSubjectCard onClick={handleAdd} />
           </div>
         </section>
       )}
+
+      <SubjectEditor
+        subject={editing}
+        open={editing !== null}
+        onClose={() => setEditingId(null)}
+        onSave={(patch) => editing && updateSubject(editing.id, patch)}
+        onDelete={() => {
+          if (!editing) return;
+          if (selectedId === editing.id) setSelectedId(null);
+          removeSubject(editing.id);
+        }}
+      />
     </main>
+  );
+}
+
+/**
+ * A single line across the top of the grid: the very next class anywhere in the
+ * timetable, plus the nearest exam. Uses whatever the student has filled in and
+ * stays hidden if they've filled in nothing.
+ */
+function UpNext({
+  subjects,
+  now,
+  onOpen,
+}: {
+  subjects: Subject[];
+  now: Date | null;
+  onOpen: (id: string) => void;
+}) {
+  if (!now) return null;
+
+  const soonest = nextClassAcross(subjects, now);
+
+  const nextExam = subjects
+    .map((subject) => ({ subject, status: examStatus(subject.examDate, subject.examTitle, now) }))
+    .filter((e): e is { subject: Subject; status: ExamStatus } => e.status !== null)
+    .sort((a, b) => a.status.days - b.status.days)[0];
+
+  if (!soonest && !nextExam) return null;
+
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-2.5">
+      {soonest && (
+        <button
+          onClick={() => onOpen(soonest.subject.id)}
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-ink"
+        >
+          <ClockIcon className="h-4 w-4 text-slate-400" />
+          Next up: <b className="font-semibold text-ink">{soonest.subject.name}</b>{" "}
+          {relativeDay(soonest.next.daysAway, soonest.next.slot.day)} at{" "}
+          {formatTime(soonest.next.slot.start)}
+        </button>
+      )}
+      {nextExam && (
+        <button
+          onClick={() => onOpen(nextExam.subject.id)}
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition hover:brightness-95 ${
+            nextExam.status.soon
+              ? "bg-amber-100 text-amber-800"
+              : "border border-slate-200 bg-white text-slate-600"
+          }`}
+        >
+          <ExamIcon className="h-4 w-4" />
+          <b className="font-semibold">{nextExam.subject.name}</b> {nextExam.status.label}
+        </button>
+      )}
+    </div>
   );
 }

@@ -7,7 +7,11 @@
 // extractTimetable() is still mocked because it needs image-upload handling
 // (a vision model reading a screenshot) — wire that up next.
 
+import { makeSlot } from "@/lib/demoData";
+import type { ClassSlot } from "@/lib/schedule";
+
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const slot = makeSlot;
 
 export type QuizQuestion = {
   question: string;
@@ -18,18 +22,18 @@ export type QuizQuestion = {
 
 export type NoteContext = { title: string; body: string };
 
+export type ExtractedSubject = { name: string; classes: ClassSlot[] };
+
 // §2 Onboarding — vision model reads the timetable screenshot -> subjects JSON.
 // STILL MOCKED (needs image upload) — returns a sample set after a short delay.
-export async function extractTimetable(): Promise<
-  { name: string; emoji: string; slots: string }[]
-> {
+export async function extractTimetable(): Promise<ExtractedSubject[]> {
   await wait(1600);
   return [
-    { name: "Biology", emoji: "🧬", slots: "Mon 9:00 · Wed 11:00 · Fri 9:00" },
-    { name: "History", emoji: "🏛️", slots: "Tue 10:00 · Thu 13:00" },
-    { name: "Mathematics", emoji: "📐", slots: "Mon 13:00 · Wed 9:00 · Fri 11:00" },
-    { name: "Chemistry", emoji: "⚗️", slots: "Tue 14:00 · Thu 9:00" },
-    { name: "English Lit.", emoji: "📖", slots: "Mon 11:00 · Thu 11:00" },
+    { name: "Biology", classes: [slot(1, "09:00"), slot(3, "11:00"), slot(5, "09:00")] },
+    { name: "History", classes: [slot(2, "10:00"), slot(4, "13:00")] },
+    { name: "Mathematics", classes: [slot(1, "13:00"), slot(3, "09:00"), slot(5, "11:00")] },
+    { name: "Chemistry", classes: [slot(2, "14:00"), slot(4, "09:00")] },
+    { name: "English Lit.", classes: [slot(1, "11:00"), slot(4, "11:00")] },
   ];
 }
 
@@ -38,19 +42,22 @@ export type ChatMsg = { role: "user" | "assistant"; content: string };
 // §3.2 Highlight to Explain (threaded) — the student can ask follow-up questions,
 // and the AI may return a corrected version of the whole note (e.g. if the
 // student catches a mistake). Real GPT-4o-mini call via /api/explain-chat.
+// `context` carries the subject's class times and exam date (lib/schedule) so
+// the AI can speak to the student's actual week.
 export async function explainChat(
   noteBody: string,
   highlight: string,
+  context: string,
   history: ChatMsg[]
 ): Promise<{ reply: string; revisedNote: string | null }> {
   const res = await fetch("/api/explain-chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ noteBody, highlight, history }),
+    body: JSON.stringify({ noteBody, highlight, context, history }),
   });
   const data = await res.json();
   if (!res.ok) {
-    return { reply: `⚠️ ${data.error ?? "Something went wrong."}`, revisedNote: null };
+    return { reply: data.error ?? "Something went wrong.", revisedNote: null };
   }
   return { reply: data.reply as string, revisedNote: (data.revisedNote as string) ?? null };
 }
@@ -65,7 +72,7 @@ export async function explainHighlight(text: string): Promise<string> {
     body: JSON.stringify({ text: t }),
   });
   const data = await res.json();
-  if (!res.ok) return `⚠️ ${data.error ?? "Something went wrong."}`;
+  if (!res.ok) return (data.error as string) ?? "Something went wrong.";
   return data.explanation as string;
 }
 
@@ -77,7 +84,7 @@ export async function enhanceNote(body: string): Promise<string> {
     body: JSON.stringify({ body }),
   });
   const data = await res.json();
-  if (!res.ok) return body + `\n\n⚠️ ${data.error ?? "Enhancement failed."}`;
+  if (!res.ok) return `${body}\n\n${data.error ?? "Enhancement failed."}`;
   return data.enhanced as string;
 }
 
@@ -85,12 +92,13 @@ export async function enhanceNote(body: string): Promise<string> {
 export async function generateQuiz(
   topics: string[],
   instructions: string,
-  notes: NoteContext[] = []
+  notes: NoteContext[] = [],
+  context = ""
 ): Promise<QuizQuestion[]> {
   const res = await fetch("/api/quiz", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ topics, instructions, notes }),
+    body: JSON.stringify({ topics, instructions, notes, context }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? "Quiz generation failed.");

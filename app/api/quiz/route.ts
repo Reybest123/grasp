@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { topics, instructions, notes } = await req.json();
+  const { topics, instructions, notes, context } = await req.json();
   if (!Array.isArray(topics) || topics.length === 0) {
     return NextResponse.json({ error: "No topics provided" }, { status: 400 });
   }
@@ -31,11 +31,13 @@ export async function POST(req: NextRequest) {
         {
           role: "system",
           content:
-            'You are Grasp, generating a personalized quiz from a student\'s own notes. Write 4 multiple-choice questions covering the requested topics. Each question has exactly 4 options and one correct answer. Respond ONLY with JSON of the shape: {"questions":[{"question":"...","options":["...","...","...","..."],"answerIndex":0,"why":"one sentence explaining the correct answer"}]}.',
+            'You are Grasp, generating a personalized quiz from a student\'s own notes. Write 4 multiple-choice questions covering the requested topics. Each question has exactly 4 options and one correct answer. Never use emojis. If the student has an exam coming up soon, lean toward exam-style application questions. Respond ONLY with JSON of the shape: {"questions":[{"question":"...","options":["...","...","...","..."],"answerIndex":0,"why":"one sentence explaining the correct answer"}]}.',
         },
         {
           role: "user",
           content: `Topics to cover: ${topics.join(", ")}\n${
+            typeof context === "string" && context.trim() ? `Student's schedule: ${context.trim()}\n` : ""
+          }${
             instructions ? `Focus instructions from the student: ${instructions}\n` : ""
           }${notesContext}`,
         },

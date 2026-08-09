@@ -20,7 +20,13 @@ import {
   CloseIcon,
   BackIcon,
   FileIcon,
+  EditIcon,
+  ExamIcon,
+  CheckIcon,
+  AlertIcon,
 } from "@/components/icons";
+import { getColor } from "@/lib/subjectColors";
+import { examStatus, weeklyLabel, subjectContext } from "@/lib/schedule";
 
 type Tab = "notes" | "record" | "quizzes" | "resources";
 
@@ -29,17 +35,21 @@ function Monogram({ name, color }: { name: string; color: string }) {
     <span
       className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${color} text-2xl font-bold text-white shadow-sm`}
     >
-      {name.charAt(0)}
+      {name.charAt(0).toUpperCase()}
     </span>
   );
 }
 
 export function SubjectWorkspace({
   subject,
+  now,
   onBack,
+  onEdit,
 }: {
   subject: Subject;
+  now: Date | null;
   onBack?: () => void;
+  onEdit?: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("notes");
   // Notes are lifted here so both the Notes tab and the Record tab can add to them.
@@ -57,6 +67,16 @@ export function SubjectWorkspace({
     setTab("notes");
     return id;
   }, []);
+
+  const color = getColor(subject.colorKey);
+  const weekly = weeklyLabel(subject.classes);
+  const exam = now ? examStatus(subject.examDate, subject.examTitle, now) : null;
+
+  // Class times + exam date travel with every AI request for this subject, so
+  // explanations and quizzes can reference the student's actual week.
+  const context = now
+    ? subjectContext(subject.name, subject.classes, subject.examDate, subject.examTitle, now)
+    : "";
 
   const tabs: [Tab, string, (c: string) => JSX.Element][] = [
     ["notes", "Notes", (c) => <NoteIcon className={c} />],
@@ -80,14 +100,31 @@ export function SubjectWorkspace({
 
       {/* Subject header */}
       <div className="mx-auto max-w-6xl px-6 pb-6 pt-5">
-        <div className="flex items-center gap-4">
-          <Monogram name={subject.name} color={subject.color} />
-          <div>
+        <div className="flex flex-wrap items-center gap-4">
+          <Monogram name={subject.name} color={color.gradient} />
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold tracking-tight text-ink">{subject.name}</h1>
-            <p className="text-sm text-slate-500">
-              {subject.teacher} · {subject.slots}
+            <p className="truncate text-sm text-slate-500">
+              {[subject.teacher, weekly].filter(Boolean).join(" · ") || "No class times set yet"}
             </p>
           </div>
+          {exam && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                exam.soon ? "bg-amber-100 text-amber-800" : color.tint
+              }`}
+            >
+              <ExamIcon className="h-4 w-4" /> {exam.label}
+            </span>
+          )}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:bg-white hover:text-ink"
+            >
+              <EditIcon className="h-4 w-4" /> Edit subject
+            </button>
+          )}
         </div>
       </div>
 
@@ -120,10 +157,11 @@ export function SubjectWorkspace({
             updateNote={updateNote}
             addNote={addNote}
             goRecord={() => setTab("record")}
+            context={context}
           />
         )}
         {tab === "record" && <RecordTab subjectName={subject.name} onAddNote={addNote} />}
-        {tab === "quizzes" && <QuizzesTab subject={subject} notes={notes} />}
+        {tab === "quizzes" && <QuizzesTab subject={subject} notes={notes} context={context} />}
         {tab === "resources" && <ResourcesTab subject={subject} />}
       </section>
     </div>
@@ -139,6 +177,7 @@ function NotesTab({
   updateNote,
   addNote,
   goRecord,
+  context,
 }: {
   notes: Note[];
   activeId: string | undefined;
@@ -146,6 +185,7 @@ function NotesTab({
   updateNote: (id: string, patch: Partial<Note>) => void;
   addNote: (title: string, body: string) => string;
   goRecord: () => void;
+  context: string;
 }) {
   const active = notes.find((n) => n.id === activeId) ?? notes[0];
 
@@ -304,6 +344,7 @@ function NotesTab({
         onClose={() => setPanelOpen(false)}
         selected={selectedText}
         noteBody={active.body}
+        context={context}
         onApplyRevision={(revised) => updateNote(active.id, { body: revised, updated: "just now" })}
       />
     </div>
@@ -317,12 +358,14 @@ function ExplainPanel({
   onClose,
   selected,
   noteBody,
+  context,
   onApplyRevision,
 }: {
   open: boolean;
   onClose: () => void;
   selected: string;
   noteBody: string;
+  context: string;
   onApplyRevision: (revised: string) => void;
 }) {
   const [history, setHistory] = useState<ChatMsg[]>([]);
@@ -342,7 +385,7 @@ function ExplainPanel({
     setNoteUpdated(false);
     setPending(true);
     (async () => {
-      const { reply, revisedNote } = await explainChat(noteBody, selected, seed);
+      const { reply, revisedNote } = await explainChat(noteBody, selected, context,seed);
       if (cancelled) return;
       setHistory([...seed, { role: "assistant", content: reply }]);
       if (revisedNote && revisedNote.trim() && revisedNote !== noteBody) {
@@ -376,7 +419,7 @@ function ExplainPanel({
     setHistory(next);
     setInput("");
     setPending(true);
-    const { reply, revisedNote } = await explainChat(noteBody, selected, next);
+    const { reply, revisedNote } = await explainChat(noteBody, selected, context,next);
     setHistory([...next, { role: "assistant", content: reply }]);
     if (revisedNote && revisedNote.trim() && revisedNote !== noteBody) {
       onApplyRevision(revisedNote);
@@ -657,8 +700,18 @@ function RecordTab({
 
 /* ------------------------------ QUIZZES TAB ------------------------------ */
 
-function QuizzesTab({ subject, notes }: { subject: Subject; notes: Note[] }) {
-  const [selected, setSelected] = useState<string[]>([subject.quizTopics[0]]);
+function QuizzesTab({
+  subject,
+  notes,
+  context,
+}: {
+  subject: Subject;
+  notes: Note[];
+  context: string;
+}) {
+  const [selected, setSelected] = useState<string[]>(
+    subject.quizTopics[0] ? [subject.quizTopics[0]] : []
+  );
   const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
@@ -680,7 +733,8 @@ function QuizzesTab({ subject, notes }: { subject: Subject; notes: Note[] }) {
       const q = await generateQuiz(
         selected,
         instructions,
-        notes.map((n) => ({ title: n.title, body: n.body }))
+        notes.map((n) => ({ title: n.title, body: n.body })),
+        context
       );
       setQuiz(q);
     } catch (e) {
@@ -777,11 +831,15 @@ function QuizzesTab({ subject, notes }: { subject: Subject; notes: Note[] }) {
                           key={oi}
                           disabled={answered}
                           onClick={() => setAnswers((a) => ({ ...a, [qi]: oi }))}
-                          className={`rounded-lg border px-3 py-2 text-left text-sm transition ${cls}`}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${cls}`}
                         >
-                          {opt}
-                          {answered && isCorrect && " ✓"}
-                          {answered && isChosen && !isCorrect && " ✗"}
+                          <span className="flex-1">{opt}</span>
+                          {answered && isCorrect && (
+                            <CheckIcon className="h-4 w-4 shrink-0 text-emerald-600" />
+                          )}
+                          {answered && isChosen && !isCorrect && (
+                            <CloseIcon className="h-4 w-4 shrink-0 text-red-500" />
+                          )}
                         </button>
                       );
                     })}
