@@ -163,6 +163,14 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 
 **API layer:** `lib/ai.ts` calls server-side routes under `app/api/*`; the OpenAI key (`OPENAI_API_KEY`) is only read server-side, never exposed to the browser.
 
+## 12. Workflow
+
+**Always push changes to GitHub after committing.** This repo is the source of truth for deployments. After creating a commit (whether via git or through Claude Code), immediately push to `origin main` with `git push origin main`. If there are uncommitted changes at the start of a session, commit and push them as well.
+
+Rationale: Without pushing, your work is siloed on this machine and doesn't reach Vercel, making the deployed site stale. Pushing after every commit keeps deployments in sync.
+
+---
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
