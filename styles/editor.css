@@ -1,0 +1,109 @@
+/* Note editor internals.
+ *
+ * These style markup the student's browser produces inside the contentEditable
+ * (see components/workspace/NoteToolbar.tsx), so they're written as plain CSS
+ * against tags and data attributes rather than Tailwind classes — there is no
+ * JSX to hang a className on. Loaded from app/layout.tsx after globals.css.
+ */
+
+.editor {
+  position: relative;
+}
+
+/* The editor is rarely truly :empty once it holds <p><br></p>, so React flags
+   emptiness via data-empty instead. */
+.editor[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.editor p {
+  margin: 0 0 0.9em;
+}
+
+.editor p:last-child {
+  margin-bottom: 0;
+}
+
+/* -------------------------------- emphasis -------------------------------- */
+
+.editor b,
+.editor strong {
+  font-weight: 700;
+  color: #0f1222;
+}
+
+.editor u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* execCommand("fontSize") emits <font size>; pin the scale to the note's rhythm. */
+.editor font[size="2"] {
+  font-size: 0.82em;
+}
+
+.editor font[size="3"] {
+  font-size: 1em;
+}
+
+.editor font[size="5"] {
+  font-size: 1.32em;
+  line-height: 1.45;
+}
+
+/* -------------------------------- checklist ------------------------------- */
+/* The box and its tick are drawn in CSS — no glyphs, per the no-emoji rule. */
+
+.editor .check {
+  position: relative;
+  margin: 0 0 0.35em;
+  padding-left: 30px;
+}
+
+.editor .check::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 4px;
+  height: 18px;
+  width: 18px;
+  border: 1.75px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
+}
+
+.editor .check[data-done="true"]::before {
+  background: #4f3fd6;
+  border-color: #4f3fd6;
+}
+
+.editor .check[data-done="true"]::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  height: 4px;
+  width: 8px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+
+.editor .check[data-done="true"] {
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+/* Highlight-to-explain: the selection glow inside notes. */
+.hl-active::selection {
+  background: #ffe08a;
+  color: #0f1222;
+}

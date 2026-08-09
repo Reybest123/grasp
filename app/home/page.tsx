@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { SubjectsProvider, useSubjects, useNow } from "@/lib/subjectsStore";
-import { SubjectWorkspace } from "@/components/SubjectWorkspace";
+import { SubjectWorkspace } from "@/components/workspace/SubjectWorkspace";
 import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
 import { SubjectEditor } from "@/components/SubjectEditor";
 import { nextClassAcross, nextExamAcross, relativeDay, formatTime } from "@/lib/schedule";
-import type { Subject } from "@/lib/demoData";
+import type { Subject } from "@/lib/subjects";
 import { ClockIcon, ExamIcon } from "@/components/icons";
 
 export default function HomePage() {

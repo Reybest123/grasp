@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Notes are HTML (see lib/richText.ts), so enhancement round-trips HTML too —
+// otherwise every enhance would flatten the student's bold, colours and
+// checklists. The response is sanitised client-side before it reaches the DOM.
+const SYSTEM = `You are Grasp, cleaning up and lightly expanding a student's own class notes.
+
+The note is HTML. Return HTML only: no markdown, no code fences, no commentary before or after.
+
+Preserve the student's formatting. Keep every <b>, <i>, <u>, <font size> and <font color> exactly where it already applies, and keep checklist items as <p class="check" data-done="true|false"> with their ticked state unchanged. Never strip emphasis, colour or a checklist the student added.
+
+Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol>, <li>.
+
+Improve clarity, fix grammar and tighten wording. Where a point is obviously incomplete, add a short clarifying sentence. Do not invent facts the notes do not imply. Keep the student's voice. Finish with a short "Key takeaways" paragraph followed by 2-4 <li> bullets covering what to remember for a quiz. Never use emojis.`;
+
 export async function POST(req: NextRequest) {
   const { body } = await req.json();
   if (!body || typeof body !== "string" || !body.trim()) {
@@ -20,11 +33,7 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content:
-            "You are Grasp, an AI that cleans up and lightly expands a student's own class notes. Keep their original structure and meaning. Fix unclear phrasing, tighten wording, and append a short '— Key takeaways —' section (2-4 bullet points) summarizing what to remember for a quiz. Do not invent facts not implied by the original notes. Return plain text with blank lines between paragraphs, no markdown headers.",
-        },
+        { role: "system", content: SYSTEM },
         { role: "user", content: body },
       ],
       temperature: 0.4,
@@ -32,11 +41,11 @@ export async function POST(req: NextRequest) {
   });
 
   if (!res.ok) {
-    const errText = await res.text();
-    return NextResponse.json({ error: `OpenAI error: ${errText}` }, { status: 502 });
+    return NextResponse.json({ error: `OpenAI error: ${await res.text()}` }, { status: 502 });
   }
 
   const data = await res.json();
   const enhanced = data.choices?.[0]?.message?.content?.trim() ?? body;
-  return NextResponse.json({ enhanced });
+  // Models like to wrap HTML in a fence despite being told not to.
+  return NextResponse.json({ enhanced: enhanced.replace(/^```[a-z]*\n?|\n?```$/g, "") });
 }

@@ -17,11 +17,3 @@ export function Logo({ className = "" }: { className?: string }) {
     </Link>
   );
 }
-
-export function DemoBadge() {
-  return (
-    <span className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700">
-      Demo
-    </span>
-  );
-}

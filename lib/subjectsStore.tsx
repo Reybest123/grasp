@@ -7,7 +7,7 @@
 // the load/save pair for API calls when the database lands.
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { SUBJECTS, createSubject, type Subject } from "@/lib/demoData";
+import { SUBJECTS, createSubject, type Subject } from "@/lib/subjects";
 import { autoColorKey } from "@/lib/subjectColors";
 
 const STORAGE_KEY = "grasp.subjects.v1";

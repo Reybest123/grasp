@@ -5,8 +5,8 @@
 // the app still works. Whatever they do fill in becomes AI context (lib/schedule).
 
 import { useEffect, useState } from "react";
-import type { Subject } from "@/lib/demoData";
-import { makeSlot, makeExam } from "@/lib/demoData";
+import type { Subject } from "@/lib/subjects";
+import { makeSlot, makeExam } from "@/lib/subjects";
 import { SUBJECT_COLORS, getColor } from "@/lib/subjectColors";
 import { DAY_SHORT, type ClassSlot, type Exam } from "@/lib/schedule";
 import { CloseIcon, PlusIcon, TrashIcon, CheckIcon, ExamIcon, ClockIcon } from "@/components/icons";

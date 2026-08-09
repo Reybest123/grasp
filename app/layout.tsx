@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "@/styles/editor.css";
 
 export const metadata: Metadata = {
   title: "Grasp — AI notes built for students, not boardrooms",

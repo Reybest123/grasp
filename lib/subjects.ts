@@ -1,7 +1,8 @@
-// Seed data for the Grasp build.
-// In production this comes from Postgres (see CLAUDE.md §5). Here it's seeded
-// in-memory and then persisted to localStorage by lib/subjectsStore.tsx, so the
-// app runs with zero setup and no API keys.
+// The subject model — types, factories, and the starter set.
+//
+// In production this comes from Postgres (CLAUDE.md §5). For now the seed below
+// is loaded once and then persisted to localStorage by lib/subjectsStore.tsx,
+// so the app runs with zero setup and no API keys.
 
 import type { ClassSlot, Exam } from "@/lib/schedule";
 import { autoColorKey } from "@/lib/subjectColors";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Subject } from "@/lib/demoData";
+import type { Subject } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
 import { upcomingExams, nextClassLabel } from "@/lib/schedule";
 import {

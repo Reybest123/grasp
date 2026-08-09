@@ -72,6 +72,88 @@ export function ensureHtml(body: string): string {
   return /<(p|div|br|b|i|u|font|ul|ol|li|span|h[1-4])\b/i.test(body) ? body : textToHtml(body);
 }
 
+/* -------------------------------- sanitiser ------------------------------- */
+
+/**
+ * Tags the editor produces, mapped to the attributes each may keep. Anything
+ * outside this table is unwrapped — the text survives, the markup does not.
+ */
+const ALLOWED: Record<string, readonly string[]> = {
+  P: ["class", "data-done"],
+  DIV: ["class", "data-done"],
+  BR: [],
+  B: [],
+  STRONG: [],
+  I: [],
+  EM: [],
+  U: [],
+  FONT: ["size", "color"],
+  SPAN: [],
+  UL: [],
+  OL: [],
+  LI: [],
+};
+
+const HEX_COLOR = /^#[0-9a-f]{3,8}$/i;
+
+function copyAttributes(from: Element, to: Element, allowed: readonly string[]) {
+  for (const name of allowed) {
+    const value = from.getAttribute(name);
+    if (value === null) continue;
+
+    // "check" is the only class the editor uses; reject anything else outright.
+    if (name === "class" && value !== "check") continue;
+    if (name === "data-done" && value !== "true" && value !== "false") continue;
+    if (name === "size" && !/^[1-7]$/.test(value)) continue;
+    if (name === "color" && !HEX_COLOR.test(value)) continue;
+
+    to.setAttribute(name, value);
+  }
+}
+
+function cleanInto(source: Node, target: Node, doc: Document) {
+  for (const child of Array.from(source.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      target.appendChild(doc.createTextNode(child.textContent ?? ""));
+      continue;
+    }
+    if (!(child instanceof Element)) continue;
+
+    const allowed = ALLOWED[child.tagName];
+    if (!allowed) {
+      // Unknown tag: drop it, keep whatever it wrapped.
+      cleanInto(child, target, doc);
+      continue;
+    }
+
+    const el = doc.createElement(child.tagName.toLowerCase());
+    copyAttributes(child, el, allowed);
+    cleanInto(child, el, doc);
+    target.appendChild(el);
+  }
+}
+
+/**
+ * Strip note HTML down to the tags the editor understands.
+ *
+ * Everything reaching the editor from outside — the AI enhance response, a
+ * paste from another site — passes through here before it becomes innerHTML,
+ * so scripts, event handlers, inline styles and embeds can never ride along.
+ */
+export function sanitizeNoteHtml(html: string): string {
+  if (!html) return "";
+  if (typeof document === "undefined") return escapeHtml(html.replace(/<[^>]*>/g, ""));
+
+  // DOMParser builds an inert document: nothing loads, nothing executes.
+  const doc = new DOMParser().parseFromString("<body></body>", "text/html");
+  const source = doc.createElement("div");
+  source.innerHTML = html;
+
+  const target = doc.createElement("div");
+  cleanInto(source, target, doc);
+  return target.innerHTML;
+}
+
 /** True when the editor holds nothing but empty blocks — drives the placeholder. */
 export function isEmptyHtml(html: string): boolean {
   if (!html) return true;

@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* App-wide base. Editor-specific rules live in styles/editor.css. */
+
 :root {
   color-scheme: light;
 }
@@ -14,103 +16,15 @@ body {
   @apply bg-slate-50 text-ink antialiased;
 }
 
-/* Highlight-to-explain: the selection glow inside notes */
-.hl-active::selection {
-  background: #ffe08a;
-  color: #0f1222;
-}
-
+/* Dotted backdrop behind the landing hero. */
 .grid-bg {
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(98, 87, 239, 0.12) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, rgba(98, 87, 239, 0.12) 1px, transparent 0);
   background-size: 28px 28px;
 }
 
-/* ---------------------------- Rich note editor ---------------------------- */
+/* ------------------------------- animations ------------------------------- */
 
-.editor {
-  position: relative;
-}
-
-/* Placeholder: the editor is rarely truly :empty once it holds <p><br></p>,
-   so emptiness is flagged from React via data-empty. */
-.editor[data-empty="true"]::before {
-  content: attr(data-placeholder);
-  position: absolute;
-  color: #94a3b8;
-  pointer-events: none;
-}
-
-.editor p {
-  margin: 0 0 0.9em;
-}
-.editor p:last-child {
-  margin-bottom: 0;
-}
-
-.editor b,
-.editor strong {
-  font-weight: 700;
-  color: #0f1222;
-}
-.editor u {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* execCommand("fontSize") emits <font size>; pin the scale to the note's rhythm. */
-.editor font[size="2"] {
-  font-size: 0.82em;
-}
-.editor font[size="3"] {
-  font-size: 1em;
-}
-.editor font[size="5"] {
-  font-size: 1.32em;
-  line-height: 1.45;
-}
-
-/* Checklist items — the box is drawn in CSS, no glyphs involved. */
-.editor .check {
-  position: relative;
-  padding-left: 30px;
-  margin: 0 0 0.35em;
-}
-.editor .check::before {
-  content: "";
-  position: absolute;
-  left: 1px;
-  top: 4px;
-  height: 18px;
-  width: 18px;
-  border: 1.75px solid #cbd5e1;
-  border-radius: 5px;
-  background: #fff;
-  cursor: pointer;
-  transition: background-color 120ms, border-color 120ms;
-}
-.editor .check[data-done="true"]::before {
-  background: #4f3fd6;
-  border-color: #4f3fd6;
-}
-.editor .check[data-done="true"]::after {
-  content: "";
-  position: absolute;
-  left: 6px;
-  top: 8px;
-  height: 4px;
-  width: 8px;
-  border-left: 2px solid #fff;
-  border-bottom: 2px solid #fff;
-  transform: rotate(-45deg);
-  pointer-events: none;
-}
-.editor .check[data-done="true"] {
-  color: #94a3b8;
-  text-decoration: line-through;
-}
-
-/* Centered confirm dialog entrance */
+/* Centered confirm dialog entrance. */
 @keyframes popIn {
   from {
     opacity: 0;
@@ -122,6 +36,7 @@ body {
   }
 }
 
+/* Floating "Explain" pill — already x-centred, so keep the translate. */
 @keyframes fadeIn {
   from {
     opacity: 0;

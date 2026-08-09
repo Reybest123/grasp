@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Logo, DemoBadge } from "@/components/Logo";
+import { Logo } from "@/components/Logo";
 import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
 import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
@@ -27,7 +27,6 @@ export default function Onboarding() {
     <main className="min-h-screen">
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
         <Logo />
-        <DemoBadge />
       </header>
 
       <section className="mx-auto max-w-2xl px-6 py-10">

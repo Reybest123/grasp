@@ -142,7 +142,9 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - **Schedule model** (`lib/schedule.ts`): `ClassSlot[]` and `Exam[]` per subject; derives "Next class tomorrow at 9:00am", per-exam countdowns (`upcomingExams`/`nextExam`, soonest first), and a `subjectContext()` string listing every upcoming assessment. That context is passed to `/api/quiz` and `/api/explain-chat`, so the AI knows the student's week and what's coming. Cards show the soonest exam plus a "+N more" count.
 - **Persistence**: `lib/subjectsStore.tsx` — React context over localStorage (`grasp.subjects.v1`), standing in for Postgres. Date-dependent UI is gated on a client-only `useNow()` clock to avoid SSR hydration drift. `normalize()` migrates older stored records forward (e.g. the pre-multi-exam `examDate`/`examTitle` pair folds into `exams[]`).
 - Notes: **rich-text editor** (contentEditable) with a formatting toolbar — bold / italic / underline, three text sizes, six text colours, and checklists with tickable boxes. Native Ctrl+B/I/U still work. Working **New note** button and **AI enhance** (real GPT-4o-mini via `/api/enhance`).
-- **Note storage format**: bodies are HTML (`lib/richText.ts`). `textToHtml` / `htmlToText` convert at the AI boundary since the API layer speaks plain text; `ensureHtml` upgrades legacy plain-text bodies on read. Checklist state travels to the AI as `[x]` / `[ ]`.
+- **Note storage format**: bodies are HTML (`lib/richText.ts`). `textToHtml` / `htmlToText` convert where the API still speaks plain text (explain thread, quizzes, transcripts); `ensureHtml` upgrades legacy plain-text bodies on read. Checklist state travels to the AI as `[x]` / `[ ]`.
+- **AI enhance round-trips HTML**, so bold, colours and checklists survive it. `/api/enhance` is told the allowed tag set and instructed to preserve existing formatting.
+- **Sanitiser** (`sanitizeNoteHtml`): everything entering the editor from outside — the enhance response and clipboard paste — is stripped to an allowlist of tags/attributes via an inert `DOMParser` document. Scripts, event handlers, inline styles, embeds and bogus `class`/`data-done`/`color` values never reach `innerHTML`. Keep using it for any future path that writes note HTML.
 - Note editing writes through to the subject store, so notes and their formatting persist across refreshes.
 - The editor card is a flex column: the writing area absorbs extra height from a long note list (click anywhere in it to keep typing), and the "select any text to explain it" tip is pinned to the bottom and **dismissible** (`grasp.hideNoteTip`).
 - New notes start with a blank title showing an "Untitled note" placeholder, so there is nothing to delete before typing a real one.
@@ -166,7 +168,22 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - Subjects are represented by a monogram (first letter) on a coloured gradient tile.
 - Subject colours come from `lib/subjectColors.ts` and are auto-assigned on creation, then editable per subject.
 
-**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*`; the OpenAI key (`OPENAI_API_KEY`) is only read server-side, never exposed to the browser.
+**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*` through one shared `postJson` helper; the OpenAI key (`OPENAI_API_KEY`) is only read server-side, never exposed to the browser.
+
+**File layout:**
+
+```
+app/            routes — page.tsx (landing), home/, onboarding/, legal/, api/
+components/     icons.tsx, Logo, ConfirmDialog, SubjectCard, SubjectEditor
+components/workspace/
+                SubjectWorkspace (shell + tab routing + note CRUD)
+                NotesTab, NoteToolbar, ExplainPanel, RecordTab, QuizzesTab, ResourcesTab
+lib/            subjects (model + seed), subjectsStore, schedule, subjectColors,
+                richText (HTML <-> text + sanitiser), ai (API client)
+styles/         editor.css — contentEditable internals, loaded from app/layout.tsx
+```
+
+Keep one component per file. `app/globals.css` holds app-wide base and keyframes only; anything styling markup the browser generates inside the editor belongs in `styles/editor.css`, since there is no JSX there to hang a Tailwind class on.
 
 ## 12. Workflow
 
