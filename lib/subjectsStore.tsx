@@ -33,7 +33,7 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Subject[];
+        const parsed = JSON.parse(raw) as LegacySubject[];
         if (Array.isArray(parsed)) setSubjects(parsed.map(normalize));
       }
     } catch {
@@ -78,16 +78,24 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The pre-multi-exam shape, still possibly sitting in a returning user's storage. */
+type LegacySubject = Partial<Subject> & { examDate?: string; examTitle?: string };
+
 /** Tolerate older/partial stored records so a schema tweak never blanks the app. */
-function normalize(s: Partial<Subject>): Subject {
+function normalize(s: LegacySubject): Subject {
+  // Subjects used to carry a single examDate/examTitle pair — fold it into the list.
+  const exams = Array.isArray(s.exams) ? s.exams : [];
+  if (!exams.length && s.examDate) {
+    exams.push({ id: `e${Math.random().toString(36).slice(2)}`, date: s.examDate, title: s.examTitle });
+  }
+
   return {
     id: s.id ?? `s${Math.random().toString(36).slice(2)}`,
     name: s.name ?? "Untitled subject",
     colorKey: s.colorKey ?? "violet",
     teacher: s.teacher,
     classes: Array.isArray(s.classes) ? s.classes : [],
-    examDate: s.examDate,
-    examTitle: s.examTitle,
+    exams,
     notes: Array.isArray(s.notes) ? s.notes : [],
     resources: Array.isArray(s.resources) ? s.resources : [],
     quizTopics: Array.isArray(s.quizTopics) ? s.quizTopics : [],

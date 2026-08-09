@@ -6,10 +6,11 @@
 
 import { useEffect, useState } from "react";
 import type { Subject } from "@/lib/demoData";
-import { makeSlot } from "@/lib/demoData";
+import { makeSlot, makeExam } from "@/lib/demoData";
 import { SUBJECT_COLORS, getColor } from "@/lib/subjectColors";
-import { DAY_SHORT, type ClassSlot } from "@/lib/schedule";
+import { DAY_SHORT, type ClassSlot, type Exam } from "@/lib/schedule";
 import { CloseIcon, PlusIcon, TrashIcon, CheckIcon, ExamIcon, ClockIcon } from "@/components/icons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export function SubjectEditor({
   subject,
@@ -28,8 +29,7 @@ export function SubjectEditor({
   const [teacher, setTeacher] = useState("");
   const [colorKey, setColorKey] = useState("violet");
   const [classes, setClasses] = useState<ClassSlot[]>([]);
-  const [examDate, setExamDate] = useState("");
-  const [examTitle, setExamTitle] = useState("");
+  const [exams, setExams] = useState<Exam[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Reload the form whenever a different subject is opened.
@@ -39,18 +39,19 @@ export function SubjectEditor({
     setTeacher(subject.teacher ?? "");
     setColorKey(subject.colorKey);
     setClasses(subject.classes);
-    setExamDate(subject.examDate ?? "");
-    setExamTitle(subject.examTitle ?? "");
+    setExams(subject.exams);
     setConfirmDelete(false);
   }, [open, subject]);
 
+  // Escape closes the panel — unless the delete dialog is up, which handles its
+  // own Escape and should be dismissed first.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    if (open) window.addEventListener("keydown", onKey);
+    if (open && !confirmDelete) window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, confirmDelete, onClose]);
 
   if (!subject) return null;
 
@@ -60,14 +61,20 @@ export function SubjectEditor({
       teacher: teacher.trim() || undefined,
       colorKey,
       classes: classes.filter((c) => c.start),
-      examDate: examDate || undefined,
-      examTitle: examTitle.trim() || undefined,
+      // Drop half-filled rows — an exam without a date can't be counted down to.
+      exams: exams
+        .filter((e) => e.date)
+        .map((e) => ({ ...e, title: e.title?.trim() || undefined })),
     });
     onClose();
   }
 
   function patchSlot(id: string, patch: Partial<ClassSlot>) {
     setClasses((cur) => cur.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }
+
+  function patchExam(id: string, patch: Partial<Exam>) {
+    setExams((cur) => cur.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   }
 
   const preview = getColor(colorKey);
@@ -221,43 +228,58 @@ export function SubjectEditor({
             </button>
           </section>
 
-          {/* Exam */}
+          {/* Exams — a subject can have as many as it needs */}
           <section>
             <div className="flex items-center justify-between">
               <Legend>
                 <ExamIcon className="mr-1.5 inline h-4 w-4 align-[-3px] text-slate-400" />
-                Exam or assessment
+                Exams and assessments
               </Legend>
               <span className="text-xs text-slate-400">optional</span>
             </div>
             <p className="mt-0.5 text-xs text-slate-500">
-              Grasp counts down to it and factors it into quizzes.
+              Add as many as you like. Grasp counts down to the soonest and factors them into
+              quizzes.
             </p>
-            <div className="mt-3 flex gap-2">
-              <input
-                type="date"
-                value={examDate}
-                onChange={(e) => setExamDate(e.target.value)}
-                className={`${inputCls} w-[160px] shrink-0`}
-              />
-              <input
-                value={examTitle}
-                onChange={(e) => setExamTitle(e.target.value)}
-                placeholder="What is it? e.g. Paper 2 mock"
-                className={`${inputCls} flex-1`}
-              />
+
+            <div className="mt-3 space-y-2">
+              {exams.map((e) => (
+                <div key={e.id} className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={e.date}
+                    onChange={(ev) => patchExam(e.id, { date: ev.target.value })}
+                    className={`${inputCls} w-[150px] shrink-0`}
+                  />
+                  <input
+                    value={e.title ?? ""}
+                    onChange={(ev) => patchExam(e.id, { title: ev.target.value })}
+                    placeholder="e.g. Paper 2 mock"
+                    className={`${inputCls} min-w-0 flex-1`}
+                  />
+                  <button
+                    onClick={() => setExams((cur) => cur.filter((x) => x.id !== e.id))}
+                    aria-label="Remove this exam"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+
+              {exams.length === 0 && (
+                <p className="rounded-xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                  No exams yet.
+                </p>
+              )}
             </div>
-            {examDate && (
-              <button
-                onClick={() => {
-                  setExamDate("");
-                  setExamTitle("");
-                }}
-                className="mt-2 text-xs font-medium text-slate-500 underline-offset-2 hover:text-ink hover:underline"
-              >
-                Clear exam date
-              </button>
-            )}
+
+            <button
+              onClick={() => setExams((cur) => [...cur, makeExam("")])}
+              className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+            >
+              <PlusIcon className="h-4 w-4" /> Add exam
+            </button>
           </section>
 
           {/* Danger zone */}
@@ -267,32 +289,12 @@ export function SubjectEditor({
               Removes {subject.notes.length} note{subject.notes.length === 1 ? "" : "s"} and
               everything else in it. This cannot be undone.
             </p>
-            {confirmDelete ? (
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => {
-                    onDelete();
-                    onClose();
-                  }}
-                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
-                >
-                  Yes, delete {subject.name}
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-              >
-                <TrashIcon className="h-4 w-4" /> Delete subject
-              </button>
-            )}
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+            >
+              <TrashIcon className="h-4 w-4" /> Delete subject
+            </button>
           </section>
         </div>
 
@@ -312,6 +314,22 @@ export function SubjectEditor({
           </button>
         </div>
       </aside>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete ${subject.name}?`}
+        body={`This removes the subject along with its ${subject.notes.length} note${
+          subject.notes.length === 1 ? "" : "s"
+        }, resources and quiz topics. This cannot be undone.`}
+        confirmLabel="Yes, delete it"
+        cancelLabel="No, keep it"
+        onConfirm={() => {
+          setConfirmDelete(false);
+          onDelete();
+          onClose();
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </>
   );
 }

@@ -6,13 +6,7 @@ import { SubjectsProvider, useSubjects, useNow } from "@/lib/subjectsStore";
 import { SubjectWorkspace } from "@/components/SubjectWorkspace";
 import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
 import { SubjectEditor } from "@/components/SubjectEditor";
-import {
-  examStatus,
-  nextClassAcross,
-  relativeDay,
-  formatTime,
-  type ExamStatus,
-} from "@/lib/schedule";
+import { nextClassAcross, nextExamAcross, relativeDay, formatTime } from "@/lib/schedule";
 import type { Subject } from "@/lib/demoData";
 import { ClockIcon, ExamIcon } from "@/components/icons";
 
@@ -132,13 +126,9 @@ function UpNext({
   if (!now) return null;
 
   const soonest = nextClassAcross(subjects, now);
+  const exam = nextExamAcross(subjects, now);
 
-  const nextExam = subjects
-    .map((subject) => ({ subject, status: examStatus(subject.examDate, subject.examTitle, now) }))
-    .filter((e): e is { subject: Subject; status: ExamStatus } => e.status !== null)
-    .sort((a, b) => a.status.days - b.status.days)[0];
-
-  if (!soonest && !nextExam) return null;
+  if (!soonest && !exam) return null;
 
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2.5">
@@ -153,17 +143,17 @@ function UpNext({
           {formatTime(soonest.next.slot.start)}
         </button>
       )}
-      {nextExam && (
+      {exam && (
         <button
-          onClick={() => onOpen(nextExam.subject.id)}
+          onClick={() => onOpen(exam.subject.id)}
           className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition hover:brightness-95 ${
-            nextExam.status.soon
+            exam.status.soon
               ? "bg-amber-100 text-amber-800"
               : "border border-slate-200 bg-white text-slate-600"
           }`}
         >
           <ExamIcon className="h-4 w-4" />
-          <b className="font-semibold">{nextExam.subject.name}</b> {nextExam.status.label}
+          <b className="font-semibold">{exam.subject.name}</b> {exam.status.label}
         </button>
       )}
     </div>

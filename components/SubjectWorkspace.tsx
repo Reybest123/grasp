@@ -26,7 +26,7 @@ import {
   AlertIcon,
 } from "@/components/icons";
 import { getColor } from "@/lib/subjectColors";
-import { examStatus, weeklyLabel, subjectContext } from "@/lib/schedule";
+import { nextExam, weeklyLabel, subjectContext } from "@/lib/schedule";
 
 type Tab = "notes" | "record" | "quizzes" | "resources";
 
@@ -70,13 +70,11 @@ export function SubjectWorkspace({
 
   const color = getColor(subject.colorKey);
   const weekly = weeklyLabel(subject.classes);
-  const exam = now ? examStatus(subject.examDate, subject.examTitle, now) : null;
+  const exam = now ? nextExam(subject.exams, now) : null;
 
-  // Class times + exam date travel with every AI request for this subject, so
+  // Class times + exams travel with every AI request for this subject, so
   // explanations and quizzes can reference the student's actual week.
-  const context = now
-    ? subjectContext(subject.name, subject.classes, subject.examDate, subject.examTitle, now)
-    : "";
+  const context = now ? subjectContext(subject.name, subject.classes, subject.exams, now) : "";
 
   const tabs: [Tab, string, (c: string) => JSX.Element][] = [
     ["notes", "Notes", (c) => <NoteIcon className={c} />],
@@ -128,14 +126,14 @@ export function SubjectWorkspace({
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — each takes an equal quarter so they span the full width */}
       <div className="border-b border-slate-200">
-        <div className="mx-auto flex max-w-6xl gap-1 px-6">
+        <div className="mx-auto flex max-w-6xl px-6">
           {tabs.map(([key, label, icon]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
+              className={`-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
                 tab === key
                   ? "border-brand-600 text-brand-700"
                   : "border-transparent text-slate-500 hover:text-ink"
@@ -156,7 +154,6 @@ export function SubjectWorkspace({
             setActiveId={setActiveId}
             updateNote={updateNote}
             addNote={addNote}
-            goRecord={() => setTab("record")}
             context={context}
           />
         )}
@@ -176,7 +173,6 @@ function NotesTab({
   setActiveId,
   updateNote,
   addNote,
-  goRecord,
   context,
 }: {
   notes: Note[];
@@ -184,7 +180,6 @@ function NotesTab({
   setActiveId: (id: string) => void;
   updateNote: (id: string, patch: Partial<Note>) => void;
   addNote: (title: string, body: string) => string;
-  goRecord: () => void;
   context: string;
 }) {
   const active = notes.find((n) => n.id === activeId) ?? notes[0];
@@ -280,12 +275,6 @@ function NotesTab({
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
         >
           <PlusIcon className="h-4 w-4" /> New note
-        </button>
-        <button
-          onClick={goRecord}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-brand-400 hover:text-brand-700"
-        >
-          <MicIcon className="h-4 w-4" /> Record lecture
         </button>
       </aside>
 

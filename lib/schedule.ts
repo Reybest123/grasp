@@ -1,7 +1,7 @@
-// Class times + exam dates.
+// Class times + exams.
 //
 // Everything here is optional per subject (CLAUDE.md §3): a student can add a
-// full weekly timetable, just an exam date, or nothing at all. Whatever they do
+// full weekly timetable, a few exam dates, or nothing at all. Whatever they do
 // add is fed to the AI as context (see `subjectContext`) so it can say things
 // like "your test is Wednesday — worth revising enzymes".
 
@@ -14,6 +14,14 @@ export type ClassSlot = {
   /** 24h "HH:MM", optional */
   end?: string;
   room?: string;
+};
+
+/** A subject can have any number of these — mocks, papers, essays, tests. */
+export type Exam = {
+  id: string;
+  /** ISO "YYYY-MM-DD" */
+  date: string;
+  title?: string;
 };
 
 export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -97,32 +105,58 @@ export function daysUntil(isoDate: string, now: Date): number | null {
 }
 
 export type ExamStatus = {
-  /** "Exam Wednesday · in 3 days" */
+  exam: Exam;
+  /** "Paper 2 mock Wednesday · in 3 days" */
   label: string;
   days: number;
   /** true within a week — the card highlights it */
   soon: boolean;
 };
 
-export function examStatus(
-  isoDate: string | undefined,
-  title: string | undefined,
-  now: Date
-): ExamStatus | null {
-  if (!isoDate) return null;
-  const days = daysUntil(isoDate, now);
+/** Countdown for a single exam. Null once the date has passed. */
+export function examStatus(exam: Exam, now: Date): ExamStatus | null {
+  if (!exam.date) return null;
+  const days = daysUntil(exam.date, now);
   if (days === null || days < 0) return null;
 
-  const [y, m, d] = isoDate.split("-").map(Number);
+  const [y, m, d] = exam.date.split("-").map(Number);
   const when = days <= 6 ? DAY_NAMES[new Date(y, m - 1, d).getDay()] : `${d}/${m}`;
   const countdown = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
-  const name = title?.trim() || "Exam";
+  const name = exam.title?.trim() || "Exam";
 
   return {
+    exam,
     label: days <= 1 ? `${name} ${countdown}` : `${name} ${when} · ${countdown}`,
     days,
     soon: days <= 7,
   };
+}
+
+/** Every still-upcoming exam, soonest first. */
+export function upcomingExams(exams: Exam[], now: Date): ExamStatus[] {
+  return exams
+    .map((e) => examStatus(e, now))
+    .filter((s): s is ExamStatus => s !== null)
+    .sort((a, b) => a.days - b.days);
+}
+
+/** Just the soonest upcoming exam — what the cards and header show. */
+export function nextExam(exams: Exam[], now: Date): ExamStatus | null {
+  return upcomingExams(exams, now)[0] ?? null;
+}
+
+/** Soonest upcoming exam across every subject, for the home "Next up" strip. */
+export function nextExamAcross<T extends { exams: Exam[] }>(
+  subjects: T[],
+  now: Date
+): { subject: T; status: ExamStatus } | null {
+  let best: { subject: T; status: ExamStatus } | null = null;
+  for (const subject of subjects) {
+    const status = nextExam(subject.exams, now);
+    if (!status) continue;
+    if (!best || status.days < best.status.days) best = { subject, status };
+  }
+  return best;
 }
 
 /** One-line summary of the whole weekly timetable, for the workspace header. */
@@ -141,8 +175,7 @@ export function weeklyLabel(classes: ClassSlot[]): string | null {
 export function subjectContext(
   name: string,
   classes: ClassSlot[],
-  examDate: string | undefined,
-  examTitle: string | undefined,
+  exams: Exam[],
   now: Date = new Date()
 ): string {
   const parts = [`Subject: ${name}.`, `Today is ${DAY_NAMES[now.getDay()]}.`];
@@ -150,7 +183,11 @@ export function subjectContext(
   if (weekly) parts.push(`The student's classes for this subject are: ${weekly}.`);
   const next = nextClassLabel(classes, now);
   if (next) parts.push(`${next}.`);
-  const exam = examStatus(examDate, examTitle, now);
-  if (exam) parts.push(`Upcoming assessment: ${exam.label}.`);
+  const upcoming = upcomingExams(exams, now);
+  if (upcoming.length) {
+    parts.push(
+      `Upcoming assessments (soonest first): ${upcoming.map((e) => e.label).join("; ")}.`
+    );
+  }
   return parts.join(" ");
 }

@@ -3,7 +3,7 @@
 // in-memory and then persisted to localStorage by lib/subjectsStore.tsx, so the
 // app runs with zero setup and no API keys.
 
-import type { ClassSlot } from "@/lib/schedule";
+import type { ClassSlot, Exam } from "@/lib/schedule";
 import { autoColorKey } from "@/lib/subjectColors";
 
 export type Note = {
@@ -28,9 +28,8 @@ export type Subject = {
   teacher?: string;
   /** weekly class times from the timetable; all optional */
   classes: ClassSlot[];
-  /** ISO "YYYY-MM-DD" */
-  examDate?: string;
-  examTitle?: string;
+  /** any number of exams/assessments; all optional */
+  exams: Exam[];
   notes: Note[];
   resources: Resource[];
   quizTopics: string[];
@@ -43,6 +42,10 @@ export function makeSlot(day: number, start: string, end?: string): ClassSlot {
   return { id: uid("c"), day, start, end };
 }
 
+export function makeExam(date: string, title?: string): Exam {
+  return { id: uid("e"), date, title };
+}
+
 /** A fresh, empty subject. Colour is auto-assigned from its position in the grid. */
 export function createSubject(name: string, index: number): Subject {
   return {
@@ -50,6 +53,7 @@ export function createSubject(name: string, index: number): Subject {
     name: name.trim() || "Untitled subject",
     colorKey: autoColorKey(index),
     classes: [],
+    exams: [],
     notes: [],
     resources: [],
     quizTopics: [],
@@ -70,8 +74,7 @@ export const SUBJECTS: Subject[] = [
     colorKey: "emerald",
     teacher: "Ms. Fournier",
     classes: [makeSlot(1, "09:00", "10:00"), makeSlot(3, "11:00", "12:00"), makeSlot(5, "09:00", "10:00")],
-    examDate: inDays(5),
-    examTitle: "Paper 2 mock",
+    exams: [makeExam(inDays(5), "Paper 2 mock"), makeExam(inDays(26), "End of unit test")],
     quizTopics: ["Cell structure", "Osmosis & diffusion", "Enzymes", "Photosynthesis"],
     notes: [
       {
@@ -106,8 +109,7 @@ Active transport moves substances against the concentration gradient and require
     colorKey: "amber",
     teacher: "Mr. Owens",
     classes: [makeSlot(2, "10:00", "11:00"), makeSlot(4, "13:00", "14:00")],
-    examDate: inDays(19),
-    examTitle: "Source analysis essay",
+    exams: [makeExam(inDays(19), "Source analysis essay")],
     quizTopics: ["Causes of WW1", "Treaty of Versailles", "Rise of dictators"],
     notes: [
       {
@@ -131,6 +133,7 @@ The trigger (short-term cause) was the assassination of Archduke Franz Ferdinand
     colorKey: "sky",
     teacher: "Dr. Patel",
     classes: [makeSlot(1, "13:00", "14:00"), makeSlot(3, "09:00", "10:00"), makeSlot(5, "11:00", "12:00")],
+    exams: [],
     quizTopics: ["Quadratics", "Trigonometry", "Simultaneous equations"],
     notes: [
       {

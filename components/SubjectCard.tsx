@@ -2,7 +2,7 @@
 
 import type { Subject } from "@/lib/demoData";
 import { getColor } from "@/lib/subjectColors";
-import { examStatus, nextClassLabel } from "@/lib/schedule";
+import { upcomingExams, nextClassLabel } from "@/lib/schedule";
 import {
   NoteIcon,
   QuizIcon,
@@ -27,7 +27,10 @@ export function SubjectCard({
 }) {
   const color = getColor(subject.colorKey);
   const nextClass = now ? nextClassLabel(subject.classes, now) : null;
-  const exam = now ? examStatus(subject.examDate, subject.examTitle, now) : null;
+  // Only the soonest exam gets a chip; the rest are summarised as a count.
+  const exams = now ? upcomingExams(subject.exams, now) : [];
+  const exam = exams[0];
+  const moreExams = Math.max(0, exams.length - 1);
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-soft">
@@ -59,13 +62,18 @@ export function SubjectCard({
             </span>
           </p>
           {exam && (
-            <p
-              className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                exam.soon ? "bg-amber-50 text-amber-700" : color.tint
-              }`}
-            >
-              <ExamIcon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{exam.label}</span>
+            <p className="flex flex-wrap items-center gap-1.5">
+              <span
+                className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  exam.soon ? "bg-amber-50 text-amber-700" : color.tint
+                }`}
+              >
+                <ExamIcon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{exam.label}</span>
+              </span>
+              {moreExams > 0 && (
+                <span className="text-xs font-medium text-slate-400">+{moreExams} more</span>
+              )}
             </p>
           )}
         </div>
