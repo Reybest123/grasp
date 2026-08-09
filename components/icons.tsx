@@ -159,6 +159,52 @@ export function AlertIcon({ className }: IconProps) {
   );
 }
 
+export function BoldIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)} strokeWidth={2.25}>
+      <path d="M7 5h6.5a3.5 3.5 0 0 1 0 7H7z" />
+      <path d="M7 12h7.5a3.5 3.5 0 0 1 0 7H7z" />
+    </svg>
+  );
+}
+
+export function ItalicIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)} strokeWidth={2}>
+      <path d="M18 5h-7M13 19H6M15 5L9 19" />
+    </svg>
+  );
+}
+
+export function UnderlineIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)} strokeWidth={2}>
+      <path d="M6 4v6a6 6 0 0 0 12 0V4" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
+
+export function ChecklistIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M3.5 6.5l2 2 3.5-3.5" />
+      <path d="M3.5 17.5l2 2 3.5-3.5" />
+      <path d="M13 7h8M13 18h8" />
+    </svg>
+  );
+}
+
+/** Letter "A" — rendered at different sizes for the text-size control. */
+export function LetterIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)} strokeWidth={2}>
+      <path d="M4 20L12 4l8 16" />
+      <path d="M7.5 14.5h9" />
+    </svg>
+  );
+}
+
 export function ImageIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>

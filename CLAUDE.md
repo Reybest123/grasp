@@ -141,7 +141,11 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - **Subject colours** (`lib/subjectColors.ts`): 9-colour palette, auto-assigned by grid position on creation so students never have to pick, editable afterwards.
 - **Schedule model** (`lib/schedule.ts`): `ClassSlot[]` and `Exam[]` per subject; derives "Next class tomorrow at 9:00am", per-exam countdowns (`upcomingExams`/`nextExam`, soonest first), and a `subjectContext()` string listing every upcoming assessment. That context is passed to `/api/quiz` and `/api/explain-chat`, so the AI knows the student's week and what's coming. Cards show the soonest exam plus a "+N more" count.
 - **Persistence**: `lib/subjectsStore.tsx` — React context over localStorage (`grasp.subjects.v1`), standing in for Postgres. Date-dependent UI is gated on a client-only `useNow()` clock to avoid SSR hydration drift. `normalize()` migrates older stored records forward (e.g. the pre-multi-exam `examDate`/`examTitle` pair folds into `exams[]`).
-- Notes: fully editable (contentEditable), working **New note** button (manual creation), **AI enhance** (real GPT-4o-mini via `/api/enhance`)
+- Notes: **rich-text editor** (contentEditable) with a formatting toolbar — bold / italic / underline, three text sizes, six text colours, and checklists with tickable boxes. Native Ctrl+B/I/U still work. Working **New note** button and **AI enhance** (real GPT-4o-mini via `/api/enhance`).
+- **Note storage format**: bodies are HTML (`lib/richText.ts`). `textToHtml` / `htmlToText` convert at the AI boundary since the API layer speaks plain text; `ensureHtml` upgrades legacy plain-text bodies on read. Checklist state travels to the AI as `[x]` / `[ ]`.
+- Note editing writes through to the subject store, so notes and their formatting persist across refreshes.
+- The editor card is a flex column: the writing area absorbs extra height from a long note list (click anywhere in it to keep typing), and the "select any text to explain it" tip is pinned to the bottom and **dismissible** (`grasp.hideNoteTip`).
+- New notes start with a blank title showing an "Untitled note" placeholder, so there is nothing to delete before typing a real one.
 - Subject workspace tabs: **Notes / Record / Quizzes / Resource Bank** — each takes an equal quarter of the width so the row spans the full workspace
 - **Record** tab: live note-taking (notes stream in while "recording"), then name-and-save into Notes. Transcription itself is still simulated — real Whisper capture not yet wired.
 - **Highlight-to-explain**: Google-AI-mode style — floating "Explain" pill on text selection opens a closable slide-in side panel that is a **chat thread** (ask follow-ups; the AI can revise the note in place if the student corrects it). Real GPT-4o-mini via `/api/explain-chat`.
@@ -152,7 +156,7 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 **Still mocked / not yet built:**
 - Timetable screenshot extraction (needs image upload + vision model)
 - Lecture recording → Whisper transcription
-- Auth / accounts, Postgres persistence (subjects currently persist to localStorage only), Resource Bank file upload, usage-limit enforcement
+- Auth / accounts, Postgres persistence (subjects *and* notes currently persist to localStorage only), Resource Bank file upload, usage-limit enforcement
 
 **Design conventions:**
 
