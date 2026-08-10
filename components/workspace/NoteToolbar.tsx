@@ -13,6 +13,8 @@ import {
   ItalicIcon,
   UnderlineIcon,
   ChecklistIcon,
+  BulletListIcon,
+  EquationIcon,
   LetterIcon,
 } from "@/components/icons";
 
@@ -35,11 +37,20 @@ const COLORS: { label: string; value: string }[] = [
 export function NoteToolbar({
   editorRef,
   onChange,
+  onEquation,
 }: {
   editorRef: RefObject<HTMLDivElement | null>;
   onChange: () => void;
+  /** Opens the equation editor — the dialog itself lives in NotesTab, which
+   *  also handles reopening an equation the student clicked. */
+  onEquation: () => void;
 }) {
-  const [active, setActive] = useState({ bold: false, italic: false, underline: false });
+  const [active, setActive] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    bullets: false,
+  });
 
   const inEditor = useCallback(() => {
     const el = editorRef.current;
@@ -53,6 +64,7 @@ export function NoteToolbar({
       bold: document.queryCommandState("bold"),
       italic: document.queryCommandState("italic"),
       underline: document.queryCommandState("underline"),
+      bullets: document.queryCommandState("insertUnorderedList"),
     });
   }, [inEditor]);
 
@@ -82,13 +94,27 @@ export function NoteToolbar({
     run(() => {
       const el = editorRef.current;
       if (!el) return;
+
+      // A checklist item is a paragraph, so step out of any list first —
+      // otherwise the tick box lands on the whole <ul> and indents every bullet.
+      const anchor = window.getSelection()?.anchorNode ?? null;
+      const from = anchor instanceof Element ? anchor : (anchor?.parentElement ?? null);
+      const li = from && el.contains(from) ? from.closest("li") : null;
+      if (li) {
+        document.execCommand(
+          li.parentElement?.tagName === "OL" ? "insertOrderedList" : "insertUnorderedList"
+        );
+      }
+
       document.execCommand("formatBlock", false, "p");
 
-      let node = window.getSelection()?.anchorNode ?? null;
-      while (node && node.parentNode && node.parentNode !== el) node = node.parentNode;
-      const block = node instanceof HTMLElement ? node : null;
+      // Climb to the block sitting directly inside the editor, stopping short
+      // of the editor itself so a stray selection can't reach past it.
+      let node: Node | null = window.getSelection()?.anchorNode ?? null;
+      while (node && node !== el && node.parentNode !== el) node = node.parentNode;
+      const block = node && node !== el && node instanceof HTMLElement ? node : null;
 
-      if (!block) {
+      if (!block || block.tagName === "UL" || block.tagName === "OL") {
         document.execCommand("insertHTML", false, '<p class="check" data-done="false"><br></p>');
         return;
       }
@@ -123,8 +149,20 @@ export function NoteToolbar({
 
       <Divider />
 
+      <Button
+        label="Bullet points"
+        active={active.bullets}
+        onClick={() => cmd("insertUnorderedList")}
+      >
+        <BulletListIcon className="h-4 w-4" />
+      </Button>
+
       <Button label="Checklist" onClick={toggleCheck}>
         <ChecklistIcon className="h-4 w-4" />
+      </Button>
+
+      <Button label="Equation" onClick={onEquation}>
+        <EquationIcon className="h-4 w-4" />
       </Button>
 
       <Divider />

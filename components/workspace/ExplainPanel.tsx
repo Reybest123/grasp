@@ -1,60 +1,103 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { explainChat, type ChatMsg } from "@/lib/ai";
-import { CloseIcon, SparkleIcon } from "@/components/icons";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { explainChat, type ChatMsg, type ExplainMode } from "@/lib/ai";
+import { AlertIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
 
 /**
  * §3.2 Highlight to Explain — a margin conversation rather than a chatbot tab.
- * The student can push back on an answer and the AI may hand back a corrected
- * version of the whole note, which `onApplyRevision` writes in place.
+ *
+ * Two modes, switchable mid-thread, which is how the student says whether they
+ * want the note touched: Explain talks about the passage and leaves the note
+ * alone; Refine rewrites the passage in place. The AI's revision comes back as
+ * note HTML, so `onApplyRevision` writes it in without losing formatting.
  */
+const OPENERS: Record<ExplainMode, string> = {
+  explain: "Explain the highlighted passage from my notes.",
+  refine: "Refine the highlighted passage in my notes.",
+};
+
 export function ExplainPanel({
   open,
+  mode,
+  setMode,
   onClose,
   selected,
-  noteBody,
+  noteHtml,
   context,
   onApplyRevision,
 }: {
   open: boolean;
+  mode: ExplainMode;
+  setMode: (mode: ExplainMode) => void;
   onClose: () => void;
   selected: string;
-  noteBody: string;
+  noteHtml: string;
   context: string;
-  onApplyRevision: (revised: string) => void;
+  onApplyRevision: (revisedHtml: string) => void;
 }) {
   const [history, setHistory] = useState<ChatMsg[]>([]);
   const [pending, setPending] = useState(false);
   const [input, setInput] = useState("");
   const [noteUpdated, setNoteUpdated] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
 
-  // Kick off the initial explanation when the panel opens for a new selection.
-  useEffect(() => {
-    if (!open || !selected) return;
-    let cancelled = false;
-    const seed: ChatMsg[] = [
-      { role: "user", content: "Explain the highlighted passage from my notes." },
-    ];
-    setHistory(seed);
-    setNoteUpdated(false);
-    setPending(true);
-    (async () => {
-      const { reply, revisedNote } = await explainChat(noteBody, selected, context,seed);
-      if (cancelled) return;
-      setHistory([...seed, { role: "assistant", content: reply }]);
-      if (revisedNote && revisedNote.trim() && revisedNote !== noteBody) {
+  // The note changes under us the moment a revision lands, so read it from a
+  // ref instead of closing over a stale copy mid-conversation.
+  const noteRef = useRef(noteHtml);
+  noteRef.current = noteHtml;
+
+  const ask = useCallback(
+    async (next: ChatMsg[], askMode: ExplainMode) => {
+      setHistory(next);
+      setFailure(null);
+      setPending(true);
+      const { reply, revisedNote, error } = await explainChat(
+        noteRef.current,
+        selected,
+        context,
+        next,
+        askMode
+      );
+      setPending(false);
+      if (error) {
+        setFailure(error);
+        return;
+      }
+      setHistory([...next, { role: "assistant", content: reply }]);
+      if (revisedNote && revisedNote !== noteRef.current) {
         onApplyRevision(revisedNote);
         setNoteUpdated(true);
       }
-      setPending(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, selected]);
+    },
+    [selected, context, onApplyRevision]
+  );
+
+  // One thread per opened selection; sessionRef keeps re-renders from restarting
+  // it, since `ask` changes identity on every render of the parent.
+  const sessionRef = useRef<string | null>(null);
+  const modeRef = useRef<ExplainMode>(mode);
+
+  useEffect(() => {
+    if (!open) {
+      sessionRef.current = null;
+      return;
+    }
+    if (!selected || sessionRef.current === selected) return;
+    sessionRef.current = selected;
+    modeRef.current = mode;
+    setNoteUpdated(false);
+    ask([{ role: "user", content: OPENERS[mode] }], mode);
+  }, [open, selected, mode, ask]);
+
+  // Switching mode mid-thread carries the conversation with it — hitting Refine
+  // after talking a passage through applies what was just discussed.
+  useEffect(() => {
+    if (!open || modeRef.current === mode) return;
+    modeRef.current = mode;
+    if (history.length) ask([...history, { role: "user", content: OPENERS[mode] }], mode);
+  }, [open, mode, history, ask]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
@@ -68,20 +111,11 @@ export function ExplainPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  async function send() {
+  function send() {
     const text = input.trim();
     if (!text || pending) return;
-    const next = [...history, { role: "user" as const, content: text }];
-    setHistory(next);
     setInput("");
-    setPending(true);
-    const { reply, revisedNote } = await explainChat(noteBody, selected, context,next);
-    setHistory([...next, { role: "assistant", content: reply }]);
-    if (revisedNote && revisedNote.trim() && revisedNote !== noteBody) {
-      onApplyRevision(revisedNote);
-      setNoteUpdated(true);
-    }
-    setPending(false);
+    ask([...history, { role: "user", content: text }], mode);
   }
 
   // Hide the seed user message; show the conversation from the first answer on.
@@ -102,7 +136,8 @@ export function ExplainPanel({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-2 font-semibold text-ink">
-            <SparkleIcon className="h-4 w-4 text-brand-600" /> Explain
+            <SparkleIcon className="h-4 w-4 text-brand-600" />
+            {mode === "refine" ? "Refine" : "Explain"}
           </div>
           <button
             onClick={onClose}
@@ -111,6 +146,28 @@ export function ExplainPanel({
           >
             <CloseIcon className="h-5 w-5" />
           </button>
+        </div>
+
+        {/* Mode switch — the student's answer to "should you change my note?" */}
+        <div className="flex gap-1 border-b border-slate-100 bg-slate-50/60 p-2">
+          <ModeButton
+            label="Explain"
+            hint="Answer questions, leave my note as it is"
+            active={mode === "explain"}
+            disabled={pending}
+            onClick={() => setMode("explain")}
+          >
+            <SparkleIcon className="h-3.5 w-3.5" />
+          </ModeButton>
+          <ModeButton
+            label="Refine"
+            hint="Rewrite the highlighted part in my note"
+            active={mode === "refine"}
+            disabled={pending}
+            onClick={() => setMode("refine")}
+          >
+            <EditIcon className="h-3.5 w-3.5" />
+          </ModeButton>
         </div>
 
         <div ref={threadRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
@@ -144,6 +201,13 @@ export function ExplainPanel({
               <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200" />
             </div>
           )}
+
+          {failure && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{failure}</span>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-slate-200 p-3">
@@ -158,7 +222,9 @@ export function ExplainPanel({
                 }
               }}
               rows={1}
-              placeholder="Ask a follow-up, or correct the note…"
+              placeholder={
+                mode === "refine" ? "Say how it should be reworked…" : "Ask a follow-up…"
+              }
               className="max-h-32 flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
             <button
@@ -170,10 +236,45 @@ export function ExplainPanel({
             </button>
           </div>
           <p className="mt-1.5 px-1 text-[11px] text-slate-400">
-            If you catch a mistake, tell Grasp — it can fix the note.
+            {mode === "refine"
+              ? "Refine edits the note itself. Switch to Explain to just talk it through."
+              : "Explain leaves your note untouched. Switch to Refine to have it rewritten."}
           </p>
         </div>
       </aside>
     </>
+  );
+}
+
+function ModeButton({
+  label,
+  hint,
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  hint: string;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={hint}
+      aria-pressed={active}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition disabled:opacity-50 ${
+        active
+          ? "bg-white text-brand-700 shadow-sm ring-1 ring-slate-200"
+          : "text-slate-500 hover:bg-white/70 hover:text-ink"
+      }`}
+    >
+      {children}
+      {label}
+    </button>
   );
 }

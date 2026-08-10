@@ -40,8 +40,20 @@ export function htmlToText(html: string): string {
   const root = document.createElement("div");
   root.innerHTML = html;
   root.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+  // Equations read back as the expression the student typed, not the glyph
+  // soup the renderer built from it.
+  root.querySelectorAll<HTMLElement>(".math").forEach((el) => {
+    el.replaceWith(document.createTextNode(el.dataset.tex ?? el.textContent ?? ""));
+  });
   root.querySelectorAll<HTMLElement>(".check").forEach((el) => {
     el.prepend(document.createTextNode(el.dataset.done === "true" ? "[x] " : "[ ] "));
+  });
+  // Keep bullets looking like bullets so the model doesn't flatten a list.
+  root.querySelectorAll("ul, ol").forEach((list) => {
+    const ordered = list.tagName === "OL";
+    Array.from(list.children).forEach((li, i) => {
+      if (li.tagName === "LI") li.prepend(document.createTextNode(ordered ? `${i + 1}. ` : "- "));
+    });
   });
 
   const blocks: string[] = [];
@@ -69,7 +81,9 @@ export function htmlToText(html: string): string {
 /** Older notes (and seed data) are plain text — upgrade them on the way in. */
 export function ensureHtml(body: string): string {
   if (!body) return "";
-  return /<(p|div|br|b|i|u|font|ul|ol|li|span|h[1-4])\b/i.test(body) ? body : textToHtml(body);
+  return /<(p|div|br|b|i|u|font|ul|ol|li|span|sup|sub|h[1-4])\b/i.test(body)
+    ? body
+    : textToHtml(body);
 }
 
 /* -------------------------------- sanitiser ------------------------------- */
@@ -88,10 +102,22 @@ const ALLOWED: Record<string, readonly string[]> = {
   EM: [],
   U: [],
   FONT: ["size", "color"],
-  SPAN: [],
+  SPAN: ["class", "contenteditable", "data-tex"],
+  SUP: [],
+  SUB: [],
   UL: [],
   OL: [],
   LI: [],
+};
+
+/**
+ * The only class names the editor produces: block state on <p>/<div>, and the
+ * equation vocabulary from lib/math.ts on <span>. Anything else is dropped.
+ */
+const ALLOWED_CLASSES: Record<string, ReadonlySet<string>> = {
+  P: new Set(["check", "eq"]),
+  DIV: new Set(["check", "eq"]),
+  SPAN: new Set(["math", "frac", "num", "den", "sqrt", "rad", "sqrt-body"]),
 };
 
 const HEX_COLOR = /^#[0-9a-f]{3,8}$/i;
@@ -101,8 +127,9 @@ function copyAttributes(from: Element, to: Element, allowed: readonly string[]) 
     const value = from.getAttribute(name);
     if (value === null) continue;
 
-    // "check" is the only class the editor uses; reject anything else outright.
-    if (name === "class" && value !== "check") continue;
+    if (name === "class" && !ALLOWED_CLASSES[from.tagName]?.has(value)) continue;
+    // Equations are atomic in the editor; nothing else may opt out of editing.
+    if (name === "contenteditable" && value !== "false") continue;
     if (name === "data-done" && value !== "true" && value !== "false") continue;
     if (name === "size" && !/^[1-7]$/.test(value)) continue;
     if (name === "color" && !HEX_COLOR.test(value)) continue;

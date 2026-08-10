@@ -46,28 +46,45 @@ export async function extractTimetable(): Promise<ExtractedSubject[]> {
 // §3.2 Highlight to Explain — a thread, so the student can push back and the AI
 // can hand back a corrected version of the whole note. `context` carries the
 // subject's class times and exams (lib/schedule).
+//
+// `mode` is the student's answer to "should you change my note?": Explain
+// discusses the passage, Refine rewrites it. Note HTML goes both ways so a
+// refine can't quietly flatten the student's formatting.
+export type ExplainMode = "explain" | "refine";
+
 export async function explainChat(
-  noteBody: string,
+  noteHtml: string,
   highlight: string,
   context: string,
-  history: ChatMsg[]
-): Promise<{ reply: string; revisedNote: string | null }> {
+  history: ChatMsg[],
+  mode: ExplainMode
+): Promise<{ reply: string; revisedNote: string | null; error: string | null }> {
   const data = await postJson<{ reply: string; revisedNote: string | null }>("/api/explain-chat", {
-    noteBody,
+    noteBody: noteHtml,
     highlight,
     context,
     history,
+    mode,
   });
-  if (data.error) return { reply: data.error, revisedNote: null };
-  return { reply: data.reply, revisedNote: data.revisedNote ?? null };
+  // A failure is the panel's problem to show, not something the AI "said".
+  if (data.error) return { reply: "", revisedNote: null, error: data.error };
+  const revised = data.revisedNote?.trim();
+  return {
+    reply: data.reply,
+    revisedNote: revised ? sanitizeNoteHtml(revised) : null,
+    error: null,
+  };
 }
 
-// §3.1 Notes — cleanup and expansion. Takes and returns note HTML so the
-// student's formatting survives; the reply is sanitised before it hits the DOM.
-export async function enhanceNote(html: string): Promise<string> {
+// §3.1 Notes — refine in place. Takes and returns note HTML so the student's
+// formatting survives; the reply is sanitised before it hits the DOM. On
+// failure the note comes back untouched and the caller shows `error`.
+export async function enhanceNote(
+  html: string
+): Promise<{ html: string; error: string | null }> {
   const data = await postJson<{ enhanced: string }>("/api/enhance", { body: html });
-  if (data.error) return html;
-  return sanitizeNoteHtml(data.enhanced);
+  if (data.error) return { html, error: data.error };
+  return { html: sanitizeNoteHtml(data.enhanced), error: null };
 }
 
 // §3.3 Subject Quiz Mode — questions grounded in the student's own notes.

@@ -97,9 +97,107 @@
   pointer-events: none;
 }
 
-.editor .check[data-done="true"] {
+/* Ticked items keep their normal weight and colour on purpose — striking the
+   text out made finished work look discarded rather than done. */
+
+/* --------------------------------- lists ---------------------------------- */
+
+.editor ul,
+.editor ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.35em;
+}
+
+.editor ul {
+  list-style: disc;
+}
+
+.editor ol {
+  list-style: decimal;
+}
+
+.editor li {
+  margin: 0 0 0.2em;
+}
+
+.editor li::marker {
   color: #94a3b8;
-  text-decoration: line-through;
+}
+
+/* ---------------------------------- math ---------------------------------- */
+/* Built by lib/math.ts from a LaTeX-lite expression; the source stays on
+   data-tex so the equation can be reopened and edited. */
+
+.editor .math,
+.math-preview {
+  font-family: "Cambria Math", Cambria, "Times New Roman", serif;
+  font-size: 1.08em;
+  white-space: nowrap;
+}
+
+/* Atomic and clickable — a click reopens the equation editor. */
+.editor .math {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0 1px;
+  transition: background-color 120ms;
+}
+
+.editor .math:hover {
+  background: #ede9fe;
+}
+
+.editor p.eq {
+  margin: 1em 0;
+  text-align: center;
+}
+
+.editor p.eq .math,
+.math-preview {
+  font-size: 1.2em;
+}
+
+.math sup,
+.math sub {
+  font-size: 0.68em;
+  line-height: 0;
+}
+
+.math sup {
+  vertical-align: 0.55em;
+}
+
+.math sub {
+  vertical-align: -0.28em;
+}
+
+.math .frac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: -0.5em;
+  text-align: center;
+  margin: 0 0.15em;
+}
+
+.math .frac .num {
+  padding: 0 0.3em;
+  border-bottom: 1px solid currentColor;
+}
+
+.math .frac .den {
+  padding: 0 0.3em;
+}
+
+.math .sqrt .rad {
+  padding-right: 0.04em;
+}
+
+/* inline-block so the overline is drawn above the whole radicand — an inline
+   span would let a superscript poke out over the bar. */
+.math .sqrt .sqrt-body {
+  display: inline-block;
+  border-top: 1px solid currentColor;
+  padding: 0.14em 0.16em 0;
 }
 
 /* Highlight-to-explain: the selection glow inside notes. */

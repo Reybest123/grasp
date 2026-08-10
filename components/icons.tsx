@@ -205,6 +205,26 @@ export function LetterIcon({ className }: IconProps) {
   );
 }
 
+export function BulletListIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Radical sign — the equation editor's mark. */
+export function EquationIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M3 12.5l2 0 2.4 6.5L12 4.5h9" />
+    </svg>
+  );
+}
+
 export function ImageIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
