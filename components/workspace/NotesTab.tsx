@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "@/lib/subjects";
 import { enhanceNote, type ExplainMode } from "@/lib/ai";
-import { ensureHtml, textToHtml, isEmptyHtml, sanitizeNoteHtml } from "@/lib/richText";
+import {
+  ensureHtml,
+  textToHtml,
+  isEmptyHtml,
+  sanitizeNoteHtml,
+  closestOwnBlock,
+  isCaretAtBlockStart,
+  detachListItem,
+  placeCaretAtStart,
+} from "@/lib/richText";
 import { mathToHtml } from "@/lib/math";
 import { NoteToolbar } from "@/components/workspace/NoteToolbar";
 import { EquationEditor } from "@/components/workspace/EquationEditor";
@@ -209,6 +218,37 @@ export function NotesTab({
     sel?.addRange(range);
   }
 
+  /**
+   * Backspace at the very start of a checklist item or bullet detaches it
+   * instead of merging into whatever sits above — the same result as clicking
+   * the checklist/bullet button again, just reachable from the keyboard.
+   * Native contentEditable instead folds the block's text into the previous
+   * one, which is what made bullets "stick together" when deleted.
+   */
+  function onEditorKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== "Backspace") return;
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel || !sel.isCollapsed || !sel.rangeCount) return;
+
+    const block = closestOwnBlock(el, sel.anchorNode);
+    if (!block) return;
+    const isCheck = block.classList.contains("check");
+    const isListItem = block.tagName === "LI";
+    if (!isCheck && !isListItem) return;
+    if (!isCaretAtBlockStart(block, sel.getRangeAt(0))) return;
+
+    e.preventDefault();
+    if (isCheck) {
+      block.classList.remove("check");
+      block.removeAttribute("data-done");
+    } else {
+      const p = detachListItem(block);
+      if (p) placeCaretAtStart(p);
+    }
+    commit();
+  }
+
   /** Ticking a checklist box (box area only), or reopening a clicked equation. */
   function onEditorClick(e: React.MouseEvent) {
     const target = e.target as HTMLElement;
@@ -327,6 +367,7 @@ export function NotesTab({
             suppressContentEditableWarning
             onInput={commit}
             onPaste={onPaste}
+            onKeyDown={onEditorKeyDown}
             onMouseUp={updatePill}
             onClick={onEditorClick}
             data-empty={isEmptyHtml(active.body) ? "true" : "false"}

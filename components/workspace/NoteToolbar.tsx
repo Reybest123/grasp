@@ -17,6 +17,12 @@ import {
   EquationIcon,
   LetterIcon,
 } from "@/components/icons";
+import {
+  closestOwnBlock,
+  detachListItem,
+  wrapInList,
+  placeCaretAtStart,
+} from "@/lib/richText";
 
 /** execCommand fontSize values — 1-7 only, styled precisely in globals.css. */
 const SIZES: { label: string; value: string; icon: string }[] = [
@@ -90,30 +96,29 @@ export function NoteToolbar({
     run(() => document.execCommand(name, false, value));
 
   // Turns the caret's block into a checklist item, or back into a plain one.
+  // A checklist item and a bullet are mutually exclusive — never both at once —
+  // so this always steps out of a list first. List entry/exit is done by hand
+  // (detachListItem/wrapInList) rather than via execCommand's own list toggle,
+  // which can leave content floating outside any block or nest a stray <ul>
+  // inside the existing one.
   const toggleCheck = () =>
     run(() => {
       const el = editorRef.current;
       if (!el) return;
 
-      // A checklist item is a paragraph, so step out of any list first —
-      // otherwise the tick box lands on the whole <ul> and indents every bullet.
-      const anchor = window.getSelection()?.anchorNode ?? null;
-      const from = anchor instanceof Element ? anchor : (anchor?.parentElement ?? null);
-      const li = from && el.contains(from) ? from.closest("li") : null;
-      if (li) {
-        document.execCommand(
-          li.parentElement?.tagName === "OL" ? "insertOrderedList" : "insertUnorderedList"
-        );
+      const before = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
+      if (before?.tagName === "LI") {
+        const p = detachListItem(before);
+        if (!p) return;
+        p.classList.add("check");
+        p.setAttribute("data-done", "false");
+        placeCaretAtStart(p);
+        return;
       }
 
       document.execCommand("formatBlock", false, "p");
 
-      // Climb to the block sitting directly inside the editor, stopping short
-      // of the editor itself so a stray selection can't reach past it.
-      let node: Node | null = window.getSelection()?.anchorNode ?? null;
-      while (node && node !== el && node.parentNode !== el) node = node.parentNode;
-      const block = node && node !== el && node instanceof HTMLElement ? node : null;
-
+      const block = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
       if (!block || block.tagName === "UL" || block.tagName === "OL") {
         document.execCommand("insertHTML", false, '<p class="check" data-done="false"><br></p>');
         return;
@@ -125,6 +130,33 @@ export function NoteToolbar({
         block.classList.add("check");
         block.setAttribute("data-done", "false");
       }
+    });
+
+  // Bullets and checklists are mutually exclusive — drop check formatting
+  // before wrapping the block into a list.
+  const toggleBullets = () =>
+    run(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const block = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
+
+      if (block?.tagName === "LI") {
+        const p = detachListItem(block);
+        if (p) placeCaretAtStart(p);
+        return;
+      }
+      if (!block) {
+        // Selection spans multiple blocks — fall back to the browser's own
+        // (reliable in this direction) multi-block list wrapping.
+        document.execCommand("insertUnorderedList");
+        return;
+      }
+      if (block.classList.contains("check")) {
+        block.classList.remove("check");
+        block.removeAttribute("data-done");
+      }
+      const li = wrapInList(block);
+      if (li) placeCaretAtStart(li);
     });
 
   return (
@@ -149,11 +181,7 @@ export function NoteToolbar({
 
       <Divider />
 
-      <Button
-        label="Bullet points"
-        active={active.bullets}
-        onClick={() => cmd("insertUnorderedList")}
-      >
+      <Button label="Bullet points" active={active.bullets} onClick={toggleBullets}>
         <BulletListIcon className="h-4 w-4" />
       </Button>
 
