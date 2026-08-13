@@ -87,6 +87,24 @@ export async function enhanceNote(
   return { html: sanitizeNoteHtml(data.enhanced), error: null };
 }
 
+// §3.1 Notes — the blank-note counterpart to enhance. Writes a starting set of
+// notes rather than improving existing ones, so it takes a title/subject
+// instead of a body. On failure the caller shows `error` and the note stays
+// untouched, same as enhanceNote.
+export async function generateNote(
+  title: string,
+  subjectName: string,
+  context: string
+): Promise<{ html: string; error: string | null }> {
+  const data = await postJson<{ generated: string }>("/api/generate", {
+    title,
+    subjectName,
+    context,
+  });
+  if (data.error) return { html: "", error: data.error };
+  return { html: sanitizeNoteHtml(data.generated), error: null };
+}
+
 // §3.3 Subject Quiz Mode — questions grounded in the student's own notes.
 export async function generateQuiz(
   topics: string[],

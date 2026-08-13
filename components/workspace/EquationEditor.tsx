@@ -1,262 +1,279 @@
 "use client";
 
-// Equation editor — a centred dialog over the note.
+// Equation editor — a small popup anchored to where it was opened, in the
+// spirit of Word/OneNote's Alt+= equation box rather than a full-screen dialog.
 //
 // The student types LaTeX-lite (lib/math.ts renders it) and sees the result
-// live. The palette exists so nobody has to know LaTeX to write a fraction:
-// every button inserts a snippet at the caret and drops the caret in the first
-// empty slot, so clicking through builds a valid expression.
+// live. Every token can be reached two ways: click it in the scrollable strip,
+// or type "/" followed by its name (e.g. "/sqrt") and pick it from the list
+// that drops down — the strip exists for discovery, the slash for speed once
+// you know the vocabulary.
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { renderMath } from "@/lib/math";
-import { CloseIcon } from "@/components/icons";
 
-/** `$` marks where the caret should land after the snippet is inserted. */
-type Token = { label: string; insert: string; title: string };
+/** `$` marks where the caret should land after the snippet is inserted.
+ *  `cmd` is what the student types after "/" to reach it without the mouse. */
+type Token = { label: string; insert: string; title: string; cmd: string };
 
-const STRUCTURE: Token[] = [
-  { label: "a/b", insert: "\\frac{$}{}", title: "Fraction" },
-  { label: "x²", insert: "^{$}", title: "Superscript" },
-  { label: "x₂", insert: "_{$}", title: "Subscript" },
-  { label: "√", insert: "\\sqrt{$}", title: "Square root" },
-  { label: "( )", insert: "($)", title: "Brackets" },
+const TOKENS: Token[] = [
+  { label: "a/b", insert: "\\frac{$}{}", title: "Fraction", cmd: "frac" },
+  { label: "x²", insert: "^{$}", title: "Superscript", cmd: "pow" },
+  { label: "x₂", insert: "_{$}", title: "Subscript", cmd: "sub" },
+  { label: "√", insert: "\\sqrt{$}", title: "Square root", cmd: "sqrt" },
+  { label: "( )", insert: "($)", title: "Brackets", cmd: "brackets" },
+  { label: "×", insert: "\\times ", title: "Multiply", cmd: "times" },
+  { label: "÷", insert: "\\div ", title: "Divide", cmd: "div" },
+  { label: "±", insert: "\\pm ", title: "Plus or minus", cmd: "pm" },
+  { label: "·", insert: "\\cdot ", title: "Dot product", cmd: "cdot" },
+  { label: "≤", insert: "\\le ", title: "Less than or equal", cmd: "le" },
+  { label: "≥", insert: "\\ge ", title: "Greater than or equal", cmd: "ge" },
+  { label: "≠", insert: "\\ne ", title: "Not equal", cmd: "ne" },
+  { label: "≈", insert: "\\approx ", title: "Approximately", cmd: "approx" },
+  { label: "→", insert: "\\to ", title: "Yields", cmd: "to" },
+  { label: "∝", insert: "\\propto ", title: "Proportional to", cmd: "propto" },
+  { label: "π", insert: "\\pi ", title: "Pi", cmd: "pi" },
+  { label: "θ", insert: "\\theta ", title: "Theta", cmd: "theta" },
+  { label: "α", insert: "\\alpha ", title: "Alpha", cmd: "alpha" },
+  { label: "β", insert: "\\beta ", title: "Beta", cmd: "beta" },
+  { label: "Δ", insert: "\\Delta ", title: "Delta (change in)", cmd: "delta" },
+  { label: "λ", insert: "\\lambda ", title: "Lambda", cmd: "lambda" },
+  { label: "μ", insert: "\\mu ", title: "Mu", cmd: "mu" },
+  { label: "Σ", insert: "\\sum ", title: "Sum", cmd: "sum" },
+  { label: "∫", insert: "\\int ", title: "Integral", cmd: "int" },
+  { label: "∞", insert: "\\infty ", title: "Infinity", cmd: "infty" },
+  { label: "°", insert: "\\deg ", title: "Degrees", cmd: "deg" },
+  { label: "∴", insert: "\\therefore ", title: "Therefore", cmd: "therefore" },
 ];
 
-const OPERATORS: Token[] = [
-  { label: "×", insert: "\\times ", title: "Multiply" },
-  { label: "÷", insert: "\\div ", title: "Divide" },
-  { label: "±", insert: "\\pm ", title: "Plus or minus" },
-  { label: "·", insert: "\\cdot ", title: "Dot product" },
-  { label: "≤", insert: "\\le ", title: "Less than or equal" },
-  { label: "≥", insert: "\\ge ", title: "Greater than or equal" },
-  { label: "≠", insert: "\\ne ", title: "Not equal" },
-  { label: "≈", insert: "\\approx ", title: "Approximately" },
-  { label: "→", insert: "\\to ", title: "Yields" },
-  { label: "∝", insert: "\\propto ", title: "Proportional to" },
-];
-
-const SYMBOLS: Token[] = [
-  { label: "π", insert: "\\pi ", title: "Pi" },
-  { label: "θ", insert: "\\theta ", title: "Theta" },
-  { label: "α", insert: "\\alpha ", title: "Alpha" },
-  { label: "β", insert: "\\beta ", title: "Beta" },
-  { label: "Δ", insert: "\\Delta ", title: "Delta (change in)" },
-  { label: "λ", insert: "\\lambda ", title: "Lambda" },
-  { label: "μ", insert: "\\mu ", title: "Mu" },
-  { label: "Σ", insert: "\\sum ", title: "Sum" },
-  { label: "∫", insert: "\\int ", title: "Integral" },
-  { label: "∞", insert: "\\infty ", title: "Infinity" },
-  { label: "°", insert: "\\deg ", title: "Degrees" },
-  { label: "∴", insert: "\\therefore ", title: "Therefore" },
-];
-
-const EXAMPLES = [
-  { label: "Quadratic formula", tex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" },
-  { label: "Speed", tex: "v = \\frac{d}{t}" },
-  { label: "Photosynthesis", tex: "6CO_2 + 6H_2O \\to C_6H_{12}O_6 + 6O_2" },
-];
+const PANEL_WIDTH = 340;
+const MARGIN = 12;
 
 export function EquationEditor({
   open,
   initialTex = "",
-  initialDisplay = true,
+  anchor,
   onClose,
   onInsert,
 }: {
   open: boolean;
   initialTex?: string;
-  initialDisplay?: boolean;
+  /** Where to appear — the caret for a fresh equation, the clicked span for
+   *  an existing one. Null falls back to a fixed spot near the top. */
+  anchor: DOMRect | null;
   onClose: () => void;
-  onInsert: (tex: string, display: boolean) => void;
+  onInsert: (tex: string) => void;
 }) {
   const [tex, setTex] = useState(initialTex);
-  const [display, setDisplay] = useState(initialDisplay);
+  const [slashQuery, setSlashQuery] = useState<string | null>(null);
+  const [pick, setPick] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     setTex(initialTex);
-    setDisplay(initialDisplay);
-    // Focus after the dialog paints, or the caret lands nowhere.
+    setSlashQuery(null);
     const id = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(id);
-  }, [open, initialTex, initialDisplay]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+  // Positioned in two passes: guess just below the anchor, then nudge once the
+  // panel's real height is known so a popup opened low on the page flips above
+  // instead of running off the bottom. Horizontally it's clamped so it never
+  // overflows the right edge — the "moves with typing" idea was dropped in
+  // favour of just not letting it run off-screen, which is the part that matters.
+  useLayoutEffect(() => {
+    if (!open || !panelRef.current) return;
+    const rect = panelRef.current.getBoundingClientRect();
+    const a = anchor ?? { top: 120, bottom: 148, left: 220, right: 220 };
+    const left = Math.min(Math.max(a.left, MARGIN), window.innerWidth - rect.width - MARGIN);
+    let top = a.bottom + 8;
+    if (top + rect.height > window.innerHeight - MARGIN) {
+      top = Math.max(MARGIN, a.top - rect.height - 8);
     }
-    if (open) window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    setPos({ top, left });
+    // Re-measure when content that changes the panel's height appears.
+  }, [open, anchor, tex, slashQuery]);
+
+  useLayoutEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    }
+    if (open) window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [open, onClose]);
 
-  /** Drop a palette snippet in at the caret, honouring its `$` caret marker. */
-  function insertToken(snippet: string) {
+  // Clicking away commits what's there rather than silently dropping it — the
+  // same as clicking outside Word's equation box.
+  useLayoutEffect(() => {
+    if (!open) return;
+    function onDown(e: PointerEvent) {
+      if (panelRef.current?.contains(e.target as Node)) return;
+      submit();
+    }
+    const id = window.setTimeout(() => document.addEventListener("pointerdown", onDown), 0);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener("pointerdown", onDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tex]);
+
+  const matches = slashQuery === null
+    ? []
+    : TOKENS.filter((t) => t.cmd.startsWith(slashQuery)).slice(0, 8);
+
+  /** Drop a snippet in at the caret, honouring its `$` caret marker. */
+  function insertToken(token: Token) {
     const el = inputRef.current;
     const start = el?.selectionStart ?? tex.length;
     const end = el?.selectionEnd ?? tex.length;
     const selected = tex.slice(start, end);
 
-    // A selection becomes the snippet's first slot, so you can wrap what you
-    // already typed in a root or a fraction.
-    const filled = snippet.includes("$") ? snippet.replace("$", selected) : snippet;
-    const caret = snippet.includes("$")
-      ? start + snippet.indexOf("$") + selected.length
+    const filled = token.insert.includes("$") ? token.insert.replace("$", selected) : token.insert;
+    const caret = token.insert.includes("$")
+      ? start + token.insert.indexOf("$") + selected.length
       : start + filled.length;
 
     setTex(tex.slice(0, start) + filled + tex.slice(end));
+    setSlashQuery(null);
     requestAnimationFrame(() => {
       el?.focus();
       el?.setSelectionRange(caret, caret);
     });
   }
 
+  /** Replaces the typed "/query" with the picked token's snippet. */
+  function acceptSlash(token: Token) {
+    const el = inputRef.current;
+    const caret = el?.selectionStart ?? tex.length;
+    const before = tex.slice(0, caret);
+    const match = before.match(/(?:^|\s)\/(\w*)$/);
+    if (!match) return;
+    // The "/" always sits exactly one character before the query, whether the
+    // match consumed a leading space or the start of the string.
+    const slashStart = before.length - match[1].length - 1;
+
+    const filled = token.insert.includes("$") ? token.insert.replace("$", "") : token.insert;
+    const newCaret = slashStart + (token.insert.includes("$") ? token.insert.indexOf("$") : filled.length);
+
+    setTex(tex.slice(0, slashStart) + filled + tex.slice(caret));
+    setSlashQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(newCaret, newCaret);
+    });
+  }
+
+  function onInputChange(value: string, caret: number) {
+    setTex(value);
+    const before = value.slice(0, caret);
+    const match = before.match(/(?:^|\s)\/(\w*)$/);
+    setSlashQuery(match ? match[1] : null);
+    setPick(0);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (matches.length && slashQuery !== null) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setPick((p) => (p + 1) % matches.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setPick((p) => (p - 1 + matches.length) % matches.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        acceptSlash(matches[pick]);
+        return;
+      }
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submit();
+    }
+  }
+
   function submit() {
-    if (!tex.trim()) return;
-    onInsert(tex.trim(), display);
+    if (tex.trim()) onInsert(tex.trim());
     onClose();
   }
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center p-4">
-      <div onClick={onClose} className="absolute inset-0 bg-black/45" />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Equation editor"
-        className="relative w-full max-w-[560px] animate-[popIn_140ms_ease-out] rounded-2xl bg-white p-6 shadow-2xl"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-ink">Equation</h2>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Type it out, or build it with the buttons below.
-            </p>
-          </div>
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-label="Equation editor"
+      onMouseDown={(e) => e.stopPropagation()}
+      style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, width: PANEL_WIDTH }}
+      className="fixed z-[60] animate-[popIn_120ms_ease-out] rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xl"
+    >
+      <div className="flex gap-1 overflow-x-auto pb-2">
+        {TOKENS.map((t) => (
           <button
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"
-          >
-            <CloseIcon className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Preview */}
-        <div className="mt-4 grid min-h-[76px] place-items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-          {tex.trim() ? (
-            <span
-              className="math math-preview text-ink"
-              dangerouslySetInnerHTML={{ __html: renderMath(tex) }}
-            />
-          ) : (
-            <span className="text-sm text-slate-400">Preview appears here</span>
-          )}
-        </div>
-
-        <input
-          ref={inputRef}
-          value={tex}
-          onChange={(e) => setTex(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          spellCheck={false}
-          placeholder="e.g. E = mc^2"
-          className="mt-3 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 font-mono text-sm outline-none focus:border-brand-500"
-        />
-
-        <div className="mt-4 space-y-2.5">
-          <Palette title="Structure" tokens={STRUCTURE} onPick={insertToken} wide />
-          <Palette title="Operators" tokens={OPERATORS} onPick={insertToken} />
-          <Palette title="Symbols" tokens={SYMBOLS} onPick={insertToken} />
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Examples
-          </span>
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex.label}
-              onClick={() => setTex(ex.tex)}
-              className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
-            >
-              {ex.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-          <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={display}
-              onChange={(e) => setDisplay(e.target.checked)}
-              className="h-4 w-4 accent-brand-600"
-            />
-            Centre on its own line
-          </label>
-
-          <div className="flex gap-2.5">
-            <button
-              onClick={onClose}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={submit}
-              disabled={!tex.trim()}
-              className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-            >
-              {initialTex ? "Update" : "Insert"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Palette({
-  title,
-  tokens,
-  onPick,
-  wide = false,
-}: {
-  title: string;
-  tokens: Token[];
-  onPick: (insert: string) => void;
-  wide?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-[68px] shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-400">
-        {title}
-      </span>
-      <div className="flex flex-wrap gap-1">
-        {tokens.map((t) => (
-          <button
-            key={t.label}
-            title={t.title}
-            aria-label={t.title}
+            key={t.cmd}
+            type="button"
+            title={`${t.title} (/${t.cmd})`}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onPick(t.insert)}
-            className={`h-8 rounded-lg border border-slate-200 text-sm text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 ${
-              wide ? "px-2.5" : "w-8"
-            }`}
+            onClick={() => insertToken(t)}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-sm text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
           >
             {t.label}
           </button>
         ))}
       </div>
+
+      <div className="relative mt-1.5">
+        <input
+          ref={inputRef}
+          value={tex}
+          onChange={(e) => onInputChange(e.target.value, e.target.selectionStart ?? tex.length)}
+          onKeyDown={onKeyDown}
+          spellCheck={false}
+          placeholder="Type equation here"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-brand-500"
+        />
+
+        {matches.length > 0 && slashQuery !== null && (
+          <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+            {matches.map((t, i) => (
+              <button
+                key={t.cmd}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => acceptSlash(t)}
+                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm transition ${
+                  i === pick ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <span className="w-5 text-center font-mono">{t.label}</span>
+                <span className="text-xs text-slate-400">/{t.cmd}</span>
+                <span className="ml-auto text-xs">{t.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {tex.trim() && (
+        <div className="mt-1.5 flex min-h-[36px] items-center rounded-lg bg-slate-50 px-3 py-1.5">
+          <span
+            className="math math-preview text-ink"
+            dangerouslySetInnerHTML={{ __html: renderMath(tex) }}
+          />
+        </div>
+      )}
     </div>
   );
 }

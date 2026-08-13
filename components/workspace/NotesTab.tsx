@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "@/lib/subjects";
-import { enhanceNote, type ExplainMode } from "@/lib/ai";
+import { enhanceNote, generateNote, type ExplainMode } from "@/lib/ai";
 import {
   ensureHtml,
   textToHtml,
@@ -38,6 +38,7 @@ export function NotesTab({
   updateNote,
   addNote,
   context,
+  subjectName,
 }: {
   notes: Note[];
   activeId: string | undefined;
@@ -45,6 +46,7 @@ export function NotesTab({
   updateNote: (id: string, patch: Partial<Note>) => void;
   addNote: (title: string, body: string) => string;
   context: string;
+  subjectName: string;
 }) {
   const active = notes.find((n) => n.id === activeId) ?? notes[0];
 
@@ -68,13 +70,15 @@ export function NotesTab({
   const [canStep, setCanStep] = useState({ undo: false, redo: false });
 
   // Equation editor. `target` is the equation being reopened, if any; otherwise
-  // the new one lands back at `range`, the caret we saved before the dialog
-  // stole focus.
+  // the new one lands back at `range`, the caret we saved before the popup
+  // stole focus. `anchor` positions the popup next to where it was opened —
+  // the caret for a fresh equation, the clicked span for an existing one.
   const [equation, setEquation] = useState<{
     tex: string;
     display: boolean;
     target: HTMLElement | null;
     range: Range | null;
+    anchor: DOMRect | null;
   } | null>(null);
 
   // The tip reads as part of the note, so dismissing it should stick.
@@ -171,22 +175,66 @@ export function NotesTab({
 
   /* -------------------------------- equations ------------------------------- */
 
-  /** Toolbar button: remember where the caret was, then open a blank equation. */
+  /**
+   * Opens a blank equation at the caret — the toolbar button and Alt+= both
+   * call this. Whether it lands centred is decided here, not by a checkbox:
+   * an equation opened on an otherwise-empty paragraph becomes a standalone
+   * display equation, the way Word centres one typed on its own line; opened
+   * mid-sentence, a list item or a table cell, it stays inline.
+   */
   function openEquation() {
+    const el = editorRef.current;
     const sel = window.getSelection();
-    const inEditor = sel?.rangeCount && editorRef.current?.contains(sel.anchorNode);
-    setEquation({
-      tex: "",
-      display: true,
-      target: null,
-      range: inEditor ? sel!.getRangeAt(0).cloneRange() : null,
-    });
+    const inEditor = !!(el && sel?.rangeCount && el.contains(sel.anchorNode));
+    const range = inEditor ? sel!.getRangeAt(0).cloneRange() : null;
+
+    let display = false;
+    let anchor: DOMRect | null = null;
+    if (range && el) {
+      anchor = range.getBoundingClientRect();
+      const block = closestOwnBlock(el, range.startContainer);
+      display =
+        !!block &&
+        block.tagName === "P" &&
+        !block.classList.contains("check") &&
+        isEmptyHtml(block.innerHTML);
+    }
+
+    setEquation({ tex: "", display, target: null, range, anchor });
   }
 
-  function insertEquation(tex: string, display: boolean) {
+  /**
+   * Inserts `html` at `range`'s position by splitting the surrounding node the
+   * way native typing would, rather than `execCommand("insertHTML")` — on a
+   * range collapsed at the very end of a paragraph, Chrome sometimes lands the
+   * insertion as a new sibling of the paragraph instead of inside it, the same
+   * class of bug the list and table code routes around elsewhere in this file.
+   */
+  function insertInlineAt(range: Range, html: string) {
+    range.deleteContents();
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    const frag = document.createDocumentFragment();
+    let last: Node | null = null;
+    while (temp.firstChild) {
+      last = temp.firstChild;
+      frag.appendChild(last);
+    }
+    range.insertNode(frag);
+    if (last) {
+      const after = document.createRange();
+      after.setStartAfter(last);
+      after.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(after);
+    }
+  }
+
+  function insertEquation(tex: string) {
     const el = editorRef.current;
     if (!el || !equation) return;
-    const html = mathToHtml(tex, display);
+    const html = mathToHtml(tex, equation.display);
 
     if (equation.target) {
       // Reopened equation: swap it out, taking the wrapping <p class="eq"> with
@@ -194,14 +242,28 @@ export function NotesTab({
       const parent = equation.target.parentElement;
       const node = parent?.classList.contains("eq") ? parent : equation.target;
       node.outerHTML = html;
-    } else {
+    } else if (equation.range) {
       el.focus();
-      if (equation.range) {
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(equation.range);
+      const block = closestOwnBlock(el, equation.range.startContainer);
+      if (equation.display && block?.tagName === "P" && isEmptyHtml(block.innerHTML)) {
+        // The equation was opened on a blank line: replace that paragraph
+        // outright rather than inserting into it — nesting the new <p class="eq">
+        // inside the empty one would be invalid markup.
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+        const node = temp.firstElementChild;
+        if (node) block.replaceWith(node);
+      } else {
+        insertInlineAt(equation.range, html);
       }
-      document.execCommand("insertHTML", false, html);
+    } else {
+      // No caret context (equation opened without focus in the editor):
+      // land it at the end rather than losing it.
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      insertInlineAt(range, html);
     }
     commit();
   }
@@ -313,12 +375,21 @@ export function NotesTab({
     setPill(null);
   }
 
+  /**
+   * The button does one of two things depending on whether there's anything
+   * to enhance. A title alone doesn't count as content — a note titled but
+   * not yet written into is exactly the blank-note case generate is for.
+   */
+  const blank = isEmptyHtml(active?.body ?? "");
+
   /** Enhancement round-trips HTML, so bold, colours and checklists survive it. */
   async function enhance() {
     if (!active) return;
     setEnhancing(true);
     setEnhanceError(null);
-    const { html, error } = await enhanceNote(ensureHtml(active.body));
+    const { html, error } = blank
+      ? await generateNote(active.title, subjectName, context)
+      : await enhanceNote(ensureHtml(active.body));
     setEnhancing(false);
     if (error) {
       setEnhanceError(error);
@@ -376,6 +447,13 @@ export function NotesTab({
     const el = editorRef.current;
     if (!el) return;
 
+    // Word and OneNote's own shortcut for "start an equation here".
+    if (e.altKey && (e.key === "=" || e.key === "+")) {
+      e.preventDefault();
+      openEquation();
+      return;
+    }
+
     if (e.metaKey || e.ctrlKey) {
       const key = e.key.toLowerCase();
       if (key === "z") {
@@ -394,6 +472,26 @@ export function NotesTab({
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) return;
     const cell = closestCell(el, sel.anchorNode);
+
+    if (cell && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      // Native caret movement tracks pixel position, not column — in a row
+      // with more than one column it can land one cell off. Column index is
+      // tracked explicitly instead, so Up/Down always lands in the same column.
+      const row = cell.parentElement as HTMLTableRowElement | null;
+      const table = cell.closest("table") as HTMLTableElement | null;
+      if (row && table) {
+        const cellIndex = Array.from(row.cells).indexOf(cell);
+        const rowIndex = Array.from(table.rows).indexOf(row);
+        const targetRow = table.rows[rowIndex + (e.key === "ArrowUp" ? -1 : 1)];
+        if (targetRow) {
+          e.preventDefault();
+          const targetCell = (targetRow.cells[cellIndex] ??
+            targetRow.cells[targetRow.cells.length - 1]) as HTMLElement;
+          placeCaretAtStart(targetCell);
+          return;
+        }
+      }
+    }
 
     if (cell && e.key === "Tab") {
       e.preventDefault();
@@ -459,6 +557,7 @@ export function NotesTab({
         display: !!math.parentElement?.classList.contains("eq"),
         target: math,
         range: null,
+        anchor: math.getBoundingClientRect(),
       });
       return;
     }
@@ -536,7 +635,7 @@ export function NotesTab({
             className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
             <SparkleIcon className="h-4 w-4" />
-            {enhancing ? "Enhancing…" : "AI enhance"}
+            {blank ? (enhancing ? "Generating…" : "AI generate") : enhancing ? "Enhancing…" : "AI enhance"}
           </button>
         </div>
 
@@ -633,7 +732,7 @@ export function NotesTab({
       <EquationEditor
         open={!!equation}
         initialTex={equation?.tex ?? ""}
-        initialDisplay={equation?.display ?? true}
+        anchor={equation?.anchor ?? null}
         onClose={() => setEquation(null)}
         onInsert={insertEquation}
       />

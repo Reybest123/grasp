@@ -127,7 +127,7 @@ const ALLOWED: Record<string, readonly string[]> = {
   SUB: [],
   UL: [],
   OL: ["start"],
-  LI: [],
+  LI: ["class"],
   TABLE: [],
   THEAD: [],
   TBODY: [],
@@ -136,15 +136,20 @@ const ALLOWED: Record<string, readonly string[]> = {
   TH: ["class", "data-done"],
 };
 
+/** Alignment is a class rather than execCommand's own `align`/style output, so
+ *  it survives the sanitiser the same deterministic way checklists do. */
+const ALIGN_CLASSES = new Set(["align-center", "align-right"]);
+
 /**
  * The only class names the editor produces: block state on <p>/<div>, and the
  * equation vocabulary from lib/math.ts on <span>. Anything else is dropped.
  */
 const ALLOWED_CLASSES: Record<string, ReadonlySet<string>> = {
-  P: new Set(["check", "eq"]),
-  DIV: new Set(["check", "eq"]),
-  TD: new Set(["check"]),
-  TH: new Set(["check"]),
+  P: new Set(["check", "eq", ...ALIGN_CLASSES]),
+  DIV: new Set(["check", "eq", ...ALIGN_CLASSES]),
+  LI: new Set(ALIGN_CLASSES),
+  TD: new Set(["check", ...ALIGN_CLASSES]),
+  TH: new Set(["check", ...ALIGN_CLASSES]),
   SPAN: new Set(["math", "frac", "num", "den", "sqrt", "rad", "sqrt-body"]),
 };
 
@@ -155,7 +160,14 @@ function copyAttributes(from: Element, to: Element, allowed: readonly string[]) 
     const value = from.getAttribute(name);
     if (value === null) continue;
 
-    if (name === "class" && !ALLOWED_CLASSES[from.tagName]?.has(value)) continue;
+    if (name === "class") {
+      // A block can carry more than one class (a centred checklist item, say),
+      // so each token is checked on its own rather than the whole value at once.
+      const permitted = ALLOWED_CLASSES[from.tagName];
+      const kept = value.split(/\s+/).filter((token) => permitted?.has(token));
+      if (kept.length) to.setAttribute("class", kept.join(" "));
+      continue;
+    }
     // Equations are atomic in the editor; nothing else may opt out of editing.
     if (name === "contenteditable" && value !== "false") continue;
     if (name === "data-done" && value !== "true" && value !== "false") continue;
@@ -411,6 +423,20 @@ export function listKindOf(block: HTMLElement | null): ListTag | null {
   if (block?.tagName !== "LI") return null;
   const tag = block.parentElement?.tagName;
   return tag === "UL" || tag === "OL" ? tag : null;
+}
+
+export type Align = "left" | "center" | "right";
+
+/** Left has no class of its own — it's just the absence of the other two. */
+export function setBlockAlign(block: HTMLElement, align: Align): void {
+  block.classList.remove("align-center", "align-right");
+  if (align !== "left") block.classList.add(`align-${align}`);
+}
+
+export function alignOf(block: HTMLElement | null): Align {
+  if (block?.classList.contains("align-center")) return "center";
+  if (block?.classList.contains("align-right")) return "right";
+  return "left";
 }
 
 /** Collapses the caret to the very start of `el`'s content. */

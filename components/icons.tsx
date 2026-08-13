@@ -216,6 +216,30 @@ export function BulletListIcon({ className }: IconProps) {
   );
 }
 
+export function AlignLeftIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 6h16M4 12h10M4 18h13" />
+    </svg>
+  );
+}
+
+export function AlignCenterIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 6h16M7 12h10M5.5 18h13" />
+    </svg>
+  );
+}
+
+export function AlignRightIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 6h16M10 12h10M7 18h13" />
+    </svg>
+  );
+}
+
 export function NumberedListIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>

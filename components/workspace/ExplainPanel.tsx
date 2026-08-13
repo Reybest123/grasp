@@ -43,6 +43,11 @@ export function ExplainPanel({
   const [failure, setFailure] = useState<string | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
 
+  // Nothing has been sent yet: the panel is showing the "add instructions,
+  // optionally" step rather than a conversation. Derived from history rather
+  // than tracked separately, since the two can never disagree.
+  const started = history.length > 0;
+
   // The note changes under us the moment a revision lands, so read it from a
   // ref instead of closing over a stale copy mid-conversation.
   const noteRef = useRef(noteHtml);
@@ -75,7 +80,9 @@ export function ExplainPanel({
   );
 
   // One thread per opened selection; sessionRef keeps re-renders from restarting
-  // it, since `ask` changes identity on every render of the parent.
+  // it, since `ask` changes identity on every render of the parent. Opening no
+  // longer sends anything by itself — it just resets to the pre-conversation
+  // step so the student can add instructions before the first message goes out.
   const sessionRef = useRef<string | null>(null);
   const modeRef = useRef<ExplainMode>(mode);
 
@@ -88,8 +95,10 @@ export function ExplainPanel({
     sessionRef.current = selected;
     modeRef.current = mode;
     setNoteUpdated(false);
-    ask([{ role: "user", content: OPENERS[mode] }], mode);
-  }, [open, selected, mode, ask]);
+    setHistory([]);
+    setInput("");
+    setFailure(null);
+  }, [open, selected, mode]);
 
   // Switching mode mid-thread carries the conversation with it — hitting Refine
   // after talking a passage through applies what was just discussed.
@@ -111,9 +120,22 @@ export function ExplainPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  /**
+   * The first send is optional-instructions-then-go rather than a normal
+   * message: it's what kicks the conversation off, folding anything the
+   * student typed into the opening request instead of starting blank. Every
+   * send after that is a normal follow-up, which does require actual text.
+   */
   function send() {
+    if (pending) return;
     const text = input.trim();
-    if (!text || pending) return;
+    if (!started) {
+      setInput("");
+      const opening = text ? `${OPENERS[mode]} ${text}` : OPENERS[mode];
+      ask([{ role: "user", content: opening }], mode);
+      return;
+    }
+    if (!text) return;
     setInput("");
     ask([...history, { role: "user", content: text }], mode);
   }
@@ -175,6 +197,14 @@ export function ExplainPanel({
             “{selected.length > 160 ? selected.slice(0, 160) + "…" : selected}”
           </p>
 
+          {!started && !pending && (
+            <p className="text-sm text-slate-400">
+              {mode === "refine"
+                ? "Add anything specific below — a topic to centre it on, a tone, a length — or just press Refine to have Grasp rework it as-is."
+                : "Add anything specific below — what you want explained, or how — or just press Explain to ask about it as-is."}
+            </p>
+          )}
+
           {noteUpdated && (
             <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
               <SparkleIcon className="h-4 w-4" /> Your note was updated from this conversation.
@@ -223,16 +253,20 @@ export function ExplainPanel({
               }}
               rows={1}
               placeholder={
-                mode === "refine" ? "Say how it should be reworked…" : "Ask a follow-up…"
+                !started
+                  ? "Optional — tell Grasp what to focus on…"
+                  : mode === "refine"
+                    ? "Say how it should be reworked…"
+                    : "Ask a follow-up…"
               }
               className="max-h-32 flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
             <button
               onClick={send}
-              disabled={pending || !input.trim()}
+              disabled={pending || (started && !input.trim())}
               className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
             >
-              Send
+              {!started ? (mode === "refine" ? "Refine" : "Explain") : "Send"}
             </button>
           </div>
           <p className="mt-1.5 px-1 text-[11px] text-slate-400">

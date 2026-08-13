@@ -54,7 +54,9 @@
   text-underline-offset: 2px;
 }
 
-/* execCommand("fontSize") emits <font size>; pin the scale to the note's rhythm. */
+/* execCommand("fontSize") emits <font size>; pin the scale to the note's rhythm.
+   size="2" is kept for notes saved before the toolbar's three tiers became
+   3/5/6 — it no longer has a picker button, but old notes still render it. */
 .editor font[size="2"] {
   font-size: 0.82em;
 }
@@ -66,6 +68,21 @@
 .editor font[size="5"] {
   font-size: 1.32em;
   line-height: 1.45;
+}
+
+.editor font[size="6"] {
+  font-size: 1.7em;
+  line-height: 1.5;
+}
+
+/* -------------------------------- alignment -------------------------------- */
+
+.editor .align-center {
+  text-align: center;
+}
+
+.editor .align-right {
+  text-align: right;
 }
 
 /* -------------------------------- checklist ------------------------------- */

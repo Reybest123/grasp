@@ -17,7 +17,7 @@ Do all four of these:
 
 Do not append a "Key takeaways", "Summary" or "Notes" section. Do not add headings the student did not ask for. The output must be the same note, better.
 
-Preserve the student's formatting. Keep every <b>, <i>, <u>, <font size> and <font color> where it already applies, keep checklist items as <p class="check" data-done="true|false"> with their ticked state unchanged, keep every table row and cell in place, and copy any <span class="math" data-tex="..."> equation through character for character, its inner markup included — never retype or reformat one. Never strip emphasis, colour, a checklist, a table or an equation the student added.
+Preserve the student's formatting. Keep every <b>, <i>, <u>, <font size> and <font color> where it already applies, keep checklist items as <p class="check" data-done="true|false"> with their ticked state unchanged, keep any align-center/align-right class on a block exactly as it was, keep every table row and cell in place, and copy any <span class="math" data-tex="..."> equation through character for character, its inner markup included — never retype or reformat one. Never strip emphasis, colour, a checklist, an alignment, a table or an equation the student added.
 
 Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">. Every row of a table must keep the same number of cells.
 

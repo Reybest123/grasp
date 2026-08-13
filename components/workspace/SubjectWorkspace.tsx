@@ -152,6 +152,7 @@ export function SubjectWorkspace({
             updateNote={updateNote}
             addNote={addNote}
             context={context}
+            subjectName={subject.name}
           />
         )}
         {tab === "record" && <RecordTab subjectName={subject.name} onAddNote={addNote} />}

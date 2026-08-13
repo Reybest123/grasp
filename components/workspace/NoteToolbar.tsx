@@ -18,6 +18,9 @@ import {
   ChecklistIcon,
   BulletListIcon,
   NumberedListIcon,
+  AlignLeftIcon,
+  AlignCenterIcon,
+  AlignRightIcon,
   TableIcon,
   EquationIcon,
   LetterIcon,
@@ -31,16 +34,26 @@ import {
   detachListItem,
   listKindOf,
   placeCaretAtStart,
+  setBlockAlign,
   setBlockCheck,
   setBlockList,
+  alignOf,
+  type Align,
   type ListTag,
 } from "@/lib/richText";
 
-/** execCommand fontSize values — 1-7 only, styled precisely in editor.css. */
+/** execCommand fontSize values — 1-7 only, styled precisely in editor.css.
+ *  "3" is the browser's own default, so untouched text reads as Small. */
 const SIZES: { label: string; value: string; icon: string }[] = [
-  { label: "Small text", value: "2", icon: "h-3 w-3" },
-  { label: "Normal text", value: "3", icon: "h-4 w-4" },
-  { label: "Large text", value: "5", icon: "h-[18px] w-[18px]" },
+  { label: "Small text", value: "3", icon: "h-3 w-3" },
+  { label: "Medium text", value: "5", icon: "h-4 w-4" },
+  { label: "Large text", value: "6", icon: "h-[19px] w-[19px]" },
+];
+
+const ALIGNS: { label: string; value: Align; icon: typeof AlignLeftIcon }[] = [
+  { label: "Align left", value: "left", icon: AlignLeftIcon },
+  { label: "Align centre", value: "center", icon: AlignCenterIcon },
+  { label: "Align right", value: "right", icon: AlignRightIcon },
 ];
 
 const COLORS: { label: string; value: string }[] = [
@@ -52,7 +65,16 @@ const COLORS: { label: string; value: string }[] = [
   { label: "Violet", value: "#7c3aed" },
 ];
 
-const OFF = { bold: false, italic: false, underline: false, bullets: false, numbers: false, check: false };
+const OFF = {
+  bold: false,
+  italic: false,
+  underline: false,
+  bullets: false,
+  numbers: false,
+  check: false,
+  size: "3",
+  align: "left" as Align,
+};
 
 export function NoteToolbar({
   editorRef,
@@ -99,6 +121,8 @@ export function NoteToolbar({
       bullets: kind === "UL",
       numbers: kind === "OL",
       check: !!block?.classList.contains("check"),
+      size: document.queryCommandValue("fontSize") || "3",
+      align: alignOf(block),
     });
   }, [editorRef, inEditor]);
 
@@ -156,6 +180,14 @@ export function NoteToolbar({
       if (blocks.length === 1) placeCaretAtStart(results[0]);
     });
 
+  const setAlign = (align: Align) =>
+    run(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const blocks = selectedBlocks(el);
+      blocks.forEach((b) => setBlockAlign(b, align));
+    });
+
   return (
     <div className="flex flex-wrap items-center gap-1">
       <Button label="Undo" disabled={!canUndo} onClick={onUndo}>
@@ -180,8 +212,26 @@ export function NoteToolbar({
       <Divider />
 
       {SIZES.map((s) => (
-        <Button key={s.value} label={s.label} onClick={() => cmd("fontSize", s.value)}>
+        <Button
+          key={s.value}
+          label={s.label}
+          active={active.size === s.value}
+          onClick={() => cmd("fontSize", s.value)}
+        >
           <LetterIcon className={s.icon} />
+        </Button>
+      ))}
+
+      <Divider />
+
+      {ALIGNS.map((a) => (
+        <Button
+          key={a.value}
+          label={a.label}
+          active={active.align === a.value}
+          onClick={() => setAlign(a.value)}
+        >
+          <a.icon className="h-4 w-4" />
         </Button>
       ))}
 
