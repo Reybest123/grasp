@@ -458,6 +458,41 @@ export function selectContents(el: HTMLElement): void {
   sel?.addRange(range);
 }
 
+/**
+ * Where `block`'s own text begins on its first line, in viewport coordinates.
+ *
+ * This is the anchor for anything that has to sit exactly where the first typed
+ * character would land: the empty-note placeholder, and the checklist box's hit
+ * area (the box is a ::before, so it has no rect of its own — it occupies the
+ * 26px immediately left of this point).
+ *
+ * The range is deliberately left uncollapsed. A collapsed one reports no client
+ * rects at all — not even in a block with text — which silently dropped every
+ * caller through to the fallback below; that fallback happens to be right for
+ * left-aligned text, so the bug only surfaced once blocks could be centred.
+ * Selecting the contents instead reports the first line's rect in every case,
+ * including a block holding only a <br>, where it is zero-width but correctly
+ * placed. The fallback is a true last resort.
+ */
+export function blockTextStart(block: HTMLElement): { left: number; top: number; height: number } {
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  const [rect] = Array.from(range.getClientRects());
+  if (rect) return { left: rect.left, top: rect.top, height: rect.height };
+
+  const box = block.getBoundingClientRect();
+  const style = getComputedStyle(block);
+  const left = box.left + (parseFloat(style.paddingLeft) || 0);
+  const right = box.right - (parseFloat(style.paddingRight) || 0);
+  const align = style.textAlign;
+
+  return {
+    left: align === "center" ? (left + right) / 2 : align === "right" ? right : left,
+    top: box.top + (parseFloat(style.paddingTop) || 0),
+    height: parseFloat(style.lineHeight) || box.height,
+  };
+}
+
 /* --------------------------- caret as an offset --------------------------- */
 /* Undo/redo swaps the editor's whole innerHTML, which invalidates any Range
  * held across the change. A plain character count into the editor's text

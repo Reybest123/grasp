@@ -10,14 +10,12 @@
   position: relative;
 }
 
-/* The editor is rarely truly :empty once it holds <p><br></p>, so React flags
-   emptiness via data-empty instead. */
-.editor[data-empty="true"]::before {
-  content: attr(data-placeholder);
-  position: absolute;
-  color: #94a3b8;
-  pointer-events: none;
-}
+/* The placeholder is NOT a ::before on the editor any more. As a pseudo-element
+   pinned to the editor's top-left it sat on top of a bullet or checkbox when the
+   first block was a list item, and it could not pick up the size/bold/underline
+   the student had armed but not yet typed with — that formatting is a pending
+   browser state, not markup, so there is nothing for CSS to inherit from. It is
+   now a measured React element; see NotesTab's placeholder handling. */
 
 /* ------------------------------ block rhythm ------------------------------ */
 /* Every top-level block carries the same bottom margin, and the last one in the
@@ -36,8 +34,7 @@
 .editor > p:last-child,
 .editor > ul:last-child,
 .editor > ol:last-child,
-.editor > table:last-child,
-.editor > .check:last-child {
+.editor > table:last-child {
   margin-bottom: 0;
 }
 
@@ -86,27 +83,43 @@
 }
 
 /* -------------------------------- checklist ------------------------------- */
-/* The box and its tick are drawn in CSS — no glyphs, per the no-emoji rule. */
+/* The box is drawn in CSS and its tick is an inline SVG background — no glyphs,
+   per the no-emoji rule.
 
-/* Checklist items run tight against each other like list items do, but the run
-   as a whole closes with the same gap a paragraph or a list would leave. */
+   The box is an inline-block at the start of the line rather than an absolutely
+   positioned marker, so it travels with the text when the item is centred or
+   right-aligned (it used to stay pinned to the far left). The negative
+   text-indent against a matching padding-left keeps the hanging indent for
+   left-aligned items, so wrapped lines still sit under the text and not under
+   the box. Centred and right-aligned items drop the indent — there is no
+   "hang" to preserve once the line is not flush left. */
+
 .editor .check {
-  position: relative;
-  margin: 0 0 0.35em;
-  padding-left: 30px;
+  margin: 0;
+  padding-left: 26px;
+  text-indent: -26px;
 }
 
+.editor .check.align-center,
+.editor .check.align-right {
+  padding-left: 0;
+  text-indent: 0;
+}
+
+/* A run of checklist items closes with the same gap a paragraph would leave. */
 .editor .check + *:not(.check) {
   margin-top: 0.9em;
 }
 
 .editor .check::before {
   content: "";
-  position: absolute;
-  left: 1px;
-  top: 4px;
+  display: inline-block;
+  /* Centres the box against the text's own optical middle. */
+  vertical-align: middle;
   height: 18px;
   width: 18px;
+  margin-right: 8px;
+  text-indent: 0;
   border: 1.75px solid #cbd5e1;
   border-radius: 5px;
   background: #fff;
@@ -117,21 +130,11 @@
 }
 
 .editor .check[data-done="true"]::before {
-  background: #4f3fd6;
   border-color: #4f3fd6;
-}
-
-.editor .check[data-done="true"]::after {
-  content: "";
-  position: absolute;
-  left: 6px;
-  top: 8px;
-  height: 4px;
-  width: 8px;
-  border-left: 2px solid #fff;
-  border-bottom: 2px solid #fff;
-  transform: rotate(-45deg);
-  pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.3l2.6 2.6L10 3.4' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 11px 11px no-repeat,
+    #4f3fd6;
 }
 
 /* Ticked items keep their normal weight and colour on purpose — striking the
@@ -152,14 +155,12 @@
   list-style: decimal;
 }
 
+/* Items sit at plain line spacing: the gap between two bullets should read the
+   same as the gap between two lines of a sentence that wrapped on its own. Any
+   margin here made lists looser than the prose around them. The list's own
+   bottom margin still sets the gap after the whole list. */
 .editor li {
-  margin: 0 0 0.2em;
-}
-
-/* The list's own bottom margin sets the gap after it, so the last item must not
-   add a second one — otherwise a list ends deeper than a paragraph does. */
-.editor li:last-child {
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .editor li::marker {

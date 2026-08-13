@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "@/lib/subjects";
 import { enhanceNote, generateNote, type ExplainMode } from "@/lib/ai";
 import {
@@ -8,6 +8,7 @@ import {
   textToHtml,
   isEmptyHtml,
   sanitizeNoteHtml,
+  blockTextStart,
   caretOffset,
   restoreCaret,
   closestOwnBlock,
@@ -56,6 +57,7 @@ export function NotesTab({
 
   // Highlight-to-explain
   const editorRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const skipPill = useRef(false);
@@ -297,6 +299,65 @@ export function NotesTab({
     if (first) placeCaretAtStart(first);
     commit();
   }
+
+  /* ------------------------------- placeholder ------------------------------ */
+
+  /**
+   * The placeholder is measured rather than drawn by CSS, for two reasons the
+   * old `.editor::before` could not solve: it has to sit exactly where the
+   * first character would land (which moves with a bullet, a checkbox, or a
+   * centred line), and it has to show the formatting the student has armed but
+   * not yet typed with. That formatting only exists as pending browser state —
+   * `queryCommandState` can see it, but there is no markup for CSS to inherit.
+   *
+   * Colour is deliberately left muted: a placeholder rendered in the chosen
+   * text colour reads as real content the student has already typed.
+   */
+  const blankNote = isEmptyHtml(active?.body ?? "");
+  const [hint, setHint] = useState<{
+    top: number;
+    left: number;
+    align: string;
+    style: React.CSSProperties;
+  } | null>(null);
+
+  const measureHint = useCallback(() => {
+    const el = editorRef.current;
+    const wrap = wrapRef.current;
+    const block = el?.querySelector<HTMLElement>("p, li, td, th") ?? null;
+    if (!el || !wrap || !block) return setHint(null);
+
+    const spot = blockTextStart(block);
+    const frame = wrap.getBoundingClientRect();
+    const style: React.CSSProperties = {};
+
+    const size = document.queryCommandValue("fontSize");
+    if (size === "5") style.fontSize = "1.32em";
+    else if (size === "6") style.fontSize = "1.7em";
+    if (document.queryCommandState("bold")) style.fontWeight = 700;
+    if (document.queryCommandState("italic")) style.fontStyle = "italic";
+    if (document.queryCommandState("underline")) style.textDecoration = "underline";
+
+    setHint({
+      top: spot.top - frame.top,
+      left: spot.left - frame.left,
+      align: getComputedStyle(block).textAlign,
+      style,
+    });
+  }, []);
+
+  // Only tracked while the note is actually blank — otherwise every caret move
+  // in a written note would re-measure for nothing.
+  useLayoutEffect(() => {
+    if (!blankNote) return setHint(null);
+    measureHint();
+    document.addEventListener("selectionchange", measureHint);
+    window.addEventListener("resize", measureHint);
+    return () => {
+      document.removeEventListener("selectionchange", measureHint);
+      window.removeEventListener("resize", measureHint);
+    };
+  }, [blankNote, active?.id, active?.body, measureHint]);
 
   /* -------------------------------- selection ------------------------------- */
 
@@ -564,7 +625,12 @@ export function NotesTab({
 
     const item = target.closest?.(".check") as HTMLElement | null;
     if (!item) return;
-    if (e.clientX - item.getBoundingClientRect().left > 28) return;
+    // The box is a ::before with no rect of its own, and it no longer sits at
+    // the item's left edge once the item is centred or right-aligned — it is
+    // always the 26px immediately before the text, so that is what's hit-tested.
+    const spot = blockTextStart(item);
+    if (e.clientX < spot.left - 26 || e.clientX > spot.left) return;
+    if (e.clientY < spot.top || e.clientY > spot.top + spot.height) return;
     item.dataset.done = item.dataset.done === "true" ? "false" : "true";
     commit();
   }
@@ -643,6 +709,7 @@ export function NotesTab({
           <NoteToolbar
             editorRef={editorRef}
             onChange={commit}
+            onFormat={measureHint}
             onEquation={openEquation}
             onTable={insertTable}
             onUndo={undo}
@@ -667,7 +734,11 @@ export function NotesTab({
           </div>
         )}
 
-        <div className="flex-1 cursor-text px-8 py-6" onClick={focusEditorEnd}>
+        <div
+          ref={wrapRef}
+          className="relative flex-1 cursor-text px-8 py-6"
+          onClick={focusEditorEnd}
+        >
           <div
             ref={editorRef}
             contentEditable
@@ -676,10 +747,29 @@ export function NotesTab({
             onPaste={onPaste}
             onKeyDown={onEditorKeyDown}
             onClick={onEditorClick}
-            data-empty={isEmptyHtml(active.body) ? "true" : "false"}
-            data-placeholder="Start typing your notes…"
-            className="hl-active editor min-h-full max-w-[72ch] text-[15px] leading-7 text-slate-700 outline-none"
+            className="hl-active editor min-h-full text-[15px] leading-7 text-slate-700 outline-none"
           />
+          {hint && (
+            <span
+              aria-hidden
+              style={{
+                top: hint.top,
+                left: hint.left,
+                // Anchored at the caret, so it has to grow the way the text
+                // would: rightwards, out from the middle, or leftwards.
+                transform:
+                  hint.align === "center"
+                    ? "translateX(-50%)"
+                    : hint.align === "right"
+                      ? "translateX(-100%)"
+                      : undefined,
+                ...hint.style,
+              }}
+              className="pointer-events-none absolute whitespace-nowrap leading-7 text-slate-400"
+            >
+              Start typing your notes…
+            </span>
+          )}
         </div>
 
         {!tipHidden && (

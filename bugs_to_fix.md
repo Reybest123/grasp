@@ -2,6 +2,9 @@
 
 Working list, ordered by effort. Tick items off as they ship.
 
+**Delete this file once every box below is ticked** — it is a scratch checklist,
+not permanent project documentation. Anything worth keeping goes in CLAUDE.md §11.
+
 ## Low effort: quick visual & text fixes
 
 - [x] **Active style visual indicator** — it was unclear which text colour was selected. Added a clear visual indicator for the active colour.
@@ -9,15 +12,10 @@ Working list, ordered by effort. Tick items off as they ship.
 
 ## Medium effort: typography, alignment & sizing
 
-- [ ] **Dynamic placeholder styling & list overlap**
-  - On an empty note, turning on bullets/numbers/checklist makes the placeholder overlap the marker, because the placeholder doesn't shift. Only affects the placeholder, not typed text.
-  - Changing settings before typing feels wrong — set the size to max and the placeholder doesn't resize.
-  - The placeholder should reflect whatever styling is currently active: size, underline, bullets, and so on.
-- [ ] **List element spacing** — gap between bullets / numbered items / checklist items differs from normal paragraph line-wrap spacing. Make list spacing match the natural wrap spacing.
-- [ ] **Checkmark alignment & layout proximity**
-  - Checkboxes sit slightly low; they should be vertically centred against their text.
-  - With centre/right alignment the checkbox stays pinned far left. It should travel with the text and stay next to it, the way Word does.
-- [ ] **Note width text boundary** — the notepad was widened but the text boundary wasn't, so text wraps well before the note's right edge.
+- [x] **Dynamic placeholder styling & list overlap** — the placeholder is now a measured element positioned exactly where the first character will land, so it clears bullets and checkboxes, follows alignment, and picks up armed size/bold/italic/underline. Colour stays muted on purpose: a placeholder in the chosen text colour reads as content already typed.
+- [x] **List element spacing** — bullets, numbered items and checklist items now sit at 28px, identical to a natural line wrap (verified by measurement).
+- [x] **Checkmark alignment & layout proximity** — the box is an inline-block centred on the text's optical middle, and it travels with centre/right alignment. Left-aligned items keep a hanging indent so wrapped lines sit under the text.
+- [x] **Note width text boundary** — dropped the 72ch cap; text now runs the full width of the note.
 
 ## High effort: table behaviour & selection mechanics
 

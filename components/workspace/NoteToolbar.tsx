@@ -90,6 +90,7 @@ function toHex(value: string): string {
 export function NoteToolbar({
   editorRef,
   onChange,
+  onFormat,
   onEquation,
   onTable,
   onUndo,
@@ -99,6 +100,11 @@ export function NoteToolbar({
 }: {
   editorRef: RefObject<HTMLDivElement | null>;
   onChange: () => void;
+  /** Fired after any command runs. Formatting armed on a collapsed caret —
+   *  bold with nothing selected yet — changes no markup and raises no
+   *  selectionchange, so anything mirroring the active format (the empty-note
+   *  placeholder) has no other way to hear about it. */
+  onFormat?: () => void;
   /** Opens the equation editor — the dialog itself lives in NotesTab, which
    *  also handles reopening an equation the student clicked. */
   onEquation: () => void;
@@ -154,8 +160,9 @@ export function NoteToolbar({
       fn();
       onChange();
       syncActive();
+      onFormat?.();
     },
-    [editorRef, inEditor, onChange, syncActive]
+    [editorRef, inEditor, onChange, syncActive, onFormat]
   );
 
   const cmd = (name: string, value?: string) =>
