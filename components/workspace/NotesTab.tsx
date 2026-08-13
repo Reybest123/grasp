@@ -677,7 +677,7 @@ export function NotesTab({
             onKeyDown={onEditorKeyDown}
             onClick={onEditorClick}
             data-empty={isEmptyHtml(active.body) ? "true" : "false"}
-            data-placeholder="Start typing your notes, or record a lecture…"
+            data-placeholder="Start typing your notes…"
             className="hl-active editor min-h-full max-w-[72ch] text-[15px] leading-7 text-slate-700 outline-none"
           />
         </div>

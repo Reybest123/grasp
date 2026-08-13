@@ -74,7 +74,18 @@ const OFF = {
   check: false,
   size: "3",
   align: "left" as Align,
+  color: COLORS[0].value,
 };
+
+/** queryCommandValue("foreColor") reports rgb(...) in Chrome; the swatches are hex. */
+function toHex(value: string): string {
+  const rgb = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (!rgb) return value.toLowerCase();
+  return `#${rgb
+    .slice(1, 4)
+    .map((n) => Number(n).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
 
 export function NoteToolbar({
   editorRef,
@@ -123,6 +134,9 @@ export function NoteToolbar({
       check: !!block?.classList.contains("check"),
       size: document.queryCommandValue("fontSize") || "3",
       align: alignOf(block),
+      // Untouched text reports the inherited colour, which is the Default
+      // swatch's own value — so one swatch is always lit rather than none.
+      color: toHex(document.queryCommandValue("foreColor") || COLORS[0].value),
     });
   }, [editorRef, inEditor]);
 
@@ -271,17 +285,27 @@ export function NoteToolbar({
       <Divider />
 
       <div className="flex items-center gap-1.5 pl-0.5">
-        {COLORS.map((c) => (
-          <button
-            key={c.value}
-            title={`${c.label} text`}
-            aria-label={`${c.label} text`}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => cmd("foreColor", c.value)}
-            style={{ backgroundColor: c.value }}
-            className="h-[18px] w-[18px] rounded-full ring-1 ring-inset ring-black/10 transition hover:scale-110"
-          />
-        ))}
+        {COLORS.map((c) => {
+          const on = active.color === c.value.toLowerCase();
+          return (
+            <button
+              key={c.value}
+              title={`${c.label} text`}
+              aria-label={`${c.label} text`}
+              aria-pressed={on}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => cmd("foreColor", c.value)}
+              style={{ backgroundColor: c.value }}
+              // The active swatch grows and takes a dark halo — a plain ring in
+              // the swatch's own colour is invisible against the swatch itself.
+              className={`h-[18px] w-[18px] rounded-full transition ${
+                on
+                  ? "scale-110 ring-2 ring-slate-500 ring-offset-2 ring-offset-white"
+                  : "ring-1 ring-inset ring-black/10 hover:scale-110"
+              }`}
+            />
+          );
+        })}
       </div>
     </div>
   );
