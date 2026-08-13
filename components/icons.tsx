@@ -216,6 +216,44 @@ export function BulletListIcon({ className }: IconProps) {
   );
 }
 
+export function NumberedListIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M10 6h10M10 12h10M10 18h10" />
+      <path d="M3.2 5.2L4.6 4.4V8.6" />
+      <path d="M3 10.9c.2-.7.8-1.1 1.5-1 .9.1 1.3 1 .8 1.7L3 14.6h2.7" />
+      <path d="M3.2 16.5h2.3l-1.4 1.6c.7 0 1.3.3 1.3 1.1 0 .7-.6 1.1-1.3 1.1-.6 0-1-.2-1.3-.6" />
+    </svg>
+  );
+}
+
+export function TableIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="3" y="4.5" width="18" height="15" rx="2" />
+      <path d="M3 9.5h18M9.5 9.5v10M3 14.5h18" />
+    </svg>
+  );
+}
+
+export function UndoIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 8h10a5.5 5.5 0 0 1 0 11H8" />
+      <path d="M7.5 4.5L4 8l3.5 3.5" />
+    </svg>
+  );
+}
+
+export function RedoIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M20 8H10a5.5 5.5 0 0 0 0 11h6" />
+      <path d="M16.5 4.5L20 8l-3.5 3.5" />
+    </svg>
+  );
+}
+
 /** Radical sign — the equation editor's mark. */
 export function EquationIcon({ className }: IconProps) {
   return (

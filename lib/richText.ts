@@ -4,6 +4,12 @@
 
 const BLOCK_TAGS = new Set(["P", "DIV", "LI", "H1", "H2", "H3", "H4", "BLOCKQUOTE"]);
 
+/** Wrappers that hold blocks rather than being one — never a caret's own block. */
+const CONTAINER_TAGS = new Set(["UL", "OL", "TABLE", "THEAD", "TBODY", "TR"]);
+
+/** A table cell owns its content directly: there is no <p> inside it. */
+const CELL_TAGS = new Set(["TD", "TH"]);
+
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -51,9 +57,23 @@ export function htmlToText(html: string): string {
   // Keep bullets looking like bullets so the model doesn't flatten a list.
   root.querySelectorAll("ul, ol").forEach((list) => {
     const ordered = list.tagName === "OL";
+    const start = Number(list.getAttribute("start")) || 1;
     Array.from(list.children).forEach((li, i) => {
-      if (li.tagName === "LI") li.prepend(document.createTextNode(ordered ? `${i + 1}. ` : "- "));
+      if (li.tagName === "LI") {
+        li.prepend(document.createTextNode(ordered ? `${start + i}. ` : "- "));
+      }
     });
+  });
+  // Tables flatten to pipe-separated rows — enough shape for the model to read
+  // them as a table without inventing markup it would have to round-trip.
+  // Runs last so cell text already carries its bullet/checklist prefixes.
+  root.querySelectorAll("table").forEach((table) => {
+    const rows = Array.from(table.querySelectorAll("tr")).map((tr) =>
+      Array.from(tr.children)
+        .map((cell) => (cell.textContent ?? "").replace(/\s+/g, " ").trim())
+        .join(" | ")
+    );
+    table.replaceWith(document.createTextNode(rows.join("\n")));
   });
 
   const blocks: string[] = [];
@@ -81,7 +101,7 @@ export function htmlToText(html: string): string {
 /** Older notes (and seed data) are plain text — upgrade them on the way in. */
 export function ensureHtml(body: string): string {
   if (!body) return "";
-  return /<(p|div|br|b|i|u|font|ul|ol|li|span|sup|sub|h[1-4])\b/i.test(body)
+  return /<(p|div|br|b|i|u|font|ul|ol|li|span|sup|sub|table|h[1-4])\b/i.test(body)
     ? body
     : textToHtml(body);
 }
@@ -106,8 +126,14 @@ const ALLOWED: Record<string, readonly string[]> = {
   SUP: [],
   SUB: [],
   UL: [],
-  OL: [],
+  OL: ["start"],
   LI: [],
+  TABLE: [],
+  THEAD: [],
+  TBODY: [],
+  TR: [],
+  TD: ["class", "data-done"],
+  TH: ["class", "data-done"],
 };
 
 /**
@@ -117,6 +143,8 @@ const ALLOWED: Record<string, readonly string[]> = {
 const ALLOWED_CLASSES: Record<string, ReadonlySet<string>> = {
   P: new Set(["check", "eq"]),
   DIV: new Set(["check", "eq"]),
+  TD: new Set(["check"]),
+  TH: new Set(["check"]),
   SPAN: new Set(["math", "frac", "num", "den", "sqrt", "rad", "sqrt-body"]),
 };
 
@@ -133,6 +161,8 @@ function copyAttributes(from: Element, to: Element, allowed: readonly string[]) 
     if (name === "data-done" && value !== "true" && value !== "false") continue;
     if (name === "size" && !/^[1-7]$/.test(value)) continue;
     if (name === "color" && !HEX_COLOR.test(value)) continue;
+    // <ol start> only ever carries a small counter from a split list.
+    if (name === "start" && !/^\d{1,4}$/.test(value)) continue;
 
     to.setAttribute(name, value);
   }
@@ -184,6 +214,8 @@ export function sanitizeNoteHtml(html: string): string {
 /** True when the editor holds nothing but empty blocks — drives the placeholder. */
 export function isEmptyHtml(html: string): boolean {
   if (!html) return true;
+  // A blank table or a bare equation has no text but is very much content.
+  if (/<table\b|class="math"/i.test(html)) return false;
   return html.replace(/<[^>]*>/g, "").replace(/[\s ]/g, "") === "";
 }
 
@@ -198,12 +230,47 @@ export function isEmptyHtml(html: string): boolean {
 export function closestOwnBlock(editorEl: HTMLElement, node: Node | null): HTMLElement | null {
   if (!node || !editorEl.contains(node)) return null;
   const start = node instanceof Element ? node : node.parentElement;
-  const li = start?.closest("li");
-  if (li && editorEl.contains(li)) return li;
+  const inner = start?.closest("li, td, th");
+  if (inner && editorEl.contains(inner)) return inner as HTMLElement;
 
   let cur: Node | null = node;
   while (cur && cur !== editorEl && cur.parentNode !== editorEl) cur = cur.parentNode;
   return cur && cur !== editorEl && cur instanceof HTMLElement ? cur : null;
+}
+
+/** Every block the caret could sit in, in document order. */
+function ownBlocks(editorEl: HTMLElement): HTMLElement[] {
+  return Array.from(editorEl.querySelectorAll<HTMLElement>(":scope > *, li, td, th")).filter(
+    (el) => !CONTAINER_TAGS.has(el.tagName)
+  );
+}
+
+/**
+ * The blocks a selection actually covers, so a toolbar toggle can apply to all
+ * of them the way Word and Docs do rather than only to the block holding the
+ * caret.
+ *
+ * Overlap is tested against each block rather than resolved from the range's
+ * endpoints: a select-all leaves both endpoints on the editor itself, which
+ * belongs to no block, and a selection dragged one block too far ends at the
+ * very start of a block it never really reached into.
+ */
+export function blocksInRange(editorEl: HTMLElement, range: Range): HTMLElement[] {
+  if (!range.collapsed) {
+    const covered = ownBlocks(editorEl).filter((block) => {
+      const own = document.createRange();
+      own.selectNodeContents(block);
+      return (
+        // starts before the block ends, and ends after the block starts
+        range.compareBoundaryPoints(Range.END_TO_START, own) < 0 &&
+        range.compareBoundaryPoints(Range.START_TO_END, own) > 0
+      );
+    });
+    if (covered.length) return covered;
+  }
+
+  const block = closestOwnBlock(editorEl, range.startContainer);
+  return block ? [block] : [];
 }
 
 /** True when `range`'s caret sits at the very start of `block`'s content. */
@@ -238,6 +305,12 @@ export function detachListItem(li: HTMLElement): HTMLElement | null {
   parent.insertBefore(p, list.nextSibling);
   if (after.length) {
     const rest = document.createElement(list.tagName);
+    // A numbered list split around a pulled-out item keeps counting, the way
+    // Word and Docs do — the tail must not restart at 1.
+    if (list.tagName === "OL") {
+      const first = Number(list.getAttribute("start")) || 1;
+      rest.setAttribute("start", String(first + index));
+    }
     after.forEach((item) => rest.appendChild(item));
     parent.insertBefore(rest, p.nextSibling);
   }
@@ -247,14 +320,17 @@ export function detachListItem(li: HTMLElement): HTMLElement | null {
   return p;
 }
 
+export type ListTag = "UL" | "OL";
+
 /**
- * Turns `block` (a `<p>`) into a `<li>`, merging into an adjacent `<ul>` on
- * either side if one is already there, otherwise wrapping it in a new one.
- * Hand-rolled for the same reason as `detachListItem`: Chrome's
- * `execCommand("insertUnorderedList")` can nest the new `<ul>` *inside* the
- * existing block instead of replacing it, producing invalid markup.
+ * Turns `block` (a `<p>`) into a `<li>` of a `tag` list, merging into an
+ * adjacent list of the same kind on either side if one is already there,
+ * otherwise wrapping it in a new one. Hand-rolled for the same reason as
+ * `detachListItem`: Chrome's `execCommand("insertUnorderedList")` can nest the
+ * new `<ul>` *inside* the existing block instead of replacing it, producing
+ * invalid markup.
  */
-export function wrapInList(block: HTMLElement): HTMLElement | null {
+export function wrapInList(block: HTMLElement, tag: ListTag = "UL"): HTMLElement | null {
   const parent = block.parentElement;
   if (!parent) return null;
 
@@ -262,28 +338,79 @@ export function wrapInList(block: HTMLElement): HTMLElement | null {
   while (block.firstChild) li.appendChild(block.firstChild);
   if (!li.hasChildNodes()) li.appendChild(document.createElement("br"));
 
+  // A cell holds its content directly, so the list nests inside it rather than
+  // replacing it — a <ul> where a <td> should be would break the row.
+  if (CELL_TAGS.has(block.tagName)) {
+    const nested = document.createElement(tag.toLowerCase());
+    nested.appendChild(li);
+    block.appendChild(nested);
+    return li;
+  }
+
   const prev = block.previousElementSibling;
   const next = block.nextElementSibling;
 
-  if (prev?.tagName === "UL") {
+  if (prev?.tagName === tag) {
     prev.appendChild(li);
     block.remove();
-    if (next?.tagName === "UL") {
+    if (next?.tagName === tag) {
       while (next.firstChild) prev.appendChild(next.firstChild);
       next.remove();
     }
     return li;
   }
-  if (next?.tagName === "UL") {
+  if (next?.tagName === tag) {
     next.insertBefore(li, next.firstChild);
+    // The tail now starts one item earlier, so its counter walks back with it.
+    const first = Number(next.getAttribute("start")) || 1;
+    if (tag === "OL" && first > 1) next.setAttribute("start", String(first - 1));
     block.remove();
     return li;
   }
 
-  const ul = document.createElement("ul");
-  ul.appendChild(li);
-  parent.replaceChild(ul, block);
+  const list = document.createElement(tag.toLowerCase());
+  list.appendChild(li);
+  parent.replaceChild(list, block);
   return li;
+}
+
+/**
+ * Makes `block` an item of a `tag` list whatever it is now. An item of the
+ * *other* kind of list goes out through `detachListItem` and back in through
+ * `wrapInList`, so converting one item mid-list splits the run around it
+ * instead of renumbering the whole thing.
+ */
+export function setBlockList(block: HTMLElement, tag: ListTag): HTMLElement | null {
+  if (block.tagName === "LI") {
+    if (block.parentElement?.tagName === tag) return block;
+    const p = detachListItem(block);
+    return p ? wrapInList(p, tag) : null;
+  }
+  setBlockCheck(block, false);
+  return wrapInList(block, tag);
+}
+
+/**
+ * Turns checklist formatting on or off for `block`. Bullets and checklists are
+ * mutually exclusive, so switching one on steps out of any list first.
+ */
+export function setBlockCheck(block: HTMLElement, on: boolean): HTMLElement {
+  if (!on) {
+    block.classList.remove("check");
+    block.removeAttribute("data-done");
+    return block;
+  }
+  const target = block.tagName === "LI" ? (detachListItem(block) ?? block) : block;
+  target.classList.add("check");
+  target.setAttribute("data-done", "false");
+  return target;
+}
+
+/** The kind of list `block` belongs to, if any. */
+export function listKindOf(block: HTMLElement | null): ListTag | null {
+  if (block?.tagName !== "LI") return null;
+  const tag = block.parentElement?.tagName;
+  return tag === "UL" || tag === "OL" ? tag : null;
 }
 
 /** Collapses the caret to the very start of `el`'s content. */
@@ -291,6 +418,67 @@ export function placeCaretAtStart(el: HTMLElement): void {
   const range = document.createRange();
   range.selectNodeContents(el);
   range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+/** Selects everything inside `el` — what Tab does when it lands in a table cell. */
+export function selectContents(el: HTMLElement): void {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+/* --------------------------- caret as an offset --------------------------- */
+/* Undo/redo swaps the editor's whole innerHTML, which invalidates any Range
+ * held across the change. A plain character count into the editor's text
+ * survives that, so the caret can be put back where the student left it. */
+
+/** How many characters of the editor's text sit before the caret. */
+export function caretOffset(editorEl: HTMLElement): number {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return 0;
+  const range = sel.getRangeAt(0);
+  if (!editorEl.contains(range.endContainer)) return 0;
+
+  const probe = document.createRange();
+  probe.selectNodeContents(editorEl);
+  probe.setEnd(range.endContainer, range.endOffset);
+  return probe.toString().length;
+}
+
+/** Puts the caret back `offset` characters into the editor. */
+export function restoreCaret(editorEl: HTMLElement, offset: number): void {
+  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  let remaining = offset;
+  let placed = false;
+
+  let node = walker.nextNode() as Text | null;
+  while (node) {
+    const length = node.data.length;
+    if (remaining <= length) {
+      // Equations are atomic: land after the whole span, never inside it.
+      const atomic = node.parentElement?.closest('[contenteditable="false"]');
+      if (atomic) range.setStartAfter(atomic);
+      else range.setStart(node, remaining);
+      placed = true;
+      break;
+    }
+    remaining -= length;
+    node = walker.nextNode() as Text | null;
+  }
+
+  if (!placed) {
+    range.selectNodeContents(editorEl);
+    range.collapse(false);
+  } else {
+    range.collapse(true);
+  }
+
   const sel = window.getSelection();
   sel?.removeAllRanges();
   sel?.addRange(range);

@@ -19,11 +19,25 @@
   pointer-events: none;
 }
 
-.editor p {
+/* ------------------------------ block rhythm ------------------------------ */
+/* Every top-level block carries the same bottom margin, and the last one in the
+   note carries none. Without the matching rules for lists and tables, pulling a
+   bullet out of a list (or dropping one back in) changed the space under the
+   note, so the text below it hopped by a line — and by a different amount
+   depending on whether the block landed last. */
+
+.editor p,
+.editor ul,
+.editor ol,
+.editor table {
   margin: 0 0 0.9em;
 }
 
-.editor p:last-child {
+.editor > p:last-child,
+.editor > ul:last-child,
+.editor > ol:last-child,
+.editor > table:last-child,
+.editor > .check:last-child {
   margin-bottom: 0;
 }
 
@@ -57,10 +71,16 @@
 /* -------------------------------- checklist ------------------------------- */
 /* The box and its tick are drawn in CSS — no glyphs, per the no-emoji rule. */
 
+/* Checklist items run tight against each other like list items do, but the run
+   as a whole closes with the same gap a paragraph or a list would leave. */
 .editor .check {
   position: relative;
   margin: 0 0 0.35em;
   padding-left: 30px;
+}
+
+.editor .check + *:not(.check) {
+  margin-top: 0.9em;
 }
 
 .editor .check::before {
@@ -104,7 +124,6 @@
 
 .editor ul,
 .editor ol {
-  margin: 0 0 0.9em;
   padding-left: 1.35em;
 }
 
@@ -120,8 +139,47 @@
   margin: 0 0 0.2em;
 }
 
+/* The list's own bottom margin sets the gap after it, so the last item must not
+   add a second one — otherwise a list ends deeper than a paragraph does. */
+.editor li:last-child {
+  margin-bottom: 0;
+}
+
 .editor li::marker {
   color: #94a3b8;
+}
+
+/* A list nested in a table cell sits flush: the cell is already the padding. */
+.editor td > ul,
+.editor td > ol,
+.editor th > ul,
+.editor th > ol {
+  margin-bottom: 0;
+}
+
+/* --------------------------------- tables --------------------------------- */
+/* Built and navigated by hand — see lib/tables.ts. */
+
+.editor table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.95em;
+}
+
+.editor th,
+.editor td {
+  border: 1px solid #e2e8f0;
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+  text-align: left;
+  word-break: break-word;
+}
+
+.editor th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #0f1222;
 }
 
 /* ---------------------------------- math ---------------------------------- */

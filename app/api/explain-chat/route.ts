@@ -38,7 +38,7 @@ Never use emojis.${schedule}
 
 ${modeRules}
 
-The note is HTML. Any revisedNote you return must be the FULL note as HTML using only these tags: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol>, <li>, and <span class="math" data-tex="...">. Preserve the student's existing formatting exactly — emphasis, colours, checklist items written as <p class="check" data-done="true|false"> with their ticked state, and equations copied through character for character. Your reply text itself is plain text, not HTML.
+The note is HTML. Any revisedNote you return must be the FULL note as HTML using only these tags: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">. Preserve the student's existing formatting exactly — emphasis, colours, checklist items written as <p class="check" data-done="true|false"> with their ticked state, tables with every row keeping the same number of cells, and equations copied through character for character. Your reply text itself is plain text, not HTML.
 
 Respond ONLY as JSON in this exact shape:
 {"reply": "<your message to the student>", "revisedNote": "<the full updated note as HTML, or null if nothing should change>"}

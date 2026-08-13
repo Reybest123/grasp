@@ -8,11 +8,17 @@ import {
   textToHtml,
   isEmptyHtml,
   sanitizeNoteHtml,
+  caretOffset,
+  restoreCaret,
   closestOwnBlock,
   isCaretAtBlockStart,
   detachListItem,
+  setBlockCheck,
   placeCaretAtStart,
+  selectContents,
 } from "@/lib/richText";
+import { NoteHistory, type Step } from "@/lib/history";
+import { buildTable, closestCell, stepCell, tableIsEmpty } from "@/lib/tables";
 import { mathToHtml } from "@/lib/math";
 import { NoteToolbar } from "@/components/workspace/NoteToolbar";
 import { EquationEditor } from "@/components/workspace/EquationEditor";
@@ -21,6 +27,9 @@ import { AlertIcon, CloseIcon, EditIcon, PlusIcon, SparkleIcon } from "@/compone
 
 /** Dismissing the editor tip sticks across sessions. */
 const TIP_KEY = "grasp.hideNoteTip";
+
+/** The editor always holds at least one block, so the toolbar has something to act on. */
+const EMPTY_BODY = "<p><br></p>";
 
 export function NotesTab({
   notes,
@@ -45,10 +54,18 @@ export function NotesTab({
 
   // Highlight-to-explain
   const editorRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const skipPill = useRef(false);
   const [selectedText, setSelectedText] = useState("");
   const [pill, setPill] = useState<{ top: number; left: number } | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [explainMode, setExplainMode] = useState<ExplainMode>("explain");
+
+  // Undo/redo. The stack lives in a ref (it is not render state); `canStep`
+  // mirrors just enough of it to grey the toolbar buttons out.
+  const historyRef = useRef(new NoteHistory());
+  const [canStep, setCanStep] = useState({ undo: false, redo: false });
 
   // Equation editor. `target` is the equation being reopened, if any; otherwise
   // the new one lands back at `range`, the caret we saved before the dialog
@@ -87,26 +104,70 @@ export function NotesTab({
   useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
-    const html = ensureHtml(active?.body ?? "");
+    const html = ensureHtml(active?.body ?? "") || EMPTY_BODY;
     if (el.innerHTML !== html) el.innerHTML = html;
   }, [active?.id, active?.body]);
 
-  /** Push the editor's current HTML into state — used by typing and the toolbar. */
-  const commit = useCallback(() => {
-    if (!active || !editorRef.current) return;
-    updateNote(active.id, { body: editorRef.current.innerHTML, updated: "just now" });
-  }, [active, updateNote]);
+  const syncHistory = useCallback(() => {
+    const h = historyRef.current;
+    setCanStep({ undo: h.canUndo, redo: h.canRedo });
+  }, []);
+
+  // Each note gets its own undo stack, starting from whatever it was saved as.
+  // Deliberately keyed on the note id alone: later edits to the body are steps
+  // within this stack, not a reason to throw it away.
+  useEffect(() => {
+    historyRef.current.reset(ensureHtml(active?.body ?? "") || EMPTY_BODY);
+    syncHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id]);
+
+  /**
+   * Push the editor's current HTML into state and onto the undo stack. Runs of
+   * plain typing coalesce into one undo step; every structural edit gets its own.
+   */
+  const commit = useCallback(
+    (coalesce = false) => {
+      const el = editorRef.current;
+      if (!active || !el) return;
+      const html = el.innerHTML;
+      historyRef.current.record(html, caretOffset(el), coalesce);
+      syncHistory();
+      updateNote(active.id, { body: html, updated: "just now" });
+    },
+    [active, updateNote, syncHistory]
+  );
+
+  /** Records a change made to the note from outside the editor (AI enhance/refine). */
+  const commitHtml = useCallback(
+    (html: string) => {
+      if (!active) return;
+      historyRef.current.record(html, 0);
+      syncHistory();
+      updateNote(active.id, { body: html, updated: "just now" });
+    },
+    [active, updateNote, syncHistory]
+  );
+
+  const applyStep = useCallback(
+    (step: Step | null) => {
+      const el = editorRef.current;
+      if (!step || !el || !active) return;
+      el.innerHTML = step.html;
+      el.focus();
+      restoreCaret(el, step.caret);
+      setPill(null);
+      syncHistory();
+      updateNote(active.id, { body: step.html, updated: "just now" });
+    },
+    [active, updateNote, syncHistory]
+  );
+
+  const undo = useCallback(() => applyStep(historyRef.current.undo()), [applyStep]);
+  const redo = useCallback(() => applyStep(historyRef.current.redo()), [applyStep]);
 
   // The explain thread works on note HTML, so a refine keeps the formatting.
   const noteHtml = useMemo(() => ensureHtml(active?.body ?? ""), [active?.body]);
-
-  const applyRevision = useCallback(
-    (revisedHtml: string) => {
-      if (!active) return;
-      updateNote(active.id, { body: revisedHtml, updated: "just now" });
-    },
-    [active, updateNote]
-  );
 
   /* -------------------------------- equations ------------------------------- */
 
@@ -145,21 +206,63 @@ export function NotesTab({
     commit();
   }
 
-  const updatePill = useCallback(() => {
+  /* --------------------------------- tables --------------------------------- */
+
+  /** Drops a table in after the caret's block, never inside another table. */
+  function insertTable(rows: number, cols: number) {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+
     const sel = window.getSelection();
-    const text = sel?.toString().trim() ?? "";
-    if (!sel || sel.isCollapsed || !text || !editorRef.current) {
+    let anchor = sel?.rangeCount ? closestOwnBlock(el, sel.anchorNode) : null;
+    // Climb to the editor's own child: a cell's block is not a place for a table.
+    while (anchor && anchor.parentElement !== el) anchor = anchor.parentElement;
+
+    const table = buildTable(rows, cols);
+    if (anchor && isEmptyHtml(anchor.outerHTML)) anchor.replaceWith(table);
+    else if (anchor) anchor.after(table);
+    else el.appendChild(table);
+
+    // Always leave a block after the table, or there is no way to type past it.
+    if (!table.nextElementSibling) {
+      const tail = document.createElement("p");
+      tail.appendChild(document.createElement("br"));
+      table.after(tail);
+    }
+
+    const first = table.querySelector<HTMLTableCellElement>("th, td");
+    if (first) placeCaretAtStart(first);
+    commit();
+  }
+
+  /* -------------------------------- selection ------------------------------- */
+
+  const updatePill = useCallback(() => {
+    // Tabbing into a cell selects it to make typing replace the value; that's
+    // navigation, not a highlight, so it must not raise the Explain pill.
+    if (skipPill.current) {
+      skipPill.current = false;
       setPill(null);
       return;
     }
-    if (!editorRef.current.contains(sel.anchorNode)) {
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    const text = sel?.toString().trim() ?? "";
+    if (!el || !sel || sel.isCollapsed || !text) {
+      setPill(null);
+      return;
+    }
+    // Both ends must be in the note — a selection dragged out of it is not one
+    // Grasp can explain.
+    if (!el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) {
       setPill(null);
       return;
     }
     const rect = sel.getRangeAt(0).getBoundingClientRect();
     // Sits above the selection, except on the first line where that would cover
     // the toolbar — then it drops below instead.
-    const editorTop = editorRef.current.getBoundingClientRect().top;
+    const editorTop = el.getBoundingClientRect().top;
     const above = rect.top - 46;
     setSelectedText(text);
     setPill({
@@ -168,11 +271,41 @@ export function NotesTab({
     });
   }, []);
 
+  // A selection can be made by dragging, double-clicking or Shift+arrows, and a
+  // drag often ends outside the editor. Watching the document's own selection
+  // catches all of those; a mouseup bound to the editor missed most of them,
+  // which is what made highlighting feel like it randomly didn't take.
   useEffect(() => {
-    const clear = () => setPill(null);
-    window.addEventListener("scroll", clear, true);
-    return () => window.removeEventListener("scroll", clear, true);
-  }, []);
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (pillRef.current?.contains(target)) return;
+      if (editorRef.current?.contains(target)) dragging.current = true;
+      setPill(null);
+    };
+    const onUp = () => {
+      dragging.current = false;
+      updatePill();
+    };
+    // Mid-drag the selection changes on every mouse move; wait for the release
+    // rather than making the pill chase the cursor.
+    const onSelect = () => {
+      if (!dragging.current) updatePill();
+    };
+    const onScroll = () => {
+      if (pillRef.current) updatePill();
+    };
+
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("selectionchange", onSelect);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("selectionchange", onSelect);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [updatePill]);
 
   function openPanel(mode: ExplainMode) {
     setExplainMode(mode);
@@ -191,7 +324,7 @@ export function NotesTab({
       setEnhanceError(error);
       return;
     }
-    updateNote(active.id, { body: html, updated: "just now" });
+    commitHtml(html);
   }
 
   /** Paste arrives as arbitrary web HTML — strip it to tags the editor owns. */
@@ -209,44 +342,110 @@ export function NotesTab({
   function focusEditorEnd(e: React.MouseEvent) {
     const el = editorRef.current;
     if (!el || el.contains(e.target as Node)) return;
+    // A drag that started in the note and ended out here is a selection, not a
+    // click — collapsing it would throw away what the student just highlighted.
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && el.contains(sel.anchorNode)) return;
+
     el.focus();
     const range = document.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
-    const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
   }
 
+  function handleInput(e: React.FormEvent<HTMLDivElement>) {
+    const type = (e.nativeEvent as InputEvent).inputType ?? "";
+    // Typed and deleted characters collapse into one undo step; anything
+    // structural (a paste, a format command, a line break) gets its own.
+    commit(type.startsWith("insertText") || type.startsWith("deleteContent"));
+  }
+
   /**
-   * Backspace at the very start of a checklist item or bullet detaches it
-   * instead of merging into whatever sits above — the same result as clicking
-   * the checklist/bullet button again, just reachable from the keyboard.
-   * Native contentEditable instead folds the block's text into the previous
-   * one, which is what made bullets "stick together" when deleted.
+   * Keyboard behaviour the browser gets wrong inside this editor.
+   *
+   * Undo/redo drive our own stack (lib/history.ts) because the native one can't
+   * see the hand-rolled DOM edits. Tab and Enter move around a table instead of
+   * escaping the editor or splitting a row. Backspace at the very start of a
+   * checklist item or bullet detaches it — the same result as clicking the
+   * toolbar button again — rather than folding its text into the block above,
+   * which is what made bullets "stick together" when deleted.
    */
   function onEditorKeyDown(e: React.KeyboardEvent) {
-    if (e.key !== "Backspace") return;
     const el = editorRef.current;
+    if (!el) return;
+
+    if (e.metaKey || e.ctrlKey) {
+      const key = e.key.toLowerCase();
+      if (key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (key === "y") {
+        e.preventDefault();
+        redo();
+        return;
+      }
+    }
+
     const sel = window.getSelection();
-    if (!el || !sel || !sel.isCollapsed || !sel.rangeCount) return;
+    if (!sel || !sel.rangeCount) return;
+    const cell = closestCell(el, sel.anchorNode);
+
+    if (cell && e.key === "Tab") {
+      e.preventDefault();
+      const next = stepCell(cell, e.shiftKey ? -1 : 1);
+      if (next) {
+        // Landing on a cell selects what's in it, so typing replaces the value
+        // rather than running into it — the same as Tab in Word and Docs.
+        skipPill.current = true;
+        selectContents(next);
+        commit();
+      }
+      return;
+    }
+
+    if (cell && e.key === "Enter") {
+      // A cell is a single block: Enter adds a line inside it rather than
+      // splitting the row in two, which is what contentEditable would do.
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+      commit();
+      return;
+    }
+
+    if (e.key !== "Backspace" || !sel.isCollapsed) return;
 
     const block = closestOwnBlock(el, sel.anchorNode);
-    if (!block) return;
-    const isCheck = block.classList.contains("check");
-    const isListItem = block.tagName === "LI";
-    if (!isCheck && !isListItem) return;
-    if (!isCaretAtBlockStart(block, sel.getRangeAt(0))) return;
+    if (!block || !isCaretAtBlockStart(block, sel.getRangeAt(0))) return;
 
-    e.preventDefault();
-    if (isCheck) {
-      block.classList.remove("check");
-      block.removeAttribute("data-done");
-    } else {
+    if (block.classList.contains("check")) {
+      e.preventDefault();
+      setBlockCheck(block, false);
+      commit();
+      return;
+    }
+    if (block.tagName === "LI") {
+      e.preventDefault();
       const p = detachListItem(block);
       if (p) placeCaretAtStart(p);
+      commit();
+      return;
     }
-    commit();
+    if (cell) {
+      // Backspace at a cell's edge must not chew through the table's structure.
+      // An emptied table is the one thing it may remove, and it removes it whole.
+      e.preventDefault();
+      const table = cell.closest("table");
+      if (!table || !tableIsEmpty(table)) return;
+      const after = table.nextElementSibling as HTMLElement | null;
+      table.remove();
+      if (after) placeCaretAtStart(after);
+      commit();
+    }
   }
 
   /** Ticking a checklist box (box area only), or reopening a clicked equation. */
@@ -342,7 +541,16 @@ export function NotesTab({
         </div>
 
         <div className="mt-4 border-y border-slate-100 bg-slate-50/60 px-6 py-1.5">
-          <NoteToolbar editorRef={editorRef} onChange={commit} onEquation={openEquation} />
+          <NoteToolbar
+            editorRef={editorRef}
+            onChange={commit}
+            onEquation={openEquation}
+            onTable={insertTable}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={canStep.undo}
+            canRedo={canStep.redo}
+          />
         </div>
 
         {enhanceError && (
@@ -365,10 +573,9 @@ export function NotesTab({
             ref={editorRef}
             contentEditable
             suppressContentEditableWarning
-            onInput={commit}
+            onInput={handleInput}
             onPaste={onPaste}
             onKeyDown={onEditorKeyDown}
-            onMouseUp={updatePill}
             onClick={onEditorClick}
             data-empty={isEmptyHtml(active.body) ? "true" : "false"}
             data-placeholder="Start typing your notes, or record a lecture…"
@@ -397,6 +604,7 @@ export function NotesTab({
           it. Which one is pressed is how the AI is told whether to edit. */}
       {pill && (
         <div
+          ref={pillRef}
           onMouseDown={(e) => e.preventDefault()}
           style={{ top: pill.top, left: pill.left }}
           className="fixed z-40 flex -translate-x-1/2 animate-[fadeIn_120ms_ease-out] overflow-hidden rounded-full bg-ink text-xs font-semibold text-white shadow-lg"
@@ -419,7 +627,7 @@ export function NotesTab({
         selected={selectedText}
         noteHtml={noteHtml}
         context={context}
-        onApplyRevision={applyRevision}
+        onApplyRevision={commitHtml}
       />
 
       <EquationEditor

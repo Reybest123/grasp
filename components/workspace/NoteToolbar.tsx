@@ -2,9 +2,12 @@
 
 // Formatting toolbar for the note editor.
 //
-// Built on document.execCommand. It's deprecated on paper but universally
-// implemented, and it handles selection merging/toggling inside contentEditable
-// far better than anything hand-rolled — the right trade for an MVP editor.
+// Inline formatting (bold, size, colour) runs on document.execCommand. It's
+// deprecated on paper but universally implemented, and it handles selection
+// merging/toggling inside contentEditable far better than anything hand-rolled.
+// Block structure — lists, checklists, tables — does not: see lib/richText.ts
+// for why execCommand's list commands are avoided entirely.
+//
 // Buttons preventDefault on mousedown so the editor keeps its selection.
 
 import { useCallback, useEffect, useState, type ReactNode, type RefObject } from "react";
@@ -14,17 +17,26 @@ import {
   UnderlineIcon,
   ChecklistIcon,
   BulletListIcon,
+  NumberedListIcon,
+  TableIcon,
   EquationIcon,
   LetterIcon,
+  UndoIcon,
+  RedoIcon,
 } from "@/components/icons";
+import { TablePicker } from "@/components/workspace/TablePicker";
 import {
+  blocksInRange,
   closestOwnBlock,
   detachListItem,
-  wrapInList,
+  listKindOf,
   placeCaretAtStart,
+  setBlockCheck,
+  setBlockList,
+  type ListTag,
 } from "@/lib/richText";
 
-/** execCommand fontSize values — 1-7 only, styled precisely in globals.css. */
+/** execCommand fontSize values — 1-7 only, styled precisely in editor.css. */
 const SIZES: { label: string; value: string; icon: string }[] = [
   { label: "Small text", value: "2", icon: "h-3 w-3" },
   { label: "Normal text", value: "3", icon: "h-4 w-4" },
@@ -40,23 +52,31 @@ const COLORS: { label: string; value: string }[] = [
   { label: "Violet", value: "#7c3aed" },
 ];
 
+const OFF = { bold: false, italic: false, underline: false, bullets: false, numbers: false, check: false };
+
 export function NoteToolbar({
   editorRef,
   onChange,
   onEquation,
+  onTable,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: {
   editorRef: RefObject<HTMLDivElement | null>;
   onChange: () => void;
   /** Opens the equation editor — the dialog itself lives in NotesTab, which
    *  also handles reopening an equation the student clicked. */
   onEquation: () => void;
+  onTable: (rows: number, cols: number) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }) {
-  const [active, setActive] = useState({
-    bold: false,
-    italic: false,
-    underline: false,
-    bullets: false,
-  });
+  const [active, setActive] = useState(OFF);
+  const [picking, setPicking] = useState(false);
 
   const inEditor = useCallback(() => {
     const el = editorRef.current;
@@ -65,16 +85,24 @@ export function NoteToolbar({
   }, [editorRef]);
 
   const syncActive = useCallback(() => {
-    if (!inEditor()) return;
+    const el = editorRef.current;
+    if (!el || !inEditor()) return;
+    // Block state is read off the DOM rather than queryCommandState: the lists
+    // here are built by hand, and the checklist is a class the browser has no
+    // command for at all.
+    const block = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
+    const kind = listKindOf(block);
     setActive({
       bold: document.queryCommandState("bold"),
       italic: document.queryCommandState("italic"),
       underline: document.queryCommandState("underline"),
-      bullets: document.queryCommandState("insertUnorderedList"),
+      bullets: kind === "UL",
+      numbers: kind === "OL",
+      check: !!block?.classList.contains("check"),
     });
-  }, [inEditor]);
+  }, [editorRef, inEditor]);
 
-  // Keep B/I/U lit up as the caret moves through already-formatted text.
+  // Keep the buttons lit as the caret moves through already-formatted text.
   useEffect(() => {
     document.addEventListener("selectionchange", syncActive);
     return () => document.removeEventListener("selectionchange", syncActive);
@@ -95,72 +123,50 @@ export function NoteToolbar({
   const cmd = (name: string, value?: string) =>
     run(() => document.execCommand(name, false, value));
 
-  // Turns the caret's block into a checklist item, or back into a plain one.
-  // A checklist item and a bullet are mutually exclusive — never both at once —
-  // so this always steps out of a list first. List entry/exit is done by hand
-  // (detachListItem/wrapInList) rather than via execCommand's own list toggle,
-  // which can leave content floating outside any block or nest a stray <ul>
-  // inside the existing one.
+  /** The blocks the current selection covers — one, or a whole dragged run. */
+  const selectedBlocks = (el: HTMLElement) => {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return [];
+    return blocksInRange(el, sel.getRangeAt(0));
+  };
+
+  // A press applies one decision to the whole selection: if every block it
+  // covers is already this kind of list, the press turns them all off.
+  const toggleList = (tag: ListTag) =>
+    run(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const blocks = selectedBlocks(el);
+      if (!blocks.length) return;
+
+      const allOn = blocks.every((b) => listKindOf(b) === tag);
+      const results = blocks.map((b) => (allOn ? detachListItem(b) : setBlockList(b, tag)));
+      if (blocks.length === 1 && results[0]) placeCaretAtStart(results[0]);
+    });
+
   const toggleCheck = () =>
     run(() => {
       const el = editorRef.current;
       if (!el) return;
+      const blocks = selectedBlocks(el);
+      if (!blocks.length) return;
 
-      const before = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
-      if (before?.tagName === "LI") {
-        const p = detachListItem(before);
-        if (!p) return;
-        p.classList.add("check");
-        p.setAttribute("data-done", "false");
-        placeCaretAtStart(p);
-        return;
-      }
-
-      document.execCommand("formatBlock", false, "p");
-
-      const block = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
-      if (!block || block.tagName === "UL" || block.tagName === "OL") {
-        document.execCommand("insertHTML", false, '<p class="check" data-done="false"><br></p>');
-        return;
-      }
-      if (block.classList.contains("check")) {
-        block.classList.remove("check");
-        block.removeAttribute("data-done");
-      } else {
-        block.classList.add("check");
-        block.setAttribute("data-done", "false");
-      }
-    });
-
-  // Bullets and checklists are mutually exclusive — drop check formatting
-  // before wrapping the block into a list.
-  const toggleBullets = () =>
-    run(() => {
-      const el = editorRef.current;
-      if (!el) return;
-      const block = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
-
-      if (block?.tagName === "LI") {
-        const p = detachListItem(block);
-        if (p) placeCaretAtStart(p);
-        return;
-      }
-      if (!block) {
-        // Selection spans multiple blocks — fall back to the browser's own
-        // (reliable in this direction) multi-block list wrapping.
-        document.execCommand("insertUnorderedList");
-        return;
-      }
-      if (block.classList.contains("check")) {
-        block.classList.remove("check");
-        block.removeAttribute("data-done");
-      }
-      const li = wrapInList(block);
-      if (li) placeCaretAtStart(li);
+      const allOn = blocks.every((b) => b.classList.contains("check"));
+      const results = blocks.map((b) => setBlockCheck(b, !allOn));
+      if (blocks.length === 1) placeCaretAtStart(results[0]);
     });
 
   return (
     <div className="flex flex-wrap items-center gap-1">
+      <Button label="Undo" disabled={!canUndo} onClick={onUndo}>
+        <UndoIcon className="h-4 w-4" />
+      </Button>
+      <Button label="Redo" disabled={!canRedo} onClick={onRedo}>
+        <RedoIcon className="h-4 w-4" />
+      </Button>
+
+      <Divider />
+
       <Button label="Bold" active={active.bold} onClick={() => cmd("bold")}>
         <BoldIcon className="h-4 w-4" />
       </Button>
@@ -181,17 +187,36 @@ export function NoteToolbar({
 
       <Divider />
 
-      <Button label="Bullet points" active={active.bullets} onClick={toggleBullets}>
+      <Button label="Bullet points" active={active.bullets} onClick={() => toggleList("UL")}>
         <BulletListIcon className="h-4 w-4" />
       </Button>
 
-      <Button label="Checklist" onClick={toggleCheck}>
+      <Button label="Numbered list" active={active.numbers} onClick={() => toggleList("OL")}>
+        <NumberedListIcon className="h-4 w-4" />
+      </Button>
+
+      <Button label="Checklist" active={active.check} onClick={toggleCheck}>
         <ChecklistIcon className="h-4 w-4" />
       </Button>
 
       <Button label="Equation" onClick={onEquation}>
         <EquationIcon className="h-4 w-4" />
       </Button>
+
+      <span className="relative">
+        <Button label="Table" active={picking} onClick={() => setPicking((v) => !v)}>
+          <TableIcon className="h-4 w-4" />
+        </Button>
+        {picking && (
+          <TablePicker
+            onClose={() => setPicking(false)}
+            onPick={(rows, cols) => {
+              setPicking(false);
+              onTable(rows, cols);
+            }}
+          />
+        )}
+      </span>
 
       <Divider />
 
@@ -215,11 +240,13 @@ export function NoteToolbar({
 function Button({
   label,
   active = false,
+  disabled = false,
   onClick,
   children,
 }: {
   label: string;
   active?: boolean;
+  disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -228,9 +255,10 @@ function Button({
       title={label}
       aria-label={label}
       aria-pressed={active}
+      disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={`grid h-8 w-8 place-items-center rounded-lg transition ${
+      className={`grid h-8 w-8 place-items-center rounded-lg transition disabled:pointer-events-none disabled:opacity-35 ${
         active ? "bg-brand-100 text-brand-700" : "text-slate-500 hover:bg-slate-100 hover:text-ink"
       }`}
     >
