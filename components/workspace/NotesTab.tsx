@@ -11,6 +11,10 @@ import {
   blockTextStart,
   caretOffset,
   restoreCaret,
+  CARET_MARK,
+  stripCaretMark,
+  DEFAULT_TEXT_COLOR,
+  toHex,
   closestOwnBlock,
   isCaretAtBlockStart,
   detachListItem,
@@ -61,6 +65,10 @@ export function NotesTab({
   const pillRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const skipPill = useRef(false);
+  // Whether a caret-formatting mark (see the "caret mark" section below) is
+  // currently live, so the common case — typing where none was ever armed —
+  // skips its text-node walk entirely rather than paying for it every keystroke.
+  const hasCaretMark = useRef(false);
   const [selectedText, setSelectedText] = useState("");
   const [pill, setPill] = useState<{ top: number; left: number } | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -125,6 +133,10 @@ export function NotesTab({
   useEffect(() => {
     historyRef.current.reset(ensureHtml(active?.body ?? "") || EMPTY_BODY);
     syncHistory();
+    // The DOM is about to be replaced wholesale with the new note's own body,
+    // which never contains one — any mark from the note just left behind is
+    // gone with it, so the flag should not still claim otherwise.
+    hasCaretMark.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.id]);
 
@@ -136,7 +148,11 @@ export function NotesTab({
     (coalesce = false) => {
       const el = editorRef.current;
       if (!active || !el) return;
-      const html = el.innerHTML;
+      // A mark can still be live here — a toolbar press commits before it
+      // re-arms, and a structural key (Enter, Backspace in a list) commits
+      // without going near one — so the strip belongs at the point of
+      // persistence rather than on any single path into it.
+      const html = stripCaretMark(el.innerHTML);
       historyRef.current.record(html, caretOffset(el), coalesce);
       syncHistory();
       updateNote(active.id, { body: html, updated: "just now" });
@@ -321,19 +337,31 @@ export function NotesTab({
     style: React.CSSProperties;
   } | null>(null);
 
+  /** The font-size/line-height pairs editor.css assigns each size tier. */
+  const SIZE_STYLE: Record<string, { fontSize: string; lineHeight: string }> = {
+    "5": { fontSize: "1.32em", lineHeight: "1.45" },
+    "6": { fontSize: "1.7em", lineHeight: "1.5" },
+  };
+
   const measureHint = useCallback(() => {
     const el = editorRef.current;
     const wrap = wrapRef.current;
-    const block = el?.querySelector<HTMLElement>("p, li, td, th") ?? null;
-    if (!el || !wrap || !block) return setHint(null);
+    // Rechecked against the live DOM, not the `blankNote` this closed over —
+    // pressing a toolbar button while the caret happens to sit in an
+    // already-written note calls this too (it also has to place the caret
+    // mark below), and the hint must never show once real text exists
+    // anywhere, not just at the point this callback was created.
+    if (!el || !wrap || !isEmptyHtml(el.innerHTML)) return setHint(null);
+    const block = el.querySelector<HTMLElement>("p, li, td, th");
+    if (!block) return setHint(null);
 
     const spot = blockTextStart(block);
     const frame = wrap.getBoundingClientRect();
-    const style: React.CSSProperties = {};
-
-    const size = document.queryCommandValue("fontSize");
-    if (size === "5") style.fontSize = "1.32em";
-    else if (size === "6") style.fontSize = "1.7em";
+    // Matches editor.css's own rules exactly, including line-height — the
+    // hint used to only borrow font-size, so its line box came out shorter
+    // than the real text's at the larger tiers and the two baselines parted
+    // ways the bigger the size got.
+    const style: React.CSSProperties = { ...SIZE_STYLE[document.queryCommandValue("fontSize")] };
     if (document.queryCommandState("bold")) style.fontWeight = 700;
     if (document.queryCommandState("italic")) style.fontStyle = "italic";
     if (document.queryCommandState("underline")) style.textDecoration = "underline";
@@ -344,7 +372,128 @@ export function NotesTab({
       align: getComputedStyle(block).textAlign,
       style,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ------------------------------- caret mark -------------------------------- */
+
+  /**
+   * Bold/italic/underline/size/colour armed on a collapsed caret change no
+   * markup at all until a character is actually typed — the browser tracks it
+   * as pending "what the next character will look like" state invisibly, so
+   * the blinking caret itself stays whatever size it already was. This plants
+   * an invisible marker carrying the same formatting so the *caret* picks it
+   * up immediately too, the same way it would after typing. Scoped to empty
+   * blocks only — splicing into the middle of already-typed text is a lot
+   * more tree surgery for a case the caret already handles reasonably.
+   */
+  const removeCaretMark = useCallback(() => {
+    const el = editorRef.current;
+    if (!el || !hasCaretMark.current) return;
+    hasCaretMark.current = false;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const text = node as Text;
+      if (!text.data.includes(CARET_MARK)) continue;
+      text.data = text.data.replace(CARET_MARK, "");
+      // Peel back now-empty formatting wrappers (b/i/u/font), stopping at the
+      // block itself — an empty block is a normal state, not debris.
+      // The parent has to be read *before* the text node is detached: once it
+      // is out of the tree its own parentElement is null, which used to leave
+      // the whole peel loop unreachable and an empty <b> behind every time.
+      const parentOfText = text.parentElement;
+      if (text.data === "") text.remove();
+      let parent = parentOfText;
+      while (
+        parent &&
+        parent !== el &&
+        parent.childNodes.length === 0 &&
+        !["P", "LI", "TD", "TH"].includes(parent.tagName)
+      ) {
+        const grandparent = parent.parentElement;
+        parent.remove();
+        parent = grandparent;
+      }
+      return;
+    }
+  }, []);
+
+  const insertCaretMark = useCallback((range: Range, html: string, size: string) => {
+      range.deleteContents();
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+      const frag = document.createDocumentFragment();
+      let outer: Node | null = null;
+      while (temp.firstChild) {
+        outer = temp.firstChild;
+        frag.appendChild(outer);
+      }
+      range.insertNode(frag);
+      if (!outer) return;
+      // The caret lands after the mark character but still inside every
+      // wrapper, so a typed character joins it rather than landing outside
+      // the formatting.
+      let deepest: Node = outer;
+      while (deepest.firstChild) deepest = deepest.firstChild;
+      const r = document.createRange();
+      r.setStart(deepest, (deepest.textContent ?? "").length);
+      r.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(r);
+
+      // Bold/italic/underline/colour are correctly read back from the <b>/
+      // <i>/<u>/<font color> the caret now sits inside — queryCommandState and
+      // queryCommandValue both resolve those from live DOM ancestry. Toggling
+      // them again here would be real harm, not a no-op: execCommand("bold")
+      // with no value FLIPS the state, and a caret already (correctly) read
+      // as bold would end up armed for non-bold text on the very next
+      // keystroke while still visually sitting inside a <b>.
+      //
+      // <font size> is the one exception. queryCommandValue("fontSize") does
+      // not resolve it from ancestry — it falls back to some unrelated
+      // pixel-derived guess — so without reasserting it here, both
+      // queryCommandValue and the toolbar's own active-size indicator would
+      // report nothing armed despite the mark under the caret saying
+      // otherwise.
+      if (size === "5" || size === "6") document.execCommand("fontSize", false, size);
+
+      hasCaretMark.current = true;
+    }, []);
+
+  const syncCaretMark = useCallback(() => {
+    removeCaretMark();
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel || !sel.isCollapsed || !sel.rangeCount || !el.contains(sel.anchorNode)) return;
+
+    const block = closestOwnBlock(el, sel.anchorNode);
+    if (!block || !isEmptyHtml(block.innerHTML)) return;
+
+    const bold = document.queryCommandState("bold");
+    const italic = document.queryCommandState("italic");
+    const underline = document.queryCommandState("underline");
+    const size = document.queryCommandValue("fontSize");
+    const color = toHex(document.queryCommandValue("foreColor") || DEFAULT_TEXT_COLOR);
+    const hasSize = size === "5" || size === "6";
+    const hasColor = color !== DEFAULT_TEXT_COLOR;
+    if (!bold && !italic && !underline && !hasSize && !hasColor) return;
+
+    let html: string = CARET_MARK;
+    if (bold) html = `<b>${html}</b>`;
+    if (italic) html = `<i>${html}</i>`;
+    if (underline) html = `<u>${html}</u>`;
+    if (hasSize) html = `<font size="${size}">${html}</font>`;
+    if (hasColor) html = `<font color="${color}">${html}</font>`;
+
+    insertCaretMark(sel.getRangeAt(0).cloneRange(), html, size);
+  }, [removeCaretMark, insertCaretMark]);
+
+  const onFormat = useCallback(() => {
+    syncCaretMark();
+    measureHint();
+  }, [syncCaretMark, measureHint]);
 
   // Only tracked while the note is actually blank — otherwise every caret move
   // in a written note would re-measure for nothing.
@@ -479,6 +628,7 @@ export function NotesTab({
     const sel = window.getSelection();
     if (sel && !sel.isCollapsed && el.contains(sel.anchorNode)) return;
 
+    removeCaretMark();
     el.focus();
     const range = document.createRange();
     range.selectNodeContents(el);
@@ -489,6 +639,22 @@ export function NotesTab({
 
   function handleInput(e: React.FormEvent<HTMLDivElement>) {
     const type = (e.nativeEvent as InputEvent).inputType ?? "";
+
+    // A real character landed right after the caret mark (still inside its
+    // formatting wrapper) — the mark has done its job, so it comes back out
+    // before this gets saved. caretOffset already skips the mark, so the
+    // offset it reports is where the caret belongs once the mark is gone.
+    // Gated on hasCaretMark so ordinary typing — the overwhelming majority of
+    // input events — never pays for a caret-offset walk it doesn't need.
+    if (type.startsWith("insertText") && hasCaretMark.current) {
+      const el = editorRef.current;
+      if (el) {
+        const offset = caretOffset(el);
+        removeCaretMark();
+        restoreCaret(el, offset);
+      }
+    }
+
     // Typed and deleted characters collapse into one undo step; anything
     // structural (a paste, a format command, a line break) gets its own.
     commit(type.startsWith("insertText") || type.startsWith("deleteContent"));
@@ -504,9 +670,26 @@ export function NotesTab({
    * toolbar button again — rather than folding its text into the block above,
    * which is what made bullets "stick together" when deleted.
    */
+  const NAV_KEYS = new Set([
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+  ]);
+
   function onEditorKeyDown(e: React.KeyboardEvent) {
     const el = editorRef.current;
     if (!el) return;
+
+    // Moving away abandons whatever formatting was armed for the spot the
+    // caret is leaving — cheap no-op when no mark is live. Must not run on a
+    // printable key: that would strip the mark before the character it is
+    // meant to land inside even lands, defeating the whole point of it.
+    if (NAV_KEYS.has(e.key)) removeCaretMark();
 
     // Word and OneNote's own shortcut for "start an equation here".
     if (e.altKey && (e.key === "=" || e.key === "+")) {
@@ -610,6 +793,9 @@ export function NotesTab({
   /** Ticking a checklist box (box area only), or reopening a clicked equation. */
   function onEditorClick(e: React.MouseEvent) {
     const target = e.target as HTMLElement;
+    // Any click is a deliberate repositioning — whatever was armed for the
+    // spot the caret is leaving no longer applies.
+    removeCaretMark();
 
     const math = target.closest?.(".math") as HTMLElement | null;
     if (math) {
@@ -709,7 +895,7 @@ export function NotesTab({
           <NoteToolbar
             editorRef={editorRef}
             onChange={commit}
-            onFormat={measureHint}
+            onFormat={onFormat}
             onEquation={openEquation}
             onTable={insertTable}
             onUndo={undo}
@@ -747,6 +933,7 @@ export function NotesTab({
             onPaste={onPaste}
             onKeyDown={onEditorKeyDown}
             onClick={onEditorClick}
+            onBlur={removeCaretMark}
             className="hl-active editor min-h-full text-[15px] leading-7 text-slate-700 outline-none"
           />
           {hint && (
@@ -765,7 +952,11 @@ export function NotesTab({
                       : undefined,
                 ...hint.style,
               }}
-              className="pointer-events-none absolute whitespace-nowrap leading-7 text-slate-400"
+              // text-[15px] matches .editor's own base size exactly — without
+              // it this inherited whatever size sat above it in the page,
+              // rather than the note's, and only the size tiers' *relative*
+              // em multipliers happened to still apply against that wrong base.
+              className="pointer-events-none absolute whitespace-nowrap text-[15px] leading-7 text-slate-400"
             >
               Start typing your notes…
             </span>

@@ -38,6 +38,8 @@ import {
   setBlockCheck,
   setBlockList,
   alignOf,
+  toHex,
+  DEFAULT_TEXT_COLOR,
   type Align,
   type ListTag,
 } from "@/lib/richText";
@@ -56,8 +58,10 @@ const ALIGNS: { label: string; value: Align; icon: typeof AlignLeftIcon }[] = [
   { label: "Align right", value: "right", icon: AlignRightIcon },
 ];
 
+/** DEFAULT_TEXT_COLOR (lib/richText.ts) is this swatch's own value, shared
+ *  with the caret-mark logic so both agree on what "no colour armed" means. */
 const COLORS: { label: string; value: string }[] = [
-  { label: "Default", value: "#334155" },
+  { label: "Default", value: DEFAULT_TEXT_COLOR },
   { label: "Red", value: "#dc2626" },
   { label: "Amber", value: "#d97706" },
   { label: "Green", value: "#059669" },
@@ -74,18 +78,8 @@ const OFF = {
   check: false,
   size: "3",
   align: "left" as Align,
-  color: COLORS[0].value,
+  color: DEFAULT_TEXT_COLOR,
 };
-
-/** queryCommandValue("foreColor") reports rgb(...) in Chrome; the swatches are hex. */
-function toHex(value: string): string {
-  const rgb = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-  if (!rgb) return value.toLowerCase();
-  return `#${rgb
-    .slice(1, 4)
-    .map((n) => Number(n).toString(16).padStart(2, "0"))
-    .join("")}`;
-}
 
 export function NoteToolbar({
   editorRef,
@@ -142,7 +136,7 @@ export function NoteToolbar({
       align: alignOf(block),
       // Untouched text reports the inherited colour, which is the Default
       // swatch's own value — so one swatch is always lit rather than none.
-      color: toHex(document.queryCommandValue("foreColor") || COLORS[0].value),
+      color: toHex(document.queryCommandValue("foreColor") || DEFAULT_TEXT_COLOR),
     });
   }, [editorRef, inEditor]);
 

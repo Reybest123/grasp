@@ -498,7 +498,10 @@ export function blockTextStart(block: HTMLElement): { left: number; top: number;
  * held across the change. A plain character count into the editor's text
  * survives that, so the caret can be put back where the student left it. */
 
-/** How many characters of the editor's text sit before the caret. */
+/** How many characters of the editor's text sit before the caret. Caret marks
+ *  don't count: they are invisible scaffolding that never reaches the stored
+ *  note (see stripCaretMark), so counting them would put the caret one place
+ *  further along than the text it is being restored into actually goes. */
 export function caretOffset(editorEl: HTMLElement): number {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return 0;
@@ -508,7 +511,53 @@ export function caretOffset(editorEl: HTMLElement): number {
   const probe = document.createRange();
   probe.selectNodeContents(editorEl);
   probe.setEnd(range.endContainer, range.endOffset);
-  return probe.toString().length;
+  return probe.toString().split(CARET_MARK).join("").length;
+}
+
+/* ---------------------------- shared constants ----------------------------- */
+
+/** The "Default" swatch's own value — untouched text reports this colour. */
+export const DEFAULT_TEXT_COLOR = "#334155";
+
+/** queryCommandValue("foreColor") reports rgb(...) in Chrome; swatches are hex. */
+export function toHex(value: string): string {
+  const rgb = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (!rgb) return value.toLowerCase();
+  return `#${rgb
+    .slice(1, 4)
+    .map((n) => Number(n).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+/**
+ * Marks the caret's position inside an empty block so the browser's own caret
+ * immediately renders at whatever size/weight/style the student just armed,
+ * instead of only picking it up once a real character is typed. ZERO WIDTH
+ * NO-BREAK SPACE rather than a zero-width space: JavaScript's `\s` (and so
+ * `isEmptyHtml`'s whitespace strip) already treats U+FEFF as whitespace, so a
+ * block holding only this mark still reads as empty everywhere else in the
+ * editor without any special-casing.
+ */
+export const CARET_MARK = "\uFEFF";
+
+/**
+ * Strips caret marks \u2014 and any inline wrapper left holding nothing but one \u2014
+ * out of a chunk of editor HTML. The mark exists only to style the live caret,
+ * so it must never reach the stored note: `isEmptyHtml` reads U+FEFF as
+ * whitespace, so a note saved with one still *looks* blank while carrying a
+ * `<b></b>` the student can neither see nor delete, and which every later
+ * read (AI enhance, the sanitiser, the next session) has to carry along.
+ * Emptying one wrapper can empty the one outside it, so this runs to fixpoint.
+ */
+export function stripCaretMark(html: string): string {
+  if (!html.includes(CARET_MARK)) return html;
+  let out = html.split(CARET_MARK).join("");
+  let previous: string;
+  do {
+    previous = out;
+    out = out.replace(/<(b|i|u|font)\b[^>]*>\s*<\/\1\s*>/gi, "");
+  } while (out !== previous);
+  return out;
 }
 
 /** Puts the caret back `offset` characters into the editor. */
