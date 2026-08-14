@@ -171,7 +171,9 @@ export function SubjectWorkspace({
             subjectName={subject.name}
           />
         )}
-        {tab === "record" && <RecordTab subjectName={subject.name} onAddNote={addNote} />}
+        {tab === "record" && (
+          <RecordTab subjectName={subject.name} context={context} onAddNote={addNote} />
+        )}
         {tab === "quizzes" && (
           <QuizzesTab subject={subject} notes={subject.notes} context={context} />
         )}

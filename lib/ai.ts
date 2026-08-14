@@ -7,7 +7,7 @@
 
 import { makeSlot } from "@/lib/subjects";
 import type { ClassSlot } from "@/lib/schedule";
-import { sanitizeNoteHtml } from "@/lib/richText";
+import { sanitizeNoteHtml, foldHyphenBullets } from "@/lib/richText";
 
 export type QuizQuestion = {
   question: string;
@@ -28,6 +28,57 @@ async function postJson<T>(path: string, payload: unknown): Promise<T & { error?
   });
   const data = await res.json();
   return res.ok ? data : { ...data, error: data.error ?? "Something went wrong." };
+}
+
+// Audio can't go through postJson: it stringifies to JSON. The Content-Type is
+// deliberately left unset so fetch generates the multipart boundary itself.
+// A dropped connection mid-lecture is plausible enough to catch here rather
+// than let it throw into the recording loop.
+async function postForm<T>(path: string, form: FormData): Promise<T & { error?: string }> {
+  let res: Response;
+  try {
+    res = await fetch(path, { method: "POST", body: form });
+  } catch {
+    return { error: "Grasp could not reach the AI just now. Try again in a moment." } as T & {
+      error: string;
+    };
+  }
+  const data = await res.json().catch(() => ({}));
+  return res.ok ? data : { ...data, error: data.error ?? "Something went wrong." };
+}
+
+// §3.1 Record — one segment of lecture audio through Whisper. A failed segment
+// is not fatal: the tab keeps recording and only those few seconds are lost.
+export async function transcribeSegment(
+  blob: Blob,
+  ext: string
+): Promise<{ text: string; error: string | null }> {
+  const form = new FormData();
+  form.append("audio", blob, `segment.${ext}`);
+  const data = await postForm<{ text: string }>("/api/transcribe", form);
+  if (data.error) return { text: "", error: data.error };
+  return { text: typeof data.text === "string" ? data.text : "", error: null };
+}
+
+// §3.1 Record — the transcript so far, written up as notes. Called again as the
+// lecture goes on, then once more with `final` over the complete transcript.
+// Sanitised here like every other path that ends up in the editor's HTML.
+export async function liveNotes(
+  transcript: string,
+  subjectName: string,
+  context: string,
+  final: boolean
+): Promise<{ html: string; error: string | null }> {
+  const data = await postJson<{ notes: string }>("/api/live-notes", {
+    transcript,
+    subjectName,
+    context,
+    final,
+  });
+  if (data.error) return { html: "", error: data.error };
+  // Sanitise first, then restructure: folding only ever produces <ul>/<li>,
+  // which the sanitiser already allows.
+  return { html: foldHyphenBullets(sanitizeNoteHtml(data.notes)), error: null };
 }
 
 // §2 Onboarding — a vision model reads the timetable screenshot into subjects.

@@ -223,6 +223,72 @@ export function sanitizeNoteHtml(html: string): string {
   return target.innerHTML;
 }
 
+/**
+ * The first text node holding anything, so a leading marker can be cut from
+ * where it actually sits — it is often wrapped, as in `<p><b>- Term:</b> …</p>`.
+ */
+function firstTextNode(node: Node): Text | null {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node as Text;
+    return text.data.trim() ? text : null;
+  }
+  for (const child of Array.from(node.childNodes)) {
+    const found = firstTextNode(child);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Folds runs of paragraphs that fake a bullet with a leading hyphen into a real
+ * `<ul>`.
+ *
+ * The generation prompts ask for `<ul><li>` and explicitly forbid the hyphen,
+ * and the model mostly complies — but it relapses often enough, especially on
+ * the long final pass over a whole lecture, that the note the student keeps
+ * cannot depend on it holding. Doing it deterministically here means a run of
+ * bullets renders as bullets every time rather than most of the time.
+ */
+export function foldHyphenBullets(html: string): string {
+  if (!html || typeof document === "undefined") return html;
+
+  const doc = new DOMParser().parseFromString("<body></body>", "text/html");
+  const root = doc.createElement("div");
+  root.innerHTML = html;
+
+  const marker = /^\s*[-–—•*]\s+/;
+  const faked = (el: Element | null): boolean =>
+    !!el && el.tagName === "P" && marker.test(el.textContent ?? "");
+
+  let node = root.firstElementChild;
+  while (node) {
+    if (!faked(node)) {
+      node = node.nextElementSibling;
+      continue;
+    }
+
+    const list = doc.createElement("ul");
+    node.before(list);
+
+    // Consume the whole run, so consecutive fake bullets become one list
+    // rather than a string of one-item lists.
+    let run: Element | null = node;
+    while (faked(run)) {
+      const next: Element | null = run!.nextElementSibling;
+      const li = doc.createElement("li");
+      while (run!.firstChild) li.appendChild(run!.firstChild);
+      const first = firstTextNode(li);
+      if (first) first.data = first.data.replace(marker, "");
+      list.appendChild(li);
+      run!.remove();
+      run = next;
+    }
+    node = list.nextElementSibling;
+  }
+
+  return root.innerHTML;
+}
+
 /** True when the editor holds nothing but empty blocks — drives the placeholder. */
 export function isEmptyHtml(html: string): boolean {
   if (!html) return true;

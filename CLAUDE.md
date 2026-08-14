@@ -176,7 +176,12 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - The editor card is a flex column: the writing area absorbs extra height from a long note list (click anywhere in it to keep typing), and the "select any text to explain it" tip is pinned to the bottom and **dismissible** (`grasp.hideNoteTip`).
 - New notes start with a blank title showing an "Untitled note" placeholder, so there is nothing to delete before typing a real one.
 - Subject workspace tabs: **Notes / Record / Quizzes / Resource Bank** — each takes an equal quarter of the width so the row spans the full workspace
-- **Record** tab: live note-taking (notes stream in while "recording"), then name-and-save into Notes. Transcription itself is still simulated — real Whisper capture not yet wired.
+- **Record** tab: real microphone capture, real Whisper transcription, notes drafted live while the lecture runs, then name-and-save into Notes. `/api/transcribe` (audio in, words out) and `/api/live-notes` (transcript in, note HTML out) sit behind `lib/ai.ts`'s `transcribeSegment`/`liveNotes`. Audio is never stored (§5): it goes straight through the route to the provider and the buffer is dropped when the request ends — nothing is written to disk and no blob is persisted.
+- **The recorder restarts itself on an interval rather than streaming** (`lib/recorder.ts`). `MediaRecorder` produces a *stream*, not a series of files: only the first chunk carries the container header, so chunk N on its own will not decode and Whisper rejects it. Re-sending the whole recording each time would make cost grow with the square of the lecture, and hand-reassembling headers is fragile and differs per container — so the recorder is stopped and restarted every 20s, which makes each segment a complete valid file. The `MediaStream` stays open across restarts, so the student is only asked for the microphone once.
+- **Two things are dropped before they are ever sent.** A segment shorter than 1s: Whisper rejects anything under 0.1s outright (`audio_too_short`), and `stop()` flushes the segment in progress, so stopping shortly after a boundary used to throw a transcription error at the exact moment the student finished — only that trailing flush can ever be short, and a sub-second tail is the sound of someone reaching for the button. And a segment whose peak level never crosses `SILENCE_PEAK`: Whisper *hallucinates* on silence (two seconds of digital silence comes back as "you"), so a quiet spell would inject words the lecturer never said into the notes and pay per request to do it. The level is read from an `AnalyserNode` tapped off the same stream, so nothing has to be decoded back out; if metering is unavailable it sends everything rather than risk dropping speech.
+- **Segments are transcribed through a promise chain, never in parallel** — two requests in flight can resolve out of order and stitch the lecture together backwards. Drafts run inside the same chain, so `stop()` drains it and then makes one final pass over the complete transcript.
+- **`foldHyphenBullets` (in `lib/richText.ts`) folds faked bullets into real ones.** The generation prompts ask for `<ul><li>` and forbid a leading hyphen, and the model mostly complies, but it relapses often enough — especially on the long final pass — that the note the student keeps cannot depend on it. Deterministic, so it cannot relapse. Runs after the sanitiser, since folding only ever produces already-allowed tags.
+- **Recording is capped at 5 minutes**, matching the free plan the tab already advertises and bounding what one recording can cost. The weekly count can't be enforced until there are accounts.
 - **Highlight-to-explain, now two modes.** Selecting text pops two pills, **Explain** and **Refine**, and the open panel has the same toggle so the student can switch mid-thread without losing context. Explain answers questions about the passage and never touches the note (`revisedNote` always comes back `null` unless the student explicitly asks for a change). Refine rewrites the highlighted passage in place — fact-checks, sharpens wording, expands where thin — and leaves the rest of the note untouched, replying with a one-line summary of what changed. Both modes are one thread (`/api/explain-chat`, `mode: "explain" | "refine"` in the request), and revisions now round-trip full note **HTML** (`lib/ai.ts`'s `explainChat` takes/returns HTML, not plain text) so a refine can no longer flatten bold, colours, checklists, bullets or equations. Real GPT-4o-mini.
 - **Quiz mode**: topic selection + focus instructions → questions grounded in the subject's own notes (real GPT-4o-mini via `/api/quiz`)
 - Resource Bank UI (display only; upload not wired yet)
@@ -184,8 +189,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 
 **Still mocked / not yet built:**
 - Timetable screenshot extraction (needs image upload + vision model)
-- Lecture recording → Whisper transcription
-- Auth / accounts, Postgres persistence (subjects *and* notes currently persist to localStorage only), Resource Bank file upload, usage-limit enforcement
+- Auth / accounts, Postgres persistence (subjects *and* notes currently persist to localStorage only), Resource Bank file upload, weekly usage-limit enforcement
+- Switching workspace tabs unmounts `RecordTab` and so ends a recording in progress; the tab warns about this rather than surviving it. Fixing it properly means lifting the recorder above the tab router.
 
 **Design conventions:**
 
@@ -195,7 +200,7 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - Subjects are represented by a monogram (first letter) on a coloured gradient tile.
 - Subject colours come from `lib/subjectColors.ts` and are auto-assigned on creation, then editable per subject.
 
-**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*` through one shared `postJson` helper. Every route (`/api/enhance`, `/api/explain-chat`, `/api/quiz`) calls OpenAI through the shared `chatCompletion()` in `lib/openai.ts` rather than hitting `fetch` directly. That helper is the only place a provider failure is logged (`console.error`, full detail, server-side only) — the client always gets back the same generic `"Grasp could not reach the AI just now. Try again in a moment."` string. **Never let a raw OpenAI error object reach `NextResponse.json`** — its `message` field echoes back a masked version of the API key, and a route that returns it verbatim will display that in the browser. The `OPENAI_API_KEY` env var itself is only ever read server-side inside `lib/openai.ts`.
+**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*` through one shared `postJson` helper — plus `postForm` for `/api/transcribe`, since audio can't be stringified into JSON and `fetch` has to set the multipart boundary itself. There is **no `openai` npm package** in this project; `package.json` is next/react/react-dom only, and every provider call is a raw `fetch` inside `lib/openai.ts`. Text routes (`/api/enhance`, `/api/generate`, `/api/explain-chat`, `/api/quiz`, `/api/live-notes`) go through `chatCompletion()`; `/api/transcribe` goes through `transcribeAudio()`, which is multipart and so can't share that path but masks failures identically. That helper is the only place a provider failure is logged (`console.error`, full detail, server-side only) — the client always gets back the same generic `"Grasp could not reach the AI just now. Try again in a moment."` string. **Never let a raw OpenAI error object reach `NextResponse.json`** — its `message` field echoes back a masked version of the API key, and a route that returns it verbatim will display that in the browser. The `OPENAI_API_KEY` env var itself is only ever read server-side inside `lib/openai.ts`.
 
 **Local `OPENAI_API_KEY` footgun (Windows):** if AI calls fail with `invalid_api_key` even though `.env.local` has a correct, active key, check for a stale `OPENAI_API_KEY` set as a **Windows user-level environment variable** (`[Environment]::GetEnvironmentVariable("OPENAI_API_KEY","User")` in PowerShell) — Next.js's dotenv loader does not override a var that's already present in `process.env`, so an old OS-level key silently wins over `.env.local` with no warning. If you clear it, note that the fix only takes effect for **brand-new process trees**: an already-running shell (and anything it spawns, including a backgrounded `npm run dev`) keeps the value it inherited at its own launch. `unset OPENAI_API_KEY` and the `npm run dev` restart must happen in the *same* shell invocation, chained together, or the unset silently doesn't reach the server process.
 
@@ -203,7 +208,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 
 ```
 app/            routes — page.tsx (landing), home/, onboarding/, legal/,
-                api/ (enhance, generate, explain-chat, quiz)
+                api/ (enhance, generate, explain-chat, quiz,
+                      transcribe, live-notes)
 components/     icons.tsx, Logo, ConfirmDialog, SubjectCard, SubjectEditor
 components/workspace/
                 SubjectWorkspace (shell + tab routing + note CRUD)
@@ -213,6 +219,7 @@ lib/            subjects (model + seed), subjectsStore, schedule, subjectColors,
                 richText (HTML <-> text + sanitiser + block helpers),
                 tables (table build/navigate/edit + cell rectangles),
                 history (undo/redo stack),
+                recorder (segmented mic capture),
                 math (equation renderer),
                 ai (API client), openai (server-side OpenAI helper)
 styles/         editor.css — contentEditable internals, loaded from app/layout.tsx

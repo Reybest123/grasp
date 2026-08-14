@@ -46,6 +46,54 @@ export async function chatCompletion(body: Record<string, unknown>): Promise<Cha
   return { ok: true, content: data.choices?.[0]?.message?.content ?? "" };
 }
 
+export type TranscriptResult =
+  | { ok: true; text: string }
+  | { ok: false; response: NextResponse };
+
+/**
+ * Whisper (§5). Multipart rather than JSON, so it can't share chatCompletion's
+ * path, but it fails the same way: the provider's body is logged here and the
+ * browser only ever sees UNAVAILABLE.
+ *
+ * The audio is passed straight through to the provider and never written
+ * anywhere — no file is kept once the request ends.
+ */
+export async function transcribeAudio(file: Blob, filename: string): Promise<TranscriptResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error("[grasp] OPENAI_API_KEY is not set");
+    return fail(503);
+  }
+
+  const form = new FormData();
+  form.append("file", file, filename);
+  form.append("model", "whisper-1");
+  // Plain text rather than JSON: we only ever want the words, and it keeps the
+  // response small enough to matter when a segment lands every few seconds.
+  form.append("response_format", "text");
+
+  let res: Response;
+  try {
+    // Deliberately no Content-Type header — fetch has to set it itself so the
+    // multipart boundary matches the body it generates.
+    res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+  } catch (err) {
+    console.error("[grasp] Whisper request failed:", err);
+    return fail(502);
+  }
+
+  if (!res.ok) {
+    console.error(`[grasp] Whisper ${res.status}:`, await res.text());
+    return fail(502);
+  }
+
+  return { ok: true, text: (await res.text()).trim() };
+}
+
 /** Models fence HTML and JSON even when told not to. */
 export function stripFence(text: string): string {
   return text.replace(/^```[a-z]*\n?|\n?```$/g, "").trim();
