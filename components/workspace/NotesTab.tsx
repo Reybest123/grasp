@@ -23,12 +23,34 @@ import {
   selectContents,
 } from "@/lib/richText";
 import { NoteHistory, type Step } from "@/lib/history";
-import { buildTable, closestCell, stepCell, tableIsEmpty } from "@/lib/tables";
+import {
+  buildTable,
+  closestCell,
+  stepCell,
+  tableIsEmpty,
+  cellPosition,
+  cellsBetween,
+  clearCells,
+  insertRow,
+  insertColumn,
+  deleteRows,
+  deleteColumns,
+  type Cell,
+} from "@/lib/tables";
 import { mathToHtml } from "@/lib/math";
 import { NoteToolbar } from "@/components/workspace/NoteToolbar";
 import { EquationEditor } from "@/components/workspace/EquationEditor";
 import { ExplainPanel } from "@/components/workspace/ExplainPanel";
-import { AlertIcon, CloseIcon, EditIcon, PlusIcon, SparkleIcon } from "@/components/icons";
+import { TableMenu, type TableAction } from "@/components/workspace/TableMenu";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import {
+  AlertIcon,
+  CloseIcon,
+  EditIcon,
+  PlusIcon,
+  SparkleIcon,
+  TrashIcon,
+} from "@/components/icons";
 
 /** Dismissing the editor tip sticks across sessions. */
 const TIP_KEY = "grasp.hideNoteTip";
@@ -42,6 +64,7 @@ export function NotesTab({
   setActiveId,
   updateNote,
   addNote,
+  deleteNote,
   context,
   subjectName,
 }: {
@@ -50,6 +73,7 @@ export function NotesTab({
   setActiveId: (id: string) => void;
   updateNote: (id: string, patch: Partial<Note>) => void;
   addNote: (title: string, body: string) => string;
+  deleteNote: (id: string) => void;
   context: string;
   subjectName: string;
 }) {
@@ -58,6 +82,9 @@ export function NotesTab({
   const [enhancing, setEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [tipHidden, setTipHidden] = useState(false);
+  // Deleting a note is confirmed first: it is the one action here that
+  // destroys writing outright, and there is no undo across notes.
+  const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
 
   // Highlight-to-explain
   const editorRef = useRef<HTMLDivElement>(null);
@@ -115,7 +142,14 @@ export function NotesTab({
   // Keep the contentEditable in sync when the note changes programmatically
   // (switching notes, AI enhance, AI note revision). Typing doesn't trigger a
   // rewrite because innerHTML already equals the stored body.
-  useEffect(() => {
+  //
+  // A layout effect, and declared above the placeholder's, because effects run
+  // in declaration order and the placeholder measures the first block to decide
+  // where the first character will land. As a passive effect this ran *after*
+  // that measurement, so on the frame a blank editor first mounts — opening the
+  // tab, or adding the first note back after deleting them all — there was no
+  // <p> to measure yet and the placeholder silently didn't render.
+  useLayoutEffect(() => {
     const el = editorRef.current;
     if (!el) return;
     const html = ensureHtml(active?.body ?? "") || EMPTY_BODY;
@@ -135,8 +169,12 @@ export function NotesTab({
     syncHistory();
     // The DOM is about to be replaced wholesale with the new note's own body,
     // which never contains one — any mark from the note just left behind is
-    // gone with it, so the flag should not still claim otherwise.
+    // gone with it, so the flag should not still claim otherwise. A cell
+    // selection points at nodes from that same outgoing DOM, so it goes too.
     hasCaretMark.current = false;
+    dragAnchor.current = null;
+    setCellSel(null);
+    setMenu(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.id]);
 
@@ -179,6 +217,9 @@ export function NotesTab({
       el.focus();
       restoreCaret(el, step.caret);
       setPill(null);
+      // The cells the selection pointed at were just replaced wholesale.
+      dragAnchor.current = null;
+      setCellSel(null);
       syncHistory();
       updateNote(active.id, { body: step.html, updated: "just now" });
     },
@@ -518,6 +559,12 @@ export function NotesTab({
       setPill(null);
       return;
     }
+    // A block of cells is selected, so the native range underneath it spans a
+    // ragged document-order run the student never asked to explain.
+    if (cellSelRef.current) {
+      setPill(null);
+      return;
+    }
     const el = editorRef.current;
     const sel = window.getSelection();
     const text = sel?.toString().trim() ?? "";
@@ -583,6 +630,198 @@ export function NotesTab({
     setExplainMode(mode);
     setPanelOpen(true);
     setPill(null);
+  }
+
+  /* ----------------------------- cell selection ------------------------------ */
+
+  /**
+   * Selecting inside a table is a block, not a run.
+   *
+   * A native Range spans everything in document order between its ends, so
+   * dragging up a column swept in the whole rows either side of it — the table
+   * behaved like one flat sequence of cells. Dragging across cells is tracked
+   * here instead and resolved to the rectangle the two cells span
+   * (`cellsBetween`), which is what every table operation below acts on.
+   *
+   * The highlight is one overlay rectangle measured over those cells rather
+   * than a class on the cells themselves: `commit` saves the editor's own HTML,
+   * so anything written into the cells to show selection would be saved with
+   * the note. The native range still exists underneath (the caret has to live
+   * somewhere), so `.editor.cells` suppresses its paint — otherwise the ragged
+   * document-order run would show through the overlay.
+   */
+  const [cellSel, setCellSel] = useState<{ anchor: Cell; focus: Cell } | null>(null);
+  const [cellBox, setCellBox] = useState<React.CSSProperties | null>(null);
+  const dragAnchor = useRef<Cell | null>(null);
+  // Read by handlers that run outside React's render, where the state variable
+  // would still be the value captured when the handler was created.
+  const cellSelRef = useRef<typeof cellSel>(null);
+  cellSelRef.current = cellSel;
+
+  /** The cells the current block selection covers, in reading order. */
+  const selectedCells = useCallback(
+    () => (cellSel ? cellsBetween(cellSel.anchor, cellSel.focus) : []),
+    [cellSel]
+  );
+
+  function confirmDelete() {
+    if (pendingDelete) deleteNote(pendingDelete.id);
+    setPendingDelete(null);
+  }
+
+  const clearCellSel = useCallback(() => {
+    dragAnchor.current = null;
+    // The native range underneath a block selection spans the ragged
+    // document-order run the block was standing in for. Dropping the block
+    // un-suppresses that range's paint, so leaving it behind would replace a
+    // clean rectangle with a highlight the student never made.
+    if (cellSelRef.current) {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) sel.collapseToStart();
+    }
+    setCellSel(null);
+  }, []);
+
+  // Measured after layout so the rectangle matches where the cells actually
+  // ended up, and re-measured on resize since the table is width: 100%.
+  useLayoutEffect(() => {
+    const el = editorRef.current;
+    const wrap = wrapRef.current;
+
+    function measure() {
+      const cells = cellSel ? cellsBetween(cellSel.anchor, cellSel.focus) : [];
+      // A single cell is a normal text selection, not a block one — leave it to
+      // the browser so selecting a few words inside one cell still works.
+      if (!el || !wrap || cells.length < 2) {
+        el?.classList.remove("cells");
+        setCellBox(null);
+        return;
+      }
+      const frame = wrap.getBoundingClientRect();
+      const rects = cells.map((c) => c.getBoundingClientRect());
+      const top = Math.min(...rects.map((r) => r.top));
+      const left = Math.min(...rects.map((r) => r.left));
+      const right = Math.max(...rects.map((r) => r.right));
+      const bottom = Math.max(...rects.map((r) => r.bottom));
+      el.classList.add("cells");
+      setCellBox({
+        top: top - frame.top,
+        left: left - frame.left,
+        width: right - left,
+        height: bottom - top,
+      });
+    }
+
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [cellSel]);
+
+  // A drag that starts in a cell and crosses into another is a block selection.
+  // Tracked on the document because a drag routinely ends outside the editor.
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      const anchor = dragAnchor.current;
+      const el = editorRef.current;
+      if (!anchor || !el) return;
+      const over = closestCell(el, document.elementFromPoint(e.clientX, e.clientY));
+      if (!over || over.closest("table") !== anchor.closest("table")) return;
+      // Back inside the cell it started in: hand the selection back to the
+      // browser so a drag within one cell selects text the way it always did.
+      setCellSel(over === anchor ? null : { anchor, focus: over });
+    }
+    function onUp() {
+      dragAnchor.current = null;
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+  }, []);
+
+  function onEditorPointerDown(e: React.PointerEvent) {
+    const el = editorRef.current;
+    if (!el || e.button !== 0) return;
+    const cell = closestCell(el, e.target as Node);
+    // Shift+click extends an existing block selection, matching how Shift+click
+    // extends a text selection everywhere else.
+    if (cell && e.shiftKey && cellSel) {
+      e.preventDefault();
+      setCellSel({ anchor: cellSel.anchor, focus: cell });
+      return;
+    }
+    dragAnchor.current = cell;
+    if (cellSel) setCellSel(null);
+  }
+
+  /* ---------------------------- table operations ----------------------------- */
+
+  const [menu, setMenu] = useState<{ x: number; y: number; cell: Cell } | null>(null);
+
+  /** How many rows and columns the menu's labels should name — the block
+   *  selection's span when there is one, otherwise the single clicked cell. */
+  const menuSpan = useMemo(() => {
+    const cells = cellSel ? cellsBetween(cellSel.anchor, cellSel.focus) : [];
+    const spots = cells.map(cellPosition).filter(Boolean) as { row: number; col: number }[];
+    if (spots.length < 2) return { rows: 1, cols: 1 };
+    return {
+      rows: new Set(spots.map((p) => p.row)).size,
+      cols: new Set(spots.map((p) => p.col)).size,
+    };
+  }, [cellSel]);
+
+  function onEditorContextMenu(e: React.MouseEvent) {
+    const el = editorRef.current;
+    if (!el) return;
+    const cell = closestCell(el, e.target as Node);
+    if (!cell) return;
+    e.preventDefault();
+    // Right-clicking outside the current block selection moves to that cell,
+    // the way it does in a file list; inside it, the selection is kept.
+    if (!selectedCells().includes(cell)) clearCellSel();
+    setMenu({ x: e.clientX, y: e.clientY, cell });
+  }
+
+  function runTableAction(action: TableAction) {
+    const cell = menu?.cell;
+    setMenu(null);
+    const table = cell?.closest("table") as HTMLTableElement | null;
+    if (!cell || !table) return;
+
+    // Operations span the whole block selection when there is one, so
+    // selecting three rows and choosing "Delete rows" removes all three.
+    const cells = selectedCells();
+    const block = cells.length ? cells : [cell];
+    const spots = block.map(cellPosition).filter(Boolean) as { row: number; col: number }[];
+    if (!spots.length) return;
+    const rows = spots.map((p) => p.row);
+    const cols = spots.map((p) => p.col);
+    const [r0, r1] = [Math.min(...rows), Math.max(...rows)];
+    const [c0, c1] = [Math.min(...cols), Math.max(...cols)];
+
+    const after = table.nextElementSibling as HTMLElement | null;
+    let survives = true;
+
+    if (action === "row-above") insertRow(table, r0, "above");
+    else if (action === "row-below") insertRow(table, r1, "below");
+    else if (action === "col-left") insertColumn(table, c0, "left");
+    else if (action === "col-right") insertColumn(table, c1, "right");
+    else if (action === "clear") clearCells(block);
+    else if (action === "delete-rows") survives = deleteRows(table, r0, r1);
+    else if (action === "delete-cols") survives = deleteColumns(table, c0, c1);
+    else if (action === "delete-table") survives = false;
+
+    // Taking out every row or column leaves a table that renders as nothing but
+    // is still in the note, so it goes whole instead.
+    if (!survives) {
+      table.remove();
+      if (after) placeCaretAtStart(after);
+    }
+    // Every op above can replace or remove the nodes the selection points at.
+    clearCellSel();
+    commit();
   }
 
   /**
@@ -690,6 +929,34 @@ export function NotesTab({
     // printable key: that would strip the mark before the character it is
     // meant to land inside even lands, defeating the whole point of it.
     if (NAV_KEYS.has(e.key)) removeCaretMark();
+
+    // Escape closes the table menu before it deselects anything, the same way
+    // it dismisses the confirm dialog before the panel underneath it.
+    if (e.key === "Escape" && menu) {
+      e.preventDefault();
+      setMenu(null);
+      return;
+    }
+
+    // A block of cells is selected: the keys that act on a selection act on all
+    // of them, and anything else drops back to the ordinary caret in one cell.
+    const cellBlock = selectedCells();
+    if (cellBlock.length > 1) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        clearCellSel();
+        return;
+      }
+      if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        clearCells(cellBlock);
+        placeCaretAtStart(cellBlock[0]);
+        clearCellSel();
+        commit();
+        return;
+      }
+      if (!e.metaKey && !e.ctrlKey && !NAV_KEYS.has(e.key)) clearCellSel();
+    }
 
     // Word and OneNote's own shortcut for "start an equation here".
     if (e.altKey && (e.key === "=" || e.key === "+")) {
@@ -842,17 +1109,30 @@ export function NotesTab({
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>
         <ul className="space-y-1">
           {notes.map((n) => (
-            <li key={n.id}>
+            // The delete button is a sibling of the note button, not nested in
+            // it — a button inside a button is invalid and only one of them
+            // would ever receive the click.
+            <li key={n.id} className="group relative">
               <button
                 onClick={() => setActiveId(n.id)}
-                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
+                className={`w-full rounded-xl py-2 pl-3 pr-9 text-left text-sm transition ${
                   n.id === active.id
                     ? "bg-brand-50 font-semibold text-brand-700"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                {n.title || "Untitled note"}
+                <span className="block truncate">{n.title || "Untitled note"}</span>
                 <span className="block text-xs font-normal text-slate-400">{n.updated}</span>
+              </button>
+              <button
+                onClick={() => setPendingDelete(n)}
+                title="Delete note"
+                aria-label={`Delete ${n.title || "Untitled note"}`}
+                // Hidden until the row is hovered so the list stays calm, but
+                // focus-visible brings it back for keyboard users.
+                className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-lg text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100"
+              >
+                <TrashIcon className="h-4 w-4" />
               </button>
             </li>
           ))}
@@ -933,9 +1213,21 @@ export function NotesTab({
             onPaste={onPaste}
             onKeyDown={onEditorKeyDown}
             onClick={onEditorClick}
+            onPointerDown={onEditorPointerDown}
+            onContextMenu={onEditorContextMenu}
             onBlur={removeCaretMark}
             className="hl-active editor min-h-full text-[15px] leading-7 text-slate-700 outline-none"
           />
+          {/* The cell-block highlight. One rectangle over the selected cells,
+              drawn above the text the way a selection is, so nothing about it
+              touches the note's own HTML. */}
+          {cellBox && (
+            <div
+              aria-hidden
+              style={cellBox}
+              className="pointer-events-none absolute rounded-[2px] bg-brand-500/25 ring-1 ring-brand-500/50"
+            />
+          )}
           {hint && (
             <span
               aria-hidden
@@ -1016,6 +1308,26 @@ export function NotesTab({
         anchor={equation?.anchor ?? null}
         onClose={() => setEquation(null)}
         onInsert={insertEquation}
+      />
+
+      {menu && (
+        <TableMenu
+          x={menu.x}
+          y={menu.y}
+          rows={menuSpan.rows}
+          cols={menuSpan.cols}
+          onAction={runTableAction}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete this note?"
+        body={`"${pendingDelete?.title || "Untitled note"}" and everything in it will be gone for good.`}
+        confirmLabel="Delete note"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
       />
     </div>
   );

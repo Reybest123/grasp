@@ -55,6 +55,21 @@ export function SubjectWorkspace({
     [subject.id, subject.notes, updateSubject]
   );
 
+  const deleteNote = useCallback(
+    (id: string) => {
+      const index = subject.notes.findIndex((n) => n.id === id);
+      const notes = subject.notes.filter((n) => n.id !== id);
+      updateSubject(subject.id, { notes });
+      // Only move the selection if the note being deleted was the one open —
+      // deleting from further down the list should leave the editor alone.
+      // The neighbour below takes its place, or the one above when it was last.
+      setActiveId((current) =>
+        current === id ? (notes[index] ?? notes[index - 1])?.id : current
+      );
+    },
+    [subject.id, subject.notes, updateSubject]
+  );
+
   const addNote = useCallback(
     (title: string, body: string) => {
       const id = "n" + Date.now();
@@ -151,6 +166,7 @@ export function SubjectWorkspace({
             setActiveId={setActiveId}
             updateNote={updateNote}
             addNote={addNote}
+            deleteNote={deleteNote}
             context={context}
             subjectName={subject.name}
           />

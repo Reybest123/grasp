@@ -200,6 +200,26 @@
   color: #0f1222;
 }
 
+/* A cell-block selection is drawn as one overlay rectangle over the cells
+   (NotesTab measures it), not by painting the cells themselves — the note's
+   own HTML is what gets saved, so the selection must leave no trace in it.
+   While that overlay is up the native range still exists, and would otherwise
+   paint the ragged document-order run underneath it, so its paint is
+   suppressed and the overlay is the only highlight on screen.
+
+   Suppression covers the whole editor, not just the table: the native focus
+   node follows the pointer, so dragging below the last row keeps extending the
+   range into the paragraphs underneath, and only the table's own paint being
+   hidden would leave those lit up. */
+.editor.cells::selection,
+.editor.cells ::selection {
+  background: transparent;
+}
+
+.editor.cells {
+  caret-color: transparent;
+}
+
 /* ---------------------------------- math ---------------------------------- */
 /* Built by lib/math.ts from a LaTeX-lite expression; the source stays on
    data-tex so the equation can be reopened and edited. */
