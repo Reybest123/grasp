@@ -19,6 +19,7 @@ import { textToHtml } from "@/lib/richText";
 import { transcribeSegment, liveNotes } from "@/lib/ai";
 import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/lib/recorder";
 import { useSubjects } from "@/lib/subjectsStore";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 // How much audio goes to Whisper at a time. Short enough that the notes feel
 // live, long enough that the model has real context to work with and the
@@ -250,9 +251,66 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // The one exit that genuinely still ends a recording. A page unload cannot be
-  // intercepted with our own dialog — browsers only offer their own — so this
-  // is the right tool here rather than a fallback.
+  // Browser Back/Forward.
+  //
+  // Measured, not assumed: pressing Back on /home fires `popstate`, changes the
+  // URL to "/", and keeps the same document — it is a client-side route change,
+  // so `beforeunload` never fires and the provider unmounts with no warning of
+  // any kind. Next's App Router exposes no way to cancel a route change either.
+  //
+  // So own a history entry for as long as the recording lasts. Cloning the
+  // current state keeps Next's own routing internals intact on the entry, and
+  // pushing at the *same* URL means the student's Back pops to an identical
+  // URL — the router has no route change to make, /home stays mounted, and all
+  // we get is a popstate to intercept. Re-push it and ask.
+  const [leaving, setLeaving] = useState(false);
+  const guardRef = useRef(false); // do we currently own a pushed entry?
+  const bypassRef = useRef(false); // suppress the handler during our own history calls
+  const active = phase !== "idle";
+
+  useEffect(() => {
+    if (!active) return;
+
+    window.history.pushState(window.history.state, "");
+    guardRef.current = true;
+
+    const onPop = () => {
+      if (bypassRef.current) {
+        bypassRef.current = false;
+        return;
+      }
+      // Re-take the entry the student just popped, so the app stays put.
+      window.history.pushState(window.history.state, "");
+      setLeaving(true);
+    };
+
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      // Give the entry back when the recording ends normally, or Back would
+      // need two presses afterwards to get anywhere.
+      if (guardRef.current) {
+        guardRef.current = false;
+        bypassRef.current = true;
+        window.history.back();
+      }
+    };
+  }, [active]);
+
+  // Confirmed: drop the recording and make the Back actually happen. We are two
+  // entries deep (the original /home, plus the one re-pushed in onPop), so -2
+  // lands where the student was trying to go.
+  const confirmLeave = useCallback(() => {
+    setLeaving(false);
+    guardRef.current = false; // the effect cleanup must not also pop
+    bypassRef.current = true;
+    discard();
+    window.history.go(-2);
+  }, [discard]);
+
+  // A real page unload — reload, closing the tab, or typing a new URL. It
+  // cannot be intercepted with our own dialog; browsers only offer their own,
+  // so this is the correct tool here rather than a fallback.
   useEffect(() => {
     if (phase === "idle") return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -284,6 +342,20 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+
+      <ConfirmDialog
+        open={leaving}
+        title={phase === "recording" ? "Leave and end this recording?" : "Leave and discard this recording?"}
+        body={
+          phase === "recording"
+            ? `Going back leaves Grasp, which stops the ${subjectName} lecture you're recording. The notes drafted so far are lost.`
+            : `Going back leaves Grasp, and your ${subjectName} recording hasn't been saved to your notes yet.`
+        }
+        confirmLabel={phase === "recording" ? "End recording" : "Discard"}
+        cancelLabel="Stay here"
+        onConfirm={confirmLeave}
+        onCancel={() => setLeaving(false)}
+      />
     </RecordingContext.Provider>
   );
 }
