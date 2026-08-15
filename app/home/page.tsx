@@ -54,13 +54,7 @@ function HomeApp() {
       {/* Persistent app header */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <button
-            onClick={() => setSelectedId(null)}
-            className="flex items-center gap-3"
-            aria-label="Go to home"
-          >
-            <Logo />
-          </button>
+          <Logo onClick={() => setSelectedId(null)} />
           <div className="flex items-center gap-3 text-sm">
             <RecordingChip onOpen={openRecording} />
             <span className="hidden text-slate-500 sm:block">
