@@ -19,17 +19,24 @@ const MAX_SECONDS = 300;
 // gain — wait until enough new material has landed to change the notes.
 const MIN_NEW_CHARS = 220;
 
+// Leaving this tab tears the recorder down, so the workspace has to know when
+// there is something to lose before it lets a tab button through. "naming" is
+// as much at risk as "recording": the lecture is over but the drafted notes
+// have not been saved into the subject yet.
+export type RecordPhase = "idle" | "recording" | "naming";
+
 export function RecordTab({
   subjectName,
   context,
   onAddNote,
+  onPhaseChange,
 }: {
   subjectName: string;
   context: string;
   onAddNote: (title: string, body: string) => string;
+  onPhaseChange: (phase: RecordPhase) => void;
 }) {
-  type Phase = "idle" | "recording" | "naming";
-  const [phase, setPhase] = useState<Phase>("idle");
+  const [phase, setPhase] = useState<RecordPhase>("idle");
   const [starting, setStarting] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [drafting, setDrafting] = useState(false);
@@ -168,6 +175,14 @@ export function RecordTab({
     onAddNote(name.trim() || "Untitled recording", body); // switches to Notes
     reset();
   }
+
+  // The workspace guards its tab buttons on this, so it has to hear every
+  // change — including the unmount, which is what clears the guard once the
+  // student has confirmed they want to leave.
+  useEffect(() => {
+    onPhaseChange(phase);
+    return () => onPhaseChange("idle");
+  }, [phase, onPhaseChange]);
 
   // Releasing the mic on unmount matters: leaving this tab mid-recording would
   // otherwise leave the browser's recording indicator lit with nothing driving it.
@@ -308,7 +323,7 @@ export function RecordTab({
                 </button>
               </div>
               <p className="mt-3 text-center text-[11px] text-slate-400">
-                Stay on this tab while recording — leaving ends it.
+                Leaving this tab ends the recording — Grasp will ask first.
               </p>
             </>
           )}

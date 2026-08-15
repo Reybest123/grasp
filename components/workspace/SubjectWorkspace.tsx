@@ -7,9 +7,10 @@ import { useSubjects } from "@/lib/subjectsStore";
 import { getColor } from "@/lib/subjectColors";
 import { nextExam, weeklyLabel, subjectContext } from "@/lib/schedule";
 import { NotesTab } from "@/components/workspace/NotesTab";
-import { RecordTab } from "@/components/workspace/RecordTab";
+import { RecordTab, type RecordPhase } from "@/components/workspace/RecordTab";
 import { QuizzesTab } from "@/components/workspace/QuizzesTab";
 import { ResourcesTab } from "@/components/workspace/ResourcesTab";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   NoteIcon,
   QuizIcon,
@@ -41,6 +42,11 @@ export function SubjectWorkspace({
   onEdit?: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("notes");
+  // Switching tabs unmounts RecordTab, which ends the recording and drops any
+  // notes it drafted. Nothing navigates when a tab changes, so the browser has
+  // no unsaved-changes prompt to offer here — the confirm has to be ours.
+  const [recordPhase, setRecordPhase] = useState<RecordPhase>("idle");
+  const [leaveTo, setLeaveTo] = useState<Tab | "back" | null>(null);
   // Notes live in the subject store, not local state, so edits and formatting
   // survive a refresh. Both the Notes tab and the Record tab write through here.
   const { updateSubject } = useSubjects();
@@ -83,6 +89,18 @@ export function SubjectWorkspace({
     [subject.id, subject.notes, updateSubject]
   );
 
+  // Every way out of the Record tab funnels through here. Saving a recording
+  // does not: addNote sets the tab itself, which is the one departure that
+  // isn't a loss.
+  const leave = useCallback(
+    (to: Tab | "back") => {
+      if (recordPhase !== "idle") setLeaveTo(to);
+      else if (to === "back") onBack?.();
+      else setTab(to);
+    },
+    [recordPhase, onBack]
+  );
+
   const color = getColor(subject.colorKey);
   const weekly = weeklyLabel(subject.classes);
   const exam = now ? nextExam(subject.exams, now) : null;
@@ -96,7 +114,7 @@ export function SubjectWorkspace({
       {onBack && (
         <div className="mx-auto max-w-6xl px-6 pt-5">
           <button
-            onClick={onBack}
+            onClick={() => leave("back")}
             className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
           >
             <BackIcon className="h-4 w-4" /> All notebooks
@@ -144,7 +162,7 @@ export function SubjectWorkspace({
           {TABS.map(([key, label, icon]) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => (key === tab ? undefined : leave(key))}
               className={`-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
                 tab === key
                   ? "border-brand-600 text-brand-700"
@@ -172,13 +190,39 @@ export function SubjectWorkspace({
           />
         )}
         {tab === "record" && (
-          <RecordTab subjectName={subject.name} context={context} onAddNote={addNote} />
+          <RecordTab
+            subjectName={subject.name}
+            context={context}
+            onAddNote={addNote}
+            onPhaseChange={setRecordPhase}
+          />
         )}
         {tab === "quizzes" && (
           <QuizzesTab subject={subject} notes={subject.notes} context={context} />
         )}
         {tab === "resources" && <ResourcesTab subject={subject} />}
       </section>
+
+      <ConfirmDialog
+        open={leaveTo !== null}
+        title={recordPhase === "recording" ? "End this recording?" : "Discard these notes?"}
+        body={
+          recordPhase === "recording"
+            ? "Your lecture is still recording. Leaving stops it now, and the notes drafted so far are lost."
+            : "This recording hasn't been saved to your notes yet. Leaving discards it."
+        }
+        confirmLabel={recordPhase === "recording" ? "End recording" : "Discard"}
+        cancelLabel="Stay here"
+        onConfirm={() => {
+          const to = leaveTo;
+          setLeaveTo(null);
+          // RecordTab unmounts on the tab change and reports "idle" as it goes,
+          // which is what releases the microphone and clears this guard.
+          if (to === "back") onBack?.();
+          else if (to) setTab(to);
+        }}
+        onCancel={() => setLeaveTo(null)}
+      />
     </div>
   );
 }
