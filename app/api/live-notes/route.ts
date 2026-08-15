@@ -14,6 +14,10 @@ The transcript comes from automatic speech recognition, so expect mishearings, m
 
 Write notes, not a tidied transcript. Pull out the definitions, mechanisms, worked examples, distinctions, and anything the lecturer flags as important or assessed. Cut greetings, admin, digressions, and repetition. Where the speaker plainly misspoke, or the transcription garbled a technical term that is obvious from context, use the correct term.
 
+Everything you write must come from the transcript. The student's class times and assessment dates may be given to you as background, to help you judge what matters — they are never note content. Never write out their schedule, their exam dates, or a heading like "Class Schedule" or "Upcoming Assessments".
+
+If the transcript holds no teachable material at all — it is only greetings, admin, chatter or noise — reply with exactly NONE and nothing else. An empty lecture is a normal outcome and is far better than notes made of filler. Do not pad, and do not fall back to the background information above.
+
 Structure it the way a strong student would: short bold headings for each topic, short paragraphs, and bullet points where they earn their place. Do not bullet everything, and do not add a "Summary" or "Key takeaways" section.
 
 A bullet is a <ul><li>. Never fake one by starting a paragraph with a hyphen, dash or asterisk.
@@ -31,7 +35,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to write up yet." }, { status: 400 });
   }
 
-  const schedule = typeof context === "string" && context.trim() ? `\n\n${context.trim()}` : "";
+  // Labelled explicitly. Handed over bare, the model treated the schedule as
+  // material to write up whenever the transcript was too thin to carry a note.
+  const schedule =
+    typeof context === "string" && context.trim()
+      ? `\n\nBackground (context only — never write this into the notes):\n${context.trim()}`
+      : "";
   const stage = final
     ? "This is the complete lecture. Write the finished set of notes."
     : "The lecture is still running and this transcript is partial. Write the notes for what has been covered so far.";
@@ -53,5 +62,11 @@ ${transcript.trim()}`;
   });
   if (!result.ok) return result.response;
 
-  return NextResponse.json({ notes: stripFence(result.content) });
+  // NONE means the lecture held nothing worth noting. Empty notes are a valid
+  // answer here; the client says so rather than showing filler, and saves the
+  // transcript instead.
+  const notes = stripFence(result.content);
+  const none = notes.replace(/<[^>]*>/g, "").trim().toUpperCase() === "NONE";
+
+  return NextResponse.json({ notes: none ? "" : notes });
 }

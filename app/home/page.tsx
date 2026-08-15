@@ -3,17 +3,22 @@
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { SubjectsProvider, useSubjects, useNow } from "@/lib/subjectsStore";
+import { RecordingProvider, useRecording, mmss } from "@/lib/recordingStore";
 import { SubjectWorkspace } from "@/components/workspace/SubjectWorkspace";
 import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
 import { SubjectEditor } from "@/components/SubjectEditor";
 import { nextClassAcross, nextExamAcross, relativeDay, formatTime } from "@/lib/schedule";
 import type { Subject } from "@/lib/subjects";
-import { ClockIcon, ExamIcon } from "@/components/icons";
+import { ClockIcon, ExamIcon, MicIcon } from "@/components/icons";
 
 export default function HomePage() {
   return (
     <SubjectsProvider>
-      <HomeApp />
+      {/* Above everything, so a lecture keeps recording while the student moves
+          around the app. See lib/recordingStore.tsx. */}
+      <RecordingProvider>
+        <HomeApp />
+      </RecordingProvider>
     </SubjectsProvider>
   );
 }
@@ -24,7 +29,15 @@ function HomeApp() {
   const { subjects, addSubject, updateSubject, removeSubject } = useSubjects();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [focusRecord, setFocusRecord] = useState(0);
   const now = useNow();
+
+  // Open a subject straight on its Record tab. Bumping the counter is what
+  // makes a second click work after the student has browsed to another tab.
+  function openRecording(id: string) {
+    setSelectedId(id);
+    setFocusRecord((n) => n + 1);
+  }
 
   const selected = subjects.find((s) => s.id === selectedId);
   const editing = subjects.find((s) => s.id === editingId) ?? null;
@@ -48,7 +61,8 @@ function HomeApp() {
           >
             <Logo />
           </button>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-3 text-sm">
+            <RecordingChip onOpen={openRecording} />
             <span className="hidden text-slate-500 sm:block">
               Free plan · 1 recording left this week
             </span>
@@ -65,6 +79,8 @@ function HomeApp() {
           now={now}
           onBack={() => setSelectedId(null)}
           onEdit={() => setEditingId(selected.id)}
+          onOpenSubject={openRecording}
+          focusRecord={focusRecord}
         />
       ) : (
         <section className="mx-auto max-w-6xl px-6 py-10">
@@ -106,6 +122,41 @@ function HomeApp() {
         }}
       />
     </main>
+  );
+}
+
+/**
+ * The recording now outlives the tab it was started from, so it needs somewhere
+ * permanent to be visible — otherwise a student who wandered off to another
+ * subject has no idea it's still running, or any way back to it.
+ */
+function RecordingChip({ onOpen }: { onOpen: (subjectId: string) => void }) {
+  const rec = useRecording();
+  if (rec.phase === "idle" || !rec.subjectId) return null;
+
+  const recording = rec.phase === "recording";
+
+  return (
+    <button
+      onClick={() => rec.subjectId && onOpen(rec.subjectId)}
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+        recording
+          ? "bg-red-50 text-red-700 hover:bg-red-100"
+          : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+      }`}
+    >
+      {recording ? (
+        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+      ) : (
+        <MicIcon className="h-3.5 w-3.5" />
+      )}
+      <span className="hidden sm:inline">{rec.subjectName}</span>
+      {recording ? (
+        <span className="font-mono tabular-nums">{mmss(rec.seconds)}</span>
+      ) : (
+        <span>Unsaved</span>
+      )}
+    </button>
   );
 }
 
