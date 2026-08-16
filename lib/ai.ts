@@ -6,15 +6,14 @@
 // extractTimetable() is still mocked; it needs image upload plus a vision model.
 
 import { makeSlot } from "@/lib/subjects";
+import type { QuizKind, QuizQuestion } from "@/lib/subjects";
 import type { ClassSlot } from "@/lib/schedule";
 import { sanitizeNoteHtml, foldHyphenBullets } from "@/lib/richText";
 
-export type QuizQuestion = {
-  question: string;
-  options: string[];
-  answerIndex: number;
-  why: string;
-};
+// The quiz shapes live with the rest of the subject model, since a quiz is
+// stored on its subject. Re-exported here so callers of this module don't need
+// to import from two places.
+export type { QuizKind, QuizQuestion } from "@/lib/subjects";
 
 export type NoteContext = { title: string; body: string };
 export type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -157,18 +156,83 @@ export async function generateNote(
 }
 
 // §3.3 Subject Quiz Mode — questions grounded in the student's own notes.
-export async function generateQuiz(
-  topics: string[],
-  instructions: string,
-  notes: NoteContext[] = [],
-  context = ""
-): Promise<QuizQuestion[]> {
-  const data = await postJson<{ questions: QuizQuestion[] }>("/api/quiz", {
-    topics,
-    instructions,
+//
+// Three calls make up a quiz's life: generate it, mark the written answers on
+// submit, and — only if the student asks — explain one they got wrong.
+
+export type QuizCounts = { mcq: number; short: number; long: number };
+
+/**
+ * The model is not asked for question ids: it would have to invent unique ones
+ * and there is nothing to check them against. They are assigned here instead,
+ * which also guarantees they line up with the array the student answers.
+ */
+export async function generateQuiz(params: {
+  topics: string[];
+  instructions: string;
+  notes: NoteContext[];
+  context: string;
+  counts: QuizCounts;
+  /** the fallback when there are no notes and no topics to work from */
+  subjectName: string;
+}): Promise<{ questions: QuizQuestion[]; error: string | null }> {
+  const data = await postJson<{ questions: Omit<QuizQuestion, "id">[] }>("/api/quiz", params);
+  if (data.error) return { questions: [], error: data.error };
+
+  const questions = (data.questions ?? [])
+    .filter((q) => q && typeof q.question === "string")
+    .map((q, i) => ({ ...q, id: `q${i}` }));
+
+  if (!questions.length) {
+    return { questions: [], error: "Grasp could not build a quiz from that. Try again." };
+  }
+  return { questions, error: null };
+}
+
+export type QuizVerdict = "correct" | "partial" | "wrong";
+export type QuizMark = { id: string; verdict: QuizVerdict; feedback: string };
+
+/**
+ * Short and long answers can't be marked by comparing strings, so one call
+ * grades them all against the model answers and the student's notes. Multiple
+ * choice never comes through here — it is marked client-side by index.
+ */
+export async function markQuiz(
+  written: { id: string; question: string; modelAnswer: string; answer: string }[],
+  notes: NoteContext[],
+  context: string
+): Promise<{ marks: QuizMark[]; error: string | null }> {
+  if (!written.length) return { marks: [], error: null };
+  const data = await postJson<{ marks: QuizMark[] }>("/api/mark-quiz", {
+    written,
     notes,
     context,
   });
-  if (data.error) throw new Error(data.error);
-  return data.questions;
+  if (data.error) return { marks: [], error: data.error };
+  return { marks: data.marks ?? [], error: null };
+}
+
+/**
+ * One-off, and only ever after the quiz is submitted — the student pressing
+ * "Explain why I'm wrong" is what pays for this. There is no thread: if they
+ * want to go deeper the notes themselves have Explain.
+ */
+export async function explainWrongAnswer(
+  question: string,
+  kind: QuizKind,
+  studentAnswer: string,
+  correctAnswer: string,
+  notes: NoteContext[],
+  context: string
+): Promise<{ explanation: string; error: string | null }> {
+  const data = await postJson<{ explanation: string }>("/api/quiz-explain", {
+    question,
+    kind,
+    studentAnswer,
+    correctAnswer,
+    notes,
+    context,
+  });
+  if (data.error) return { explanation: "", error: data.error };
+  return { explanation: data.explanation ?? "", error: null };
 }

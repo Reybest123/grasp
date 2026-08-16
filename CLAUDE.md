@@ -39,7 +39,11 @@ Platform: **Website** (not a native app) — no app store fees, no OCR SDK neede
 - Each subject has its own Quizzes section
 - User selects specific notes/topics to be quizzed on
 - User can add custom comments/instructions to guide what the AI focuses questions on
+- User chooses the question mix: multiple choice, short answer and long answer, any number of each
 - Quizzes are generated from the student's own notes, not generic question banks — personalized studying, not generic tutoring (this is the key differentiator vs. apps like Studdy)
+- Quizzes are saved per subject and laid out as cards, the same way subjects are on the home page — a student can come back to a past quiz and see what they scored
+- Written answers are marked by the AI against the student's notes; a partly-right answer earns half rather than being failed outright
+- After submitting, the student can ask why a specific answer was wrong and get an explanation of that mistake. Only offered on answers that weren't fully right, and only generated when asked
 
 ### 3.4 Resource Bank
 - Each subject has a dedicated Resource Bank section
@@ -113,7 +117,7 @@ Platform: **Website** (not a native app) — no app store fees, no OCR SDK neede
 - AI note enhancement (cleanup/expand)
 - Lecture recording → transcription → auto-generated notes
 - Highlight-to-explain within notes
-- Quiz section per subject (topic selection + custom instructions + generation)
+- Quiz section per subject (topic/note selection + question mix + custom instructions + generation, marking, saved results)
 - Resource bank per subject (file upload + AI reference during generation)
 - Free/paid tier usage limits enforced
 - Basic Terms of Service + Privacy Policy pages
@@ -189,7 +193,13 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - **`Logo` takes an optional `onClick`, which swaps it from a link to `/` into a plain button.** `/home`'s header logo used to be a `<button onClick={() => setSelectedId(null)}>` wrapping a bare `<Logo />` — a `Link` nested inside a `<button>` — so clicking it always navigated to the landing page underneath whatever the button's own handler did. That's a Next.js client-side route change, not a real page load, so it slipped past `beforeunload` and silently killed a live recording (`RecordingProvider` unmounts with the route) with no warning of any kind. `/home` now passes `onClick={() => setSelectedId(null)}`, which keeps the logo entirely on `/home`; every other caller (landing page, onboarding, legal pages) still gets the plain link. There is no other internal path off `/home` — this was the only leak.
 - **`/api/live-notes` may legitimately return no notes.** Given a transcript with nothing teachable in it, the model used to pad the note out with the student's own class times and exam dates — the `subjectContext` string was in the prompt unlabelled, so it read as material. It's now explicitly marked background-only and forbidden as content, and the route returns `notes: ""` when the model replies `NONE`. The Record tab says the lecture was too thin and saves the raw transcript instead.
 - **Highlight-to-explain, now two modes.** Selecting text pops two pills, **Explain** and **Refine**, and the open panel has the same toggle so the student can switch mid-thread without losing context. Explain answers questions about the passage and never touches the note (`revisedNote` always comes back `null` unless the student explicitly asks for a change). Refine rewrites the highlighted passage in place — fact-checks, sharpens wording, expands where thin — and leaves the rest of the note untouched, replying with a one-line summary of what changed. Both modes are one thread (`/api/explain-chat`, `mode: "explain" | "refine"` in the request), and revisions now round-trip full note **HTML** (`lib/ai.ts`'s `explainChat` takes/returns HTML, not plain text) so a refine can no longer flatten bold, colours, checklists, bullets or equations. Real GPT-4o-mini.
-- **Quiz mode**: topic selection + focus instructions → questions grounded in the subject's own notes (real GPT-4o-mini via `/api/quiz`)
+- **Quiz mode — quizzes are saved objects now, laid out like the notebooks grid.** A `Quiz` (in `lib/subjects.ts`) lives on its subject as `quizzes: Quiz[]` and persists through the same localStorage store as notes, so an unfinished quiz survives a tab switch or a refresh and a finished one keeps its marks. `QuizzesTab` is a three-view shell: the grid (`QuizCard` mirroring `SubjectCard` — colour strip, title, score chip, action row — plus a `NewQuizCard` tile), the setup form (`QuizSetup`), and the quiz itself (`QuizRunner`, which is both taking and reviewing). CRUD (`addQuiz`/`updateQuiz`/`deleteQuiz`) sits in `SubjectWorkspace` beside the note trio and writes through `updateSubject`. `SubjectCard`'s quiz count reads `quizzes.length`, not `quizTopics.length`.
+  - **At zero quizzes the call to action is the whole area**, not a lone tile in the corner of an empty grid — "Generate your first quiz" fills the tab.
+  - **Mixed question types.** `QuizKind` is `"mcq" | "short" | "long"`; the setup form has a stepper per kind (defaults 5/2/1, capped at 10 each and 20 total, enforced again in the route). MCQ carries `options`/`answerIndex`, written questions carry `modelAnswer`.
+  - **Topics and the note picker are hidden when the subject has no notes**, since neither has anything to draw on. Generation still goes ahead from the subject name — the prompt is told outright that there are no notes and to keep it general. Blocking the feature on a fresh account is a worse first impression than an admittedly generic quiz, and the empty state says so in as many words.
+  - **Marking is split.** MCQ is marked client-side by index — no model call can get that wrong. Short and long go to `/api/mark-quiz` in **one** call returning `correct | partial | wrong` plus a one-line note each. A `partial` scores half, so `score.got` can land on a `.5` (`formatScore` in `QuizCard.tsx`). A failed mark commits nothing, so Submit can just be pressed again.
+  - **Explanations are lazy and one-shot.** `/api/quiz-explain` is only called when the student presses the button, only after submitting, and only on a question they did not get fully right — "Explain why I'm wrong", or "Explain what I missed" on a half-mark. The result is stored on the `QuizResponse` and never regenerated. `why` was correspondingly **dropped from generation**: writing an explanation for every question up front spent tokens on help nobody asked for. Not a thread, unlike `/api/explain-chat` — the notes themselves are where a conversation belongs.
+  - The old tab generated 4 throwaway MCQs into component state and showed a pre-written `why` under each one the moment it was answered. Nothing of that flow survives.
 - Resource Bank UI (display only; upload not wired yet)
 - Terms of Service + Privacy Policy pages
 
@@ -206,7 +216,7 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - Subjects are represented by a monogram (first letter) on a coloured gradient tile.
 - Subject colours come from `lib/subjectColors.ts` and are auto-assigned on creation, then editable per subject.
 
-**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*` through one shared `postJson` helper — plus `postForm` for `/api/transcribe`, since audio can't be stringified into JSON and `fetch` has to set the multipart boundary itself. There is **no `openai` npm package** in this project; `package.json` is next/react/react-dom only, and every provider call is a raw `fetch` inside `lib/openai.ts`. Text routes (`/api/enhance`, `/api/generate`, `/api/explain-chat`, `/api/quiz`, `/api/live-notes`) go through `chatCompletion()`; `/api/transcribe` goes through `transcribeAudio()`, which is multipart and so can't share that path but masks failures identically. That helper is the only place a provider failure is logged (`console.error`, full detail, server-side only) — the client always gets back the same generic `"Grasp could not reach the AI just now. Try again in a moment."` string. **Never let a raw OpenAI error object reach `NextResponse.json`** — its `message` field echoes back a masked version of the API key, and a route that returns it verbatim will display that in the browser. The `OPENAI_API_KEY` env var itself is only ever read server-side inside `lib/openai.ts`.
+**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*` through one shared `postJson` helper — plus `postForm` for `/api/transcribe`, since audio can't be stringified into JSON and `fetch` has to set the multipart boundary itself. There is **no `openai` npm package** in this project; `package.json` is next/react/react-dom only, and every provider call is a raw `fetch` inside `lib/openai.ts`. Text routes (`/api/enhance`, `/api/generate`, `/api/explain-chat`, `/api/quiz`, `/api/mark-quiz`, `/api/quiz-explain`, `/api/live-notes`) go through `chatCompletion()`; `/api/transcribe` goes through `transcribeAudio()`, which is multipart and so can't share that path but masks failures identically. That helper is the only place a provider failure is logged (`console.error`, full detail, server-side only) — the client always gets back the same generic `"Grasp could not reach the AI just now. Try again in a moment."` string. **Never let a raw OpenAI error object reach `NextResponse.json`** — its `message` field echoes back a masked version of the API key, and a route that returns it verbatim will display that in the browser. The `OPENAI_API_KEY` env var itself is only ever read server-side inside `lib/openai.ts`.
 
 **Local `OPENAI_API_KEY` footgun (Windows):** if AI calls fail with `invalid_api_key` even though `.env.local` has a correct, active key, check for a stale `OPENAI_API_KEY` set as a **Windows user-level environment variable** (`[Environment]::GetEnvironmentVariable("OPENAI_API_KEY","User")` in PowerShell) — Next.js's dotenv loader does not override a var that's already present in `process.env`, so an old OS-level key silently wins over `.env.local` with no warning. If you clear it, note that the fix only takes effect for **brand-new process trees**: an already-running shell (and anything it spawns, including a backgrounded `npm run dev`) keeps the value it inherited at its own launch. `unset OPENAI_API_KEY` and the `npm run dev` restart must happen in the *same* shell invocation, chained together, or the unset silently doesn't reach the server process.
 
@@ -215,12 +225,13 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 ```
 app/            routes — page.tsx (landing), home/, onboarding/, legal/,
                 api/ (enhance, generate, explain-chat, quiz,
-                      transcribe, live-notes)
+                      mark-quiz, quiz-explain, transcribe, live-notes)
 components/     icons.tsx, Logo, ConfirmDialog, SubjectCard, SubjectEditor
 components/workspace/
-                SubjectWorkspace (shell + tab routing + note CRUD)
+                SubjectWorkspace (shell + tab routing + note & quiz CRUD)
                 NotesTab, NoteToolbar, EquationEditor, TablePicker, TableMenu,
-                ExplainPanel, RecordTab, QuizzesTab, ResourcesTab
+                ExplainPanel, RecordTab, ResourcesTab,
+                QuizzesTab (grid/setup/run shell), QuizCard, QuizSetup, QuizRunner
 lib/            subjects (model + seed), subjectsStore, recordingStore,
                 schedule, subjectColors,
                 richText (HTML <-> text + sanitiser + block helpers),

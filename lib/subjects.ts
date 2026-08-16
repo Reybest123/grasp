@@ -21,6 +21,57 @@ export type Resource = {
   note: string;
 };
 
+// §3.3 Subject Quiz Mode.
+//
+// A quiz is saved onto its subject the moment it is generated, so the grid of
+// past quizzes survives a refresh the same way notes do. Answers live on the
+// quiz rather than in component state for the same reason — a half-finished
+// quiz is still there tomorrow.
+
+export type QuizKind = "mcq" | "short" | "long";
+
+/** `options`/`answerIndex` are mcq-only; `modelAnswer` is written-answer-only. */
+export type QuizQuestion = {
+  id: string;
+  kind: QuizKind;
+  question: string;
+  options?: string[];
+  answerIndex?: number;
+  modelAnswer?: string;
+};
+
+/**
+ * One answer, plus how it was marked. `explanation` stays undefined until the
+ * student asks for it after submitting — generating one per wrong answer up
+ * front would spend a call on help nobody asked for.
+ */
+export type QuizResponse = {
+  choice?: number; // mcq
+  text?: string; // short/long
+  correct: boolean;
+  /** written answers only: partly right, worth half a mark */
+  partial?: boolean;
+  /** the marker's one-line note on a written answer */
+  feedback?: string;
+  explanation?: string;
+};
+
+export type Quiz = {
+  id: string;
+  title: string;
+  /** ISO — the card shows it as a relative age */
+  created: string;
+  topics: string[];
+  instructions: string;
+  /** which notes it was built from, for the card's provenance line */
+  noteIds: string[];
+  questions: QuizQuestion[];
+  /** keyed by question id */
+  answers: Record<string, QuizResponse>;
+  submitted: boolean;
+  score?: { got: number; total: number };
+};
+
 export type Subject = {
   id: string;
   name: string;
@@ -34,10 +85,17 @@ export type Subject = {
   notes: Note[];
   resources: Resource[];
   quizTopics: string[];
+  /** quizzes the student has generated, newest first */
+  quizzes: Quiz[];
 };
 
 let seq = 0;
 const uid = (p: string) => `${p}${Date.now().toString(36)}${(seq++).toString(36)}`;
+
+/** Ids for quizzes and their questions, so the client doesn't hand-roll its own. */
+export function quizId(): string {
+  return uid("q");
+}
 
 export function makeSlot(day: number, start: string, end?: string): ClassSlot {
   return { id: uid("c"), day, start, end };
@@ -58,6 +116,7 @@ export function createSubject(name: string, index: number): Subject {
     notes: [],
     resources: [],
     quizTopics: [],
+    quizzes: [],
   };
 }
 
@@ -77,6 +136,7 @@ export const SUBJECTS: Subject[] = [
     classes: [makeSlot(1, "09:00", "10:00"), makeSlot(3, "11:00", "12:00"), makeSlot(5, "09:00", "10:00")],
     exams: [makeExam(inDays(5), "Paper 2 mock"), makeExam(inDays(26), "End of unit test")],
     quizTopics: ["Cell structure", "Osmosis & diffusion", "Enzymes", "Photosynthesis"],
+    quizzes: [],
     notes: [
       {
         id: "n1",
@@ -112,6 +172,7 @@ Active transport moves substances against the concentration gradient and require
     classes: [makeSlot(2, "10:00", "11:00"), makeSlot(4, "13:00", "14:00")],
     exams: [makeExam(inDays(19), "Source analysis essay")],
     quizTopics: ["Causes of WW1", "Treaty of Versailles", "Rise of dictators"],
+    quizzes: [],
     notes: [
       {
         id: "n3",
@@ -136,6 +197,7 @@ The trigger (short-term cause) was the assassination of Archduke Franz Ferdinand
     classes: [makeSlot(1, "13:00", "14:00"), makeSlot(3, "09:00", "10:00"), makeSlot(5, "11:00", "12:00")],
     exams: [],
     quizTopics: ["Quadratics", "Trigonometry", "Simultaneous equations"],
+    quizzes: [],
     notes: [
       {
         id: "n4",

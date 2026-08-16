@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { JSX } from "react";
-import type { Note, Subject } from "@/lib/subjects";
+import type { Note, Quiz, Subject } from "@/lib/subjects";
 import { useSubjects } from "@/lib/subjectsStore";
 import { getColor } from "@/lib/subjectColors";
 import { nextExam, weeklyLabel, subjectContext } from "@/lib/schedule";
@@ -93,6 +93,31 @@ export function SubjectWorkspace({
       return id;
     },
     [subject.id, subject.notes, updateSubject]
+  );
+
+  // Quizzes persist onto the subject the same way notes do, so an unfinished
+  // one survives a tab switch or a refresh. Newest first, matching the grid.
+  const addQuiz = useCallback(
+    (quiz: Quiz) => {
+      updateSubject(subject.id, { quizzes: [quiz, ...subject.quizzes] });
+    },
+    [subject.id, subject.quizzes, updateSubject]
+  );
+
+  const updateQuiz = useCallback(
+    (id: string, patch: Partial<Quiz>) => {
+      updateSubject(subject.id, {
+        quizzes: subject.quizzes.map((q) => (q.id === id ? { ...q, ...patch } : q)),
+      });
+    },
+    [subject.id, subject.quizzes, updateSubject]
+  );
+
+  const deleteQuiz = useCallback(
+    (id: string) => {
+      updateSubject(subject.id, { quizzes: subject.quizzes.filter((q) => q.id !== id) });
+    },
+    [subject.id, subject.quizzes, updateSubject]
   );
 
   const color = getColor(subject.colorKey);
@@ -196,7 +221,15 @@ export function SubjectWorkspace({
           />
         )}
         {tab === "quizzes" && (
-          <QuizzesTab subject={subject} notes={subject.notes} context={context} />
+          <QuizzesTab
+            subject={subject}
+            notes={subject.notes}
+            context={context}
+            now={now}
+            addQuiz={addQuiz}
+            updateQuiz={updateQuiz}
+            deleteQuiz={deleteQuiz}
+          />
         )}
         {tab === "resources" && <ResourcesTab subject={subject} />}
       </section>

@@ -1,166 +1,197 @@
 "use client";
 
+// §3.3 Subject Quiz Mode.
+//
+// Three views behind one tab: the grid of saved quizzes (shaped like the
+// notebooks grid on /home), the setup form, and the quiz itself. Quizzes are
+// saved onto the subject the moment they're generated, so nothing is lost by
+// switching tabs mid-quiz.
+
 import { useState } from "react";
-import type { Note, Subject } from "@/lib/subjects";
-import { generateQuiz, type QuizQuestion } from "@/lib/ai";
+import type { Note, Quiz, Subject } from "@/lib/subjects";
+import { quizId } from "@/lib/subjects";
+import { generateQuiz } from "@/lib/ai";
 import { htmlToText } from "@/lib/richText";
-import { CheckIcon, CloseIcon } from "@/components/icons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { QuizCard, NewQuizCard } from "@/components/workspace/QuizCard";
+import { QuizSetup, type QuizRequest } from "@/components/workspace/QuizSetup";
+import { QuizRunner } from "@/components/workspace/QuizRunner";
+import { QuizIcon, SparkleIcon } from "@/components/icons";
+
+/** A quiz names itself after what it covers, so the grid is scannable. */
+function titleFor(req: QuizRequest, notes: Note[], subjectName: string): string {
+  const labels = req.topics.length
+    ? req.topics
+    : req.noteIds.length && req.noteIds.length < notes.length
+      ? notes.filter((n) => req.noteIds.includes(n.id)).map((n) => n.title || "Untitled note")
+      : [];
+  if (!labels.length) return `${subjectName} quiz`;
+  const head = labels.slice(0, 2).join(", ");
+  return labels.length > 2 ? `${head} +${labels.length - 2}` : head;
+}
 
 export function QuizzesTab({
   subject,
   notes,
   context,
+  now,
+  addQuiz,
+  updateQuiz,
+  deleteQuiz,
 }: {
   subject: Subject;
   notes: Note[];
   context: string;
+  now: Date | null;
+  addQuiz: (quiz: Quiz) => void;
+  updateQuiz: (id: string, patch: Partial<Quiz>) => void;
+  deleteQuiz: (id: string) => void;
 }) {
-  const [selected, setSelected] = useState<string[]>(
-    subject.quizTopics[0] ? [subject.quizTopics[0]] : []
-  );
-  const [instructions, setInstructions] = useState("");
+  const [view, setView] = useState<"grid" | "setup">("grid");
+  const [openId, setOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
   const [error, setError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<Quiz | null>(null);
 
-  function toggle(topic: string) {
-    setSelected((cur) =>
-      cur.includes(topic) ? cur.filter((t) => t !== topic) : [...cur, topic]
+  const quizzes = subject.quizzes;
+  const open = openId ? quizzes.find((q) => q.id === openId) ?? null : null;
+
+  /** Note bodies are HTML in storage; the AI is only ever given the text. */
+  function contextsFor(noteIds: string[]) {
+    const picked = noteIds.length ? notes.filter((n) => noteIds.includes(n.id)) : notes;
+    return picked.map((n) => ({
+      title: n.title || "Untitled note",
+      body: htmlToText(n.body),
+    }));
+  }
+
+  async function generate(req: QuizRequest) {
+    setLoading(true);
+    setError("");
+    const { questions, error: genError } = await generateQuiz({
+      topics: req.topics,
+      instructions: req.instructions,
+      notes: contextsFor(req.noteIds),
+      context,
+      counts: req.counts,
+      subjectName: subject.name,
+    });
+    setLoading(false);
+
+    if (genError) {
+      setError(genError);
+      return;
+    }
+
+    const quiz: Quiz = {
+      id: quizId(),
+      title: titleFor(req, notes, subject.name),
+      created: new Date().toISOString(),
+      topics: req.topics,
+      instructions: req.instructions,
+      noteIds: req.noteIds,
+      questions,
+      answers: {},
+      submitted: false,
+    };
+    addQuiz(quiz);
+    setOpenId(quiz.id);
+    setView("grid");
+  }
+
+  if (open) {
+    return (
+      <QuizRunner
+        quiz={open}
+        noteContexts={contextsFor(open.noteIds)}
+        context={context}
+        onUpdate={(patch) => updateQuiz(open.id, patch)}
+        onBack={() => setOpenId(null)}
+      />
     );
   }
 
-  async function generate() {
-    setLoading(true);
-    setQuiz(null);
-    setAnswers({});
-    setError("");
-    try {
-      const q = await generateQuiz(
-        selected,
-        instructions,
-        notes.map((n) => ({ title: n.title || "Untitled note", body: htmlToText(n.body) })),
-        context
-      );
-      setQuiz(q);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Quiz generation failed.");
-    }
-    setLoading(false);
+  if (view === "setup") {
+    return (
+      <QuizSetup
+        subject={subject}
+        notes={notes}
+        loading={loading}
+        error={error}
+        onGenerate={generate}
+        onCancel={() => {
+          setError("");
+          setView("grid");
+        }}
+      />
+    );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-bold text-ink">Build a quiz</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Generated from <b>your</b> notes — not a generic question bank.
-        </p>
-
-        <p className="mt-5 text-xs font-bold uppercase tracking-wide text-slate-400">
-          Topics to be quizzed on
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {subject.quizTopics.map((t) => (
-            <button
-              key={t}
-              onClick={() => toggle(t)}
-              className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                selected.includes(t)
-                  ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-slate-300 text-slate-600 hover:border-slate-400"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        <p className="mt-5 text-xs font-bold uppercase tracking-wide text-slate-400">
-          Focus instructions (optional)
-        </p>
-        <textarea
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          placeholder="e.g. focus on exam-style application questions, weight toward the assessment criteria"
-          className="mt-2 h-24 w-full rounded-lg border border-slate-300 p-3 text-sm outline-none focus:border-brand-500"
-        />
-
+    <div>
+      {quizzes.length === 0 ? (
+        // No quizzes yet: the call to action is the whole area, not a lone tile
+        // in the corner of an empty grid.
         <button
-          onClick={generate}
-          disabled={loading || selected.length === 0}
-          className="mt-4 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+          onClick={() => setView("setup")}
+          className="group grid min-h-[420px] w-full place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 p-10 text-center transition hover:border-brand-400 hover:bg-brand-50/40"
         >
-          {loading ? "Generating…" : "Generate quiz"}
+          <div className="max-w-md">
+            <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-slate-300 text-slate-400 transition group-hover:border-brand-400 group-hover:bg-white group-hover:text-brand-600">
+              <QuizIcon className="h-7 w-7" />
+            </span>
+            <h2 className="mt-5 text-2xl font-bold tracking-tight text-ink transition group-hover:text-brand-700">
+              Generate your first quiz
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              {notes.length
+                ? "Questions written from your own notes for this subject — pick the topics, choose how many of each type, and Grasp marks it when you're done."
+                : "Choose your question mix and Grasp writes the quiz. Once you have notes for this subject, quizzes come straight from what you've actually written."}
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition group-hover:bg-brand-700">
+              <SparkleIcon className="h-4 w-4" />
+              New quiz
+            </span>
+          </div>
         </button>
-        <p className="mt-2 text-center text-[11px] text-slate-400">
-          Free plan: 1–3 quiz generations / week
-        </p>
-      </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold tracking-tight text-ink">Your quizzes</h2>
+            <p className="text-sm text-slate-500">
+              {quizzes.length} saved · marked and kept so you can come back to {quizzes.length === 1 ? "it" : "them"}
+            </p>
+          </div>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {quizzes.map((q) => (
+              <QuizCard
+                key={q.id}
+                quiz={q}
+                colorKey={subject.colorKey}
+                now={now}
+                onOpen={() => setOpenId(q.id)}
+                onDelete={() => setPendingDelete(q)}
+              />
+            ))}
+            <NewQuizCard onClick={() => setView("setup")} />
+          </div>
+        </>
+      )}
 
-      <div>
-        {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-        {!quiz && !loading && !error && (
-          <div className="grid h-full place-items-center rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
-            Pick your topics and hit <b className="mx-1">Generate quiz</b> to start.
-          </div>
-        )}
-        {loading && (
-          <div className="grid h-full place-items-center rounded-2xl border border-slate-200 bg-white p-16 text-center">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
-            <p className="mt-4 text-sm text-slate-500">Writing questions from your notes…</p>
-          </div>
-        )}
-        {quiz && (
-          <ol className="space-y-4">
-            {quiz.map((q, qi) => {
-              const chosen = answers[qi];
-              const answered = chosen !== undefined;
-              return (
-                <li key={qi} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <p className="font-semibold text-ink">
-                    {qi + 1}. {q.question}
-                  </p>
-                  <div className="mt-3 grid gap-2">
-                    {q.options.map((opt, oi) => {
-                      const isCorrect = oi === q.answerIndex;
-                      const isChosen = oi === chosen;
-                      let cls = "border-slate-300 hover:border-slate-400";
-                      if (answered && isCorrect) cls = "border-emerald-500 bg-emerald-50";
-                      else if (answered && isChosen) cls = "border-red-400 bg-red-50";
-                      return (
-                        <button
-                          key={oi}
-                          disabled={answered}
-                          onClick={() => setAnswers((a) => ({ ...a, [qi]: oi }))}
-                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${cls}`}
-                        >
-                          <span className="flex-1">{opt}</span>
-                          {answered && isCorrect && (
-                            <CheckIcon className="h-4 w-4 shrink-0 text-emerald-600" />
-                          )}
-                          {answered && isChosen && !isCorrect && (
-                            <CloseIcon className="h-4 w-4 shrink-0 text-red-500" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {answered && (
-                    <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      <b>Why:</b> {q.why}
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </div>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this quiz?"
+        body={
+          pendingDelete?.submitted
+            ? `"${pendingDelete.title}" and the marks you got on it will be gone for good.`
+            : `"${pendingDelete?.title}" and any answers you've written will be gone for good.`
+        }
+        onConfirm={() => {
+          if (pendingDelete) deleteQuiz(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

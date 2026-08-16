@@ -88,7 +88,7 @@ export function SubjectCard({
             <BankIcon className="h-3.5 w-3.5" /> {subject.resources.length}
           </span>
           <span className="inline-flex items-center gap-1">
-            <QuizIcon className="h-3.5 w-3.5" /> {subject.quizTopics.length}
+            <QuizIcon className="h-3.5 w-3.5" /> {subject.quizzes.length}
           </span>
         </div>
 

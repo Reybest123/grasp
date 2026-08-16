@@ -99,6 +99,7 @@ function normalize(s: LegacySubject): Subject {
     notes: Array.isArray(s.notes) ? s.notes : [],
     resources: Array.isArray(s.resources) ? s.resources : [],
     quizTopics: Array.isArray(s.quizTopics) ? s.quizTopics : [],
+    quizzes: Array.isArray(s.quizzes) ? s.quizzes : [],
   };
 }
 
