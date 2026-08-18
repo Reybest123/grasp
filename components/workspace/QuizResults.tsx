@@ -14,6 +14,7 @@
 import { useEffect, useState } from "react";
 import type { Quiz } from "@/lib/subjects";
 import { formatScore } from "@/components/workspace/QuizCard";
+import { QuizTitle } from "@/components/workspace/QuizTitle";
 import { BackIcon, CheckIcon, CloseIcon, MinusIcon } from "@/components/icons";
 
 const DURATION = 900;
@@ -49,10 +50,12 @@ function bandOf(pct: number) {
 
 export function QuizResults({
   quiz,
+  onRename,
   onReview,
   onBack,
 }: {
   quiz: Quiz;
+  onRename: (title: string) => void;
   onReview: () => void;
   onBack: () => void;
 }) {
@@ -122,7 +125,12 @@ export function QuizResults({
       </button>
 
       <div className="mx-auto max-w-xl animate-[popIn_180ms_ease-out] rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-soft">
-        <p className="truncate text-sm font-semibold text-slate-500">{quiz.title}</p>
+        <QuizTitle
+          value={quiz.title}
+          onRename={onRename}
+          center
+          className="text-sm font-semibold text-slate-500"
+        />
 
         <div className="relative mx-auto mt-6" style={{ width: SIZE, height: SIZE }}>
           <svg

@@ -12,11 +12,34 @@ const MAX_PER_KIND = 10;
 const MAX_TOTAL = 20;
 
 export type QuizRequest = {
+  /** blank means "call it whatever `autoTitle` says" */
+  name: string;
   topics: string[];
   instructions: string;
   noteIds: string[];
   counts: QuizCounts;
 };
+
+/**
+ * What a quiz is called when the student doesn't name it — whatever actually
+ * tells two quizzes apart. Lives here rather than in `QuizzesTab` so the form
+ * can show the same string as its placeholder before the quiz exists.
+ */
+export function autoTitle(
+  topics: string[],
+  noteIds: string[],
+  notes: Note[],
+  subjectName: string
+): string {
+  const labels = topics.length
+    ? topics
+    : noteIds.length && noteIds.length < notes.length
+      ? notes.filter((n) => noteIds.includes(n.id)).map((n) => n.title || "Untitled note")
+      : [];
+  if (!labels.length) return `${subjectName} quiz`;
+  const head = labels.slice(0, 2).join(", ");
+  return labels.length > 2 ? `${head} +${labels.length - 2}` : head;
+}
 
 function Stepper({
   label,
@@ -81,6 +104,7 @@ export function QuizSetup({
   const [noteIds, setNoteIds] = useState<string[]>(notes.map((n) => n.id));
   const [counts, setCounts] = useState<QuizCounts>({ mcq: 5, short: 2, long: 1 });
   const [instructions, setInstructions] = useState("");
+  const [name, setName] = useState("");
 
   const total = counts.mcq + counts.short + counts.long;
   const overCap = total > MAX_TOTAL;
@@ -245,8 +269,23 @@ export function QuizSetup({
           />
         </section>
 
+        <section className="mt-7">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            Name (optional)
+          </h3>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={autoTitle(topics, noteIds, notes, subject.name)}
+            className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500"
+          />
+          <p className="mt-2 text-xs text-slate-500">
+            Leave it blank and Grasp names it after what it covers. You can rename it later.
+          </p>
+        </section>
+
         <button
-          onClick={() => onGenerate({ topics, instructions, noteIds, counts })}
+          onClick={() => onGenerate({ name, topics, instructions, noteIds, counts })}
           disabled={total === 0 || overCap || noNotesPicked}
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60 disabled:hover:bg-brand-600"
         >

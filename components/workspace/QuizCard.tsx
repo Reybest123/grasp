@@ -6,7 +6,8 @@
 
 import type { Quiz } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
-import { QuizIcon, TrashIcon, PlusIcon, CheckIcon } from "@/components/icons";
+import { QuizTitle } from "@/components/workspace/QuizTitle";
+import { QuizIcon, TrashIcon, PlusIcon, CheckIcon, RetakeIcon } from "@/components/icons";
 
 /** Short relative age, e.g. "just now", "3 days ago". */
 function ago(iso: string, now: Date | null): string {
@@ -35,6 +36,8 @@ export function QuizCard({
   colorKey,
   now,
   onOpen,
+  onRetake,
+  onRename,
   onDelete,
 }: {
   quiz: Quiz;
@@ -42,6 +45,8 @@ export function QuizCard({
   /** null until the client clock is available — keeps SSR markup stable */
   now: Date | null;
   onOpen: () => void;
+  onRetake: () => void;
+  onRename: (title: string) => void;
   onDelete: () => void;
 }) {
   const color = getColor(colorKey);
@@ -68,7 +73,11 @@ export function QuizCard({
             <QuizIcon className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-base font-bold leading-tight text-ink">{quiz.title}</h3>
+            <QuizTitle
+              value={quiz.title}
+              onRename={onRename}
+              className="text-base font-bold leading-tight text-ink"
+            />
             <p className="truncate text-sm text-slate-500">{ago(quiz.created, now)}</p>
           </div>
           <button
@@ -115,13 +124,31 @@ export function QuizCard({
           )}
         </div>
 
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <button
-            onClick={onOpen}
-            className="w-full rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-          >
-            {quiz.submitted ? "Review answers" : answered ? "Keep going" : "Start quiz"}
-          </button>
+        <div className="mt-4 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4">
+          {quiz.submitted ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={onOpen}
+                className="rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                Review answers
+              </button>
+              <button
+                onClick={onRetake}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-brand-400 hover:bg-brand-50/50 hover:text-brand-700"
+              >
+                <RetakeIcon className="h-4 w-4" />
+                Retake
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onOpen}
+              className="rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+            >
+              {answered ? "Keep going" : "Start quiz"}
+            </button>
+          )}
         </div>
       </div>
     </div>

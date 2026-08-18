@@ -268,6 +268,16 @@ export function TableIcon({ className }: IconProps) {
   );
 }
 
+/** Circular arrow — retaking a quiz from the start. */
+export function RetakeIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1" />
+      <path d="M20.5 4.5V10H15" />
+    </svg>
+  );
+}
+
 export function UndoIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>

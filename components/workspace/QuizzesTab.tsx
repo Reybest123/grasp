@@ -13,22 +13,10 @@ import { quizId } from "@/lib/subjects";
 import { generateQuiz } from "@/lib/ai";
 import { htmlToText } from "@/lib/richText";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { QuizCard, NewQuizCard } from "@/components/workspace/QuizCard";
-import { QuizSetup, type QuizRequest } from "@/components/workspace/QuizSetup";
+import { QuizCard, NewQuizCard, formatScore } from "@/components/workspace/QuizCard";
+import { QuizSetup, autoTitle, type QuizRequest } from "@/components/workspace/QuizSetup";
 import { QuizRunner } from "@/components/workspace/QuizRunner";
 import { QuizIcon, SparkleIcon } from "@/components/icons";
-
-/** A quiz names itself after what it covers, so the grid is scannable. */
-function titleFor(req: QuizRequest, notes: Note[], subjectName: string): string {
-  const labels = req.topics.length
-    ? req.topics
-    : req.noteIds.length && req.noteIds.length < notes.length
-      ? notes.filter((n) => req.noteIds.includes(n.id)).map((n) => n.title || "Untitled note")
-      : [];
-  if (!labels.length) return `${subjectName} quiz`;
-  const head = labels.slice(0, 2).join(", ");
-  return labels.length > 2 ? `${head} +${labels.length - 2}` : head;
-}
 
 export function QuizzesTab({
   subject,
@@ -52,6 +40,7 @@ export function QuizzesTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Quiz | null>(null);
+  const [pendingRetake, setPendingRetake] = useState<Quiz | null>(null);
 
   const quizzes = subject.quizzes;
   const open = openId ? quizzes.find((q) => q.id === openId) ?? null : null;
@@ -85,7 +74,7 @@ export function QuizzesTab({
 
     const quiz: Quiz = {
       id: quizId(),
-      title: titleFor(req, notes, subject.name),
+      title: req.name.trim() || autoTitle(req.topics, req.noteIds, notes, subject.name),
       created: new Date().toISOString(),
       topics: req.topics,
       instructions: req.instructions,
@@ -97,6 +86,15 @@ export function QuizzesTab({
     addQuiz(quiz);
     setOpenId(quiz.id);
     setView("grid");
+  }
+
+  /** Same questions, blank slate. The old answers and marks do not survive. */
+  function retake(quiz: Quiz) {
+    updateQuiz(quiz.id, { answers: {}, submitted: false, score: undefined });
+    setOpenId(quiz.id);
+    // The card retaken from may be well down the grid; question 1 should not
+    // open half off-screen.
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }
 
   if (open) {
@@ -175,6 +173,8 @@ export function QuizzesTab({
                 colorKey={subject.colorKey}
                 now={now}
                 onOpen={() => setOpenId(q.id)}
+                onRetake={() => setPendingRetake(q)}
+                onRename={(title) => updateQuiz(q.id, { title })}
                 onDelete={() => setPendingDelete(q)}
               />
             ))}
@@ -182,6 +182,23 @@ export function QuizzesTab({
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingRetake !== null}
+        title="Retake this quiz?"
+        body={`Your answers${
+          pendingRetake?.score
+            ? ` and the ${formatScore(pendingRetake.score.got)} out of ${pendingRetake.score.total} you scored`
+            : ""
+        } will be cleared. The questions stay the same.`}
+        confirmLabel="Retake"
+        cancelLabel="Keep my marks"
+        onConfirm={() => {
+          if (pendingRetake) retake(pendingRetake);
+          setPendingRetake(null);
+        }}
+        onCancel={() => setPendingRetake(null)}
+      />
 
       <ConfirmDialog
         open={pendingDelete !== null}

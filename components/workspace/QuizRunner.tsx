@@ -10,6 +10,7 @@ import type { NoteContext } from "@/lib/ai";
 import { markQuiz, explainWrongAnswer } from "@/lib/ai";
 import { formatScore } from "@/components/workspace/QuizCard";
 import { QuizResults } from "@/components/workspace/QuizResults";
+import { QuizTitle } from "@/components/workspace/QuizTitle";
 import { BackIcon, CheckIcon, CloseIcon, SparkleIcon } from "@/components/icons";
 
 /** What a full-mark answer says — used for review display and for explanations. */
@@ -138,7 +139,12 @@ export function QuizRunner({
   // on a results screen for a quiz that was never marked.
   if (showResults && quiz.submitted) {
     return (
-      <QuizResults quiz={quiz} onReview={() => setShowResults(false)} onBack={onBack} />
+      <QuizResults
+        quiz={quiz}
+        onRename={(title) => onUpdate({ title })}
+        onReview={() => setShowResults(false)}
+        onBack={onBack}
+      />
     );
   }
 
@@ -154,7 +160,11 @@ export function QuizRunner({
       <div className="mx-auto max-w-3xl">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-bold tracking-tight text-ink">{quiz.title}</h2>
+            <QuizTitle
+              value={quiz.title}
+              onRename={(title) => onUpdate({ title })}
+              className="text-xl font-bold tracking-tight text-ink"
+            />
             <p className="text-sm text-slate-500">
               {quiz.questions.length} question{quiz.questions.length === 1 ? "" : "s"}
               {quiz.submitted ? "" : unanswered ? ` · ${unanswered} left` : " · all answered"}
