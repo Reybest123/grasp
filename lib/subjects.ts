@@ -5,6 +5,7 @@
 // so the app runs with zero setup and no API keys.
 
 import type { ClassSlot, Exam } from "@/lib/schedule";
+import type { Citation, Resource } from "@/lib/resources";
 import { autoColorKey } from "@/lib/subjectColors";
 
 export type Note = {
@@ -14,12 +15,10 @@ export type Note = {
   body: string; // plain text; paragraphs split on blank lines
 };
 
-export type Resource = {
-  id: string;
-  name: string;
-  kind: "Assessment criteria" | "Term planner" | "Past paper" | "Syllabus" | "Rubric";
-  note: string;
-};
+// The Resource Bank model lives in lib/resources.ts, which the API routes also
+// import — they must not pull in the seed data below. Re-exported here so the
+// subject model still reads as one piece.
+export type { Resource, ResourceEntry, ResourceKind } from "@/lib/resources";
 
 // §3.3 Subject Quiz Mode.
 //
@@ -54,6 +53,8 @@ export type QuizResponse = {
   /** the marker's one-line note on a written answer */
   feedback?: string;
   explanation?: string;
+  /** which resources the explanation drew on, kept with it */
+  explanationCited?: Citation[];
 };
 
 export type Quiz = {
@@ -70,6 +71,10 @@ export type Quiz = {
   answers: Record<string, QuizResponse>;
   submitted: boolean;
   score?: { got: number; total: number };
+  /** resources the questions were written from (§3.4) */
+  builtWith?: Citation[];
+  /** resources the written answers were marked against */
+  markedWith?: Citation[];
 };
 
 export type Subject = {
@@ -95,6 +100,11 @@ const uid = (p: string) => `${p}${Date.now().toString(36)}${(seq++).toString(36)
 /** Ids for quizzes and their questions, so the client doesn't hand-roll its own. */
 export function quizId(): string {
   return uid("q");
+}
+
+/** Resource ids double as the handles the AI cites, so they stay short. */
+export function resourceId(): string {
+  return uid("r");
 }
 
 export function makeSlot(day: number, start: string, end?: string): ClassSlot {
@@ -160,8 +170,36 @@ Active transport moves substances against the concentration gradient and require
       },
     ],
     resources: [
-      { id: "r1", name: "IGCSE Bio Assessment Criteria.pdf", kind: "Assessment criteria", note: "Paper 2 weights cell biology heavily — 22% of marks." },
-      { id: "r2", name: "Term 1 Planner.pdf", kind: "Term planner", note: "Enzymes covered week 4, mock exam week 6." },
+      {
+        id: "r1",
+        name: "IGCSE Bio Assessment Criteria.pdf",
+        kind: "Assessment criteria",
+        summary:
+          "Assessment criteria for IGCSE Biology Paper 2. Cell biology carries the heaviest weighting at 22% of the marks.",
+        entries: [
+          { label: "AO1 — Knowledge (35%)", detail: "Recall structures, processes and definitions using correct biological terms." },
+          { label: "AO2 — Application (40%)", detail: "Apply biological knowledge to unfamiliar contexts and data, including calculations." },
+          { label: "AO3 — Experimental skills (25%)", detail: "Plan investigations, identify variables and evaluate method and reliability." },
+          { label: "Topic weighting", detail: "Cell biology 22%, transport in organisms 18%, enzymes and nutrition 15%." },
+        ],
+        added: inDays(-9),
+        status: "ready",
+      },
+      {
+        id: "r2",
+        name: "Term 1 Planner.pdf",
+        kind: "Term planner",
+        summary: "Week-by-week plan for Term 1, ending with the Paper 2 mock in week 6.",
+        entries: [
+          { label: "Week 1-2", detail: "Cell structure, organelles and specialised cells." },
+          { label: "Week 3", detail: "Diffusion, osmosis and active transport, including the potato practical." },
+          { label: "Week 4", detail: "Enzymes: lock and key model, effect of temperature and pH." },
+          { label: "Week 5", detail: "Photosynthesis and limiting factors." },
+          { label: "Week 6", detail: "Paper 2 mock exam, covering everything from weeks 1-5." },
+        ],
+        added: inDays(-9),
+        status: "ready",
+      },
     ],
   },
   {
@@ -186,7 +224,21 @@ The trigger (short-term cause) was the assassination of Archduke Franz Ferdinand
       },
     ],
     resources: [
-      { id: "r3", name: "Source Analysis Rubric.pdf", kind: "Rubric", note: "Marks reward comparing provenance of two sources." },
+      {
+        id: "r3",
+        name: "Source Analysis Rubric.pdf",
+        kind: "Rubric",
+        summary:
+          "Marking bands for the source analysis essay. The top bands are only reached by comparing the provenance of two sources.",
+        entries: [
+          { label: "Band 1 (1-3 marks)", detail: "Describes the content of a source with no reference to its origin or purpose." },
+          { label: "Band 2 (4-6 marks)", detail: "Explains what a source suggests and makes a start on why it was produced." },
+          { label: "Band 3 (7-9 marks)", detail: "Evaluates reliability using the source's origin, purpose and historical context." },
+          { label: "Band 4 (10-12 marks)", detail: "Compares the provenance of two sources and reaches a supported judgement on which is more useful." },
+        ],
+        added: inDays(-14),
+        status: "ready",
+      },
     ],
   },
   {
@@ -211,7 +263,19 @@ The discriminant b²-4ac tells you how many real roots there are: positive = two
       },
     ],
     resources: [
-      { id: "r4", name: "Past Paper 2023.pdf", kind: "Past paper", note: "Q7 always tests the quadratic formula." },
+      {
+        id: "r4",
+        name: "Past Paper 2023.pdf",
+        kind: "Past paper",
+        summary: "The 2023 paper, with the question-by-question breakdown of what each one tested.",
+        entries: [
+          { label: "Question 5 (6 marks)", detail: "Solve simultaneous equations, one linear and one quadratic." },
+          { label: "Question 7 (8 marks)", detail: "Solve a quadratic using the formula and interpret the discriminant." },
+          { label: "Question 11 (10 marks)", detail: "Trigonometry in non-right-angled triangles: sine rule, then area." },
+        ],
+        added: inDays(-21),
+        status: "ready",
+      },
     ],
   },
 ];

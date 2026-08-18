@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { explainChat, type ChatMsg, type ExplainMode } from "@/lib/ai";
-import { AlertIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
+import type { Citation, ResourceBrief } from "@/lib/resources";
+import { ResourceCitation } from "@/components/workspace/ResourceCitation";
+import { AlertIcon, BankIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
 
 /**
  * §3.2 Highlight to Explain — a margin conversation rather than a chatbot tab.
@@ -25,6 +27,7 @@ export function ExplainPanel({
   selected,
   noteHtml,
   context,
+  resources,
   onApplyRevision,
 }: {
   open: boolean;
@@ -34,9 +37,15 @@ export function ExplainPanel({
   selected: string;
   noteHtml: string;
   context: string;
+  /** the subject's Resource Bank, already read and extracted (§3.4) */
+  resources: ResourceBrief[];
   onApplyRevision: (revisedHtml: string) => void;
 }) {
   const [history, setHistory] = useState<ChatMsg[]>([]);
+  // Which resources each answer drew on, keyed by that message's index in
+  // `history`. Kept beside the thread rather than on the message, because the
+  // thread is posted back to the API verbatim and a message is {role, content}.
+  const [cited, setCited] = useState<Record<number, Citation[]>>({});
   const [pending, setPending] = useState(false);
   const [input, setInput] = useState("");
   const [noteUpdated, setNoteUpdated] = useState(false);
@@ -58,25 +67,28 @@ export function ExplainPanel({
       setHistory(next);
       setFailure(null);
       setPending(true);
-      const { reply, revisedNote, error } = await explainChat(
-        noteRef.current,
-        selected,
+      const { reply, revisedNote, cited: used, error } = await explainChat({
+        noteHtml: noteRef.current,
+        highlight: selected,
         context,
-        next,
-        askMode
-      );
+        history: next,
+        mode: askMode,
+        resources,
+      });
       setPending(false);
       if (error) {
         setFailure(error);
         return;
       }
+      // The answer lands at the end of the thread it was asked from.
+      setCited((prev) => ({ ...prev, [next.length]: used }));
       setHistory([...next, { role: "assistant", content: reply }]);
       if (revisedNote && revisedNote !== noteRef.current) {
         onApplyRevision(revisedNote);
         setNoteUpdated(true);
       }
     },
-    [selected, context, onApplyRevision]
+    [selected, context, resources, onApplyRevision]
   );
 
   // One thread per opened selection; sessionRef keeps re-renders from restarting
@@ -96,6 +108,7 @@ export function ExplainPanel({
     modeRef.current = mode;
     setNoteUpdated(false);
     setHistory([]);
+    setCited({});
     setInput("");
     setFailure(null);
   }, [open, selected, mode]);
@@ -141,7 +154,8 @@ export function ExplainPanel({
   }
 
   // Hide the seed user message; show the conversation from the first answer on.
-  const shown = history[0]?.role === "user" ? history.slice(1) : history;
+  const hidden = history[0]?.role === "user" ? 1 : 0;
+  const shown = history.slice(hidden);
 
   return (
     <>
@@ -198,11 +212,23 @@ export function ExplainPanel({
           </p>
 
           {!started && !pending && (
-            <p className="text-sm text-slate-400">
-              {mode === "refine"
-                ? "Add anything specific below — a topic to centre it on, a tone, a length — or just press Refine to have Grasp rework it as-is."
-                : "Add anything specific below — what you want explained, or how — or just press Explain to ask about it as-is."}
-            </p>
+            <>
+              <p className="text-sm text-slate-400">
+                {mode === "refine"
+                  ? "Add anything specific below — a topic to centre it on, a tone, a length — or just press Refine to have Grasp rework it as-is."
+                  : "Add anything specific below — what you want explained, or how — or just press Explain to ask about it as-is."}
+              </p>
+              {resources.length > 0 && (
+                <p className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <BankIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span>
+                    Grasp can check the {resources.length} document
+                    {resources.length === 1 ? "" : "s"} in your Resource Bank — ask whether this
+                    lines up with your criteria and it will say which one it read.
+                  </span>
+                </p>
+              )}
+            </>
           )}
 
           {noteUpdated && (
@@ -216,6 +242,8 @@ export function ExplainPanel({
               <div key={i} className="text-[15px] leading-7 text-slate-700">
                 <p className="mb-1 text-xs font-semibold text-brand-700">Grasp AI</p>
                 {m.content}
+                {/* Said outright, under the answer it shaped (§3.4). */}
+                <ResourceCitation cited={cited[i + hidden]} className="mt-2.5" label="Grasp read" />
               </div>
             ) : (
               <div key={i} className="ml-8 rounded-2xl bg-brand-600 px-4 py-2 text-sm text-white">

@@ -16,6 +16,7 @@ import type { Quiz } from "@/lib/subjects";
 import { formatScore } from "@/components/workspace/QuizCard";
 import { QuizTitle } from "@/components/workspace/QuizTitle";
 import { BackIcon, CheckIcon, CloseIcon, MinusIcon } from "@/components/icons";
+import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 
 const DURATION = 900;
 
@@ -189,6 +190,14 @@ export function QuizResults({
           )}
           <Tally icon={<CloseIcon className="h-4 w-4" />} n={missed} label="Missed" tone="text-red-500" />
         </div>
+
+        {/* What the marks were judged against, said at the moment the score
+            lands rather than buried in the review below it. */}
+        <ResourceCitation
+          cited={quiz.markedWith}
+          label="Marked against"
+          className="mt-6 justify-center text-left"
+        />
 
         <div className="mt-7 space-y-2">
           <button

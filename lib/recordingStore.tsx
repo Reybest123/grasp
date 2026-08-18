@@ -17,6 +17,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { textToHtml } from "@/lib/richText";
 import { transcribeSegment, liveNotes } from "@/lib/ai";
+import type { Citation, ResourceBrief } from "@/lib/resources";
 import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/lib/recorder";
 import { useSubjects } from "@/lib/subjectsStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -46,6 +47,8 @@ export type RecordingState = {
   notesHtml: string;
   /** true once a final draft has run and produced nothing usable */
   noMaterial: boolean;
+  /** resources the current draft drew on (§3.4), named in the Record tab */
+  cited: Citation[];
   starting: boolean;
   drafting: boolean;
   finishing: boolean;
@@ -54,7 +57,12 @@ export type RecordingState = {
   fatal: { subjectId: string; message: string } | null;
   name: string;
   setName: (name: string) => void;
-  start: (subject: { id: string; name: string; context: string }) => Promise<void>;
+  start: (subject: {
+    id: string;
+    name: string;
+    context: string;
+    resources: ResourceBrief[];
+  }) => Promise<void>;
   stop: () => Promise<void>;
   discard: () => void;
   /** writes the note into the subject it was recorded for; returns its id */
@@ -73,6 +81,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const [transcript, setTranscript] = useState("");
   const [notesHtml, setNotesHtml] = useState("");
   const [noMaterial, setNoMaterial] = useState(false);
+  const [cited, setCited] = useState<Citation[]>([]);
   const [starting, setStarting] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -94,6 +103,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const subjectIdRef = useRef<string | null>(null);
   const contextRef = useRef("");
   const subjectNameRef = useRef("");
+  const resourcesRef = useRef<ResourceBrief[]>([]);
 
   const draft = useCallback(async (final: boolean) => {
     const text = transcriptRef.current;
@@ -102,7 +112,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
     lastDraftRef.current = text.length;
     setDrafting(true);
-    const { html, error } = await liveNotes(text, subjectNameRef.current, contextRef.current, final);
+    const { html, cited: used, error } = await liveNotes({
+      transcript: text,
+      subjectName: subjectNameRef.current,
+      context: contextRef.current,
+      final,
+      resources: resourcesRef.current,
+    });
     setDrafting(false);
     // A failed draft leaves the previous notes on screen; the next segment will
     // try again, and the transcript is still accumulating regardless.
@@ -111,6 +127,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       notesRef.current = html;
       setNotesHtml(html);
       setNoMaterial(false);
+      // Each draft rewrites the notes whole, so its citations replace the last
+      // set rather than piling up across a lecture.
+      setCited(used);
     } else if (final) {
       // The route returns nothing when the lecture held no teachable material —
       // a minute of greetings and admin. Saying so is honest; padding the note
@@ -137,7 +156,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   );
 
   const start = useCallback(
-    async (subject: { id: string; name: string; context: string }) => {
+    async (subject: { id: string; name: string; context: string; resources: ResourceBrief[] }) => {
       setFatal(null);
       setStarting(true);
       try {
@@ -155,7 +174,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         subjectIdRef.current = subject.id;
         subjectNameRef.current = subject.name;
         contextRef.current = subject.context;
+        resourcesRef.current = subject.resources;
         setSubjectId(subject.id);
+        setCited([]);
         setSubjectName(subject.name);
         setTranscript("");
         setNotesHtml("");
@@ -207,7 +228,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     notesRef.current = "";
     lastDraftRef.current = 0;
     subjectIdRef.current = null;
+    resourcesRef.current = [];
     setPhase("idle");
+    setCited([]);
     setSubjectId(null);
     setSubjectName("");
     setTranscript("");
@@ -328,6 +351,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         transcript,
         notesHtml,
         noMaterial,
+        cited,
         starting,
         drafting,
         finishing,

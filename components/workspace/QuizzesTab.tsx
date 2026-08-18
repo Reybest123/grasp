@@ -11,6 +11,7 @@ import { useState } from "react";
 import type { Note, Quiz, Subject } from "@/lib/subjects";
 import { quizId } from "@/lib/subjects";
 import { generateQuiz } from "@/lib/ai";
+import type { ResourceBrief } from "@/lib/resources";
 import { htmlToText } from "@/lib/richText";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QuizCard, NewQuizCard, formatScore } from "@/components/workspace/QuizCard";
@@ -22,6 +23,7 @@ export function QuizzesTab({
   subject,
   notes,
   context,
+  resources,
   now,
   addQuiz,
   updateQuiz,
@@ -30,6 +32,8 @@ export function QuizzesTab({
   subject: Subject;
   notes: Note[];
   context: string;
+  /** the subject's Resource Bank, already read and extracted (§3.4) */
+  resources: ResourceBrief[];
   now: Date | null;
   addQuiz: (quiz: Quiz) => void;
   updateQuiz: (id: string, patch: Partial<Quiz>) => void;
@@ -57,13 +61,14 @@ export function QuizzesTab({
   async function generate(req: QuizRequest) {
     setLoading(true);
     setError("");
-    const { questions, error: genError } = await generateQuiz({
+    const { questions, cited, error: genError } = await generateQuiz({
       topics: req.topics,
       instructions: req.instructions,
       notes: contextsFor(req.noteIds),
       context,
       counts: req.counts,
       subjectName: subject.name,
+      resources: resources.filter((r) => req.resourceIds.includes(r.id)),
     });
     setLoading(false);
 
@@ -82,6 +87,9 @@ export function QuizzesTab({
       questions,
       answers: {},
       submitted: false,
+      // Snapshotted rather than referenced: the card should still be able to
+      // say what it was built from after that document is removed.
+      builtWith: cited,
     };
     addQuiz(quiz);
     setOpenId(quiz.id);
@@ -90,7 +98,7 @@ export function QuizzesTab({
 
   /** Same questions, blank slate. The old answers and marks do not survive. */
   function retake(quiz: Quiz) {
-    updateQuiz(quiz.id, { answers: {}, submitted: false, score: undefined });
+    updateQuiz(quiz.id, { answers: {}, submitted: false, score: undefined, markedWith: undefined });
     setOpenId(quiz.id);
     // The card retaken from may be well down the grid; question 1 should not
     // open half off-screen.
@@ -103,6 +111,7 @@ export function QuizzesTab({
         quiz={open}
         noteContexts={contextsFor(open.noteIds)}
         context={context}
+        resources={resources}
         onUpdate={(patch) => updateQuiz(open.id, patch)}
         onBack={() => {
           setOpenId(null);
@@ -119,6 +128,7 @@ export function QuizzesTab({
       <QuizSetup
         subject={subject}
         notes={notes}
+        resources={resources}
         loading={loading}
         error={error}
         onGenerate={generate}

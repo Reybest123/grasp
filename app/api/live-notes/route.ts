@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
+import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 
 // §3.1 Record — turns the lecture transcript so far into notes, re-run as more
 // of the lecture arrives so the student watches the notes build.
@@ -29,7 +30,7 @@ Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size=
 Never use emojis.`;
 
 export async function POST(req: NextRequest) {
-  const { transcript, subjectName, context, final } = await req.json();
+  const { transcript, subjectName, context, final, resources } = await req.json();
 
   if (typeof transcript !== "string" || !transcript.trim()) {
     return NextResponse.json({ error: "Nothing to write up yet." }, { status: 400 });
@@ -41,6 +42,11 @@ export async function POST(req: NextRequest) {
     typeof context === "string" && context.trim()
       ? `\n\nBackground (context only — never write this into the notes):\n${context.trim()}`
       : "";
+  // §3.4 — the planner and the criteria tell the model which parts of a
+  // lecture are the assessed ones, which is exactly what notes should lead on.
+  const briefs = asBriefs(resources);
+  const block = resourceBlock(briefs, "marker");
+
   const stage = final
     ? "This is the complete lecture. Write the finished set of notes."
     : "The lecture is still running and this transcript is partial. Write the notes for what has been covered so far.";
@@ -54,7 +60,7 @@ ${transcript.trim()}`;
   const result = await chatCompletion({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: SYSTEM },
+      { role: "system", content: block ? `${SYSTEM}\n\n${block}` : SYSTEM },
       { role: "user", content: user },
     ],
     // Low: this is a faithful write-up of what was said, not creative writing.
@@ -65,8 +71,8 @@ ${transcript.trim()}`;
   // NONE means the lecture held nothing worth noting. Empty notes are a valid
   // answer here; the client says so rather than showing filler, and saves the
   // transcript instead.
-  const notes = stripFence(result.content);
+  const { text: notes, used } = splitUsed(stripFence(result.content), briefs);
   const none = notes.replace(/<[^>]*>/g, "").trim().toUpperCase() === "NONE";
 
-  return NextResponse.json({ notes: none ? "" : notes });
+  return NextResponse.json({ notes: none ? "" : notes, used: none ? [] : used });
 }

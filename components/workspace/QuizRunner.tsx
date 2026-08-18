@@ -8,6 +8,8 @@ import { useState } from "react";
 import type { Quiz, QuizQuestion, QuizResponse } from "@/lib/subjects";
 import type { NoteContext } from "@/lib/ai";
 import { markQuiz, explainWrongAnswer } from "@/lib/ai";
+import type { ResourceBrief } from "@/lib/resources";
+import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { formatScore } from "@/components/workspace/QuizCard";
 import { QuizResults } from "@/components/workspace/QuizResults";
 import { QuizTitle } from "@/components/workspace/QuizTitle";
@@ -35,6 +37,7 @@ export function QuizRunner({
   quiz,
   noteContexts,
   context,
+  resources,
   onUpdate,
   onBack,
 }: {
@@ -42,6 +45,8 @@ export function QuizRunner({
   /** the notes this quiz was built from, already flattened to text */
   noteContexts: NoteContext[];
   context: string;
+  /** the subject's Resource Bank, already read and extracted (§3.4) */
+  resources: ResourceBrief[];
   onUpdate: (patch: Partial<Quiz>) => void;
   onBack: () => void;
 }) {
@@ -71,16 +76,19 @@ export function QuizRunner({
     setError("");
 
     const written = quiz.questions.filter((q) => q.kind !== "mcq");
-    const { marks, error: markError } = await markQuiz(
-      written.map((q) => ({
+    // A rubric is the difference between "that reads fine" and the mark a
+    // teacher would actually put on it, so marking gets the bank too.
+    const { marks, cited, error: markError } = await markQuiz({
+      written: written.map((q) => ({
         id: q.id,
         question: q.question,
         modelAnswer: q.modelAnswer ?? "",
         answer: quiz.answers[q.id]?.text ?? "",
       })),
-      noteContexts,
-      context
-    );
+      notes: noteContexts,
+      context,
+      resources,
+    });
 
     if (markError) {
       // Nothing is committed on a failed mark — the student can hit Submit
@@ -112,23 +120,29 @@ export function QuizRunner({
       }
     }
 
-    onUpdate({ answers, submitted: true, score: { got, total: quiz.questions.length } });
+    onUpdate({
+      answers,
+      submitted: true,
+      score: { got, total: quiz.questions.length },
+      markedWith: cited,
+    });
     setShowResults(true);
     setMarking(false);
   }
 
   async function explain(q: QuizQuestion) {
     setExplaining((cur) => [...cur, q.id]);
-    const { explanation, error: explainError } = await explainWrongAnswer(
-      q.question,
-      q.kind,
-      studentAnswerOf(q, quiz.answers[q.id]),
-      correctAnswerOf(q),
-      noteContexts,
-      context
-    );
+    const { explanation, cited, error: explainError } = await explainWrongAnswer({
+      question: q.question,
+      kind: q.kind,
+      studentAnswer: studentAnswerOf(q, quiz.answers[q.id]),
+      correctAnswer: correctAnswerOf(q),
+      notes: noteContexts,
+      context,
+      resources,
+    });
     if (explainError) setError(explainError);
-    else setAnswer(q.id, { explanation });
+    else setAnswer(q.id, { explanation, explanationCited: cited });
     setExplaining((cur) => cur.filter((id) => id !== q.id));
   }
 
@@ -190,6 +204,9 @@ export function QuizRunner({
             </div>
           )}
         </div>
+
+        <ResourceCitation cited={quiz.builtWith} className="mt-4" label="Written against" />
+        <ResourceCitation cited={quiz.markedWith} className="mt-2" label="Marked against" />
 
         {error && (
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -317,6 +334,7 @@ export function QuizRunner({
                         {a.explanation.split(/\n{2,}/).map((para, i) => (
                           <p key={i}>{para}</p>
                         ))}
+                        <ResourceCitation cited={a.explanationCited} />
                       </div>
                     ) : (
                       <button

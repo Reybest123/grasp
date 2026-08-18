@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
+import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 
 // The blank-note counterpart to /api/enhance (§3.1): writes a starting set of
 // notes instead of improving existing ones, so the input is a title/subject
@@ -18,25 +19,35 @@ Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size=
 Never use emojis.`;
 
 export async function POST(req: NextRequest) {
-  const { title, subjectName, context } = await req.json();
+  const { title, instructions, subjectName, context, resources } = await req.json();
   if (typeof subjectName !== "string" || !subjectName.trim()) {
     return NextResponse.json({ error: "No subject provided" }, { status: 400 });
   }
 
+  // §3.4 — a first set of notes should already be pointed at whatever the
+  // syllabus and the term planner say the class is actually covering.
+  const briefs = asBriefs(resources);
+  const block = resourceBlock(briefs, "marker");
+
   const cleanTitle = typeof title === "string" ? title.trim() : "";
   const schedule = typeof context === "string" && context.trim() ? `\n\n${context.trim()}` : "";
+  const focus =
+    typeof instructions === "string" && instructions.trim()
+      ? `\nWhat the student asked you to focus on: ${instructions.trim()}`
+      : "";
   const user = `Subject: ${subjectName}
-Note title: ${cleanTitle || "(none given)"}${schedule}`;
+Note title: ${cleanTitle || "(none given)"}${focus}${schedule}`;
 
   const result = await chatCompletion({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: SYSTEM },
+      { role: "system", content: block ? `${SYSTEM}\n\n${block}` : SYSTEM },
       { role: "user", content: user },
     ],
     temperature: 0.5,
   });
   if (!result.ok) return result.response;
 
-  return NextResponse.json({ generated: stripFence(result.content) });
+  const { text, used } = splitUsed(stripFence(result.content), briefs);
+  return NextResponse.json({ generated: text, used });
 }

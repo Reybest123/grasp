@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
+import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -19,12 +20,18 @@ Leave the rest of the note alone: every other passage, and all of the note's str
 } as const;
 
 export async function POST(req: NextRequest) {
-  const { noteBody, highlight, context, history, mode } = await req.json();
+  const { noteBody, highlight, context, history, mode, resources } = await req.json();
   if (typeof noteBody !== "string" || typeof highlight !== "string" || !Array.isArray(history)) {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
 
   const modeRules = mode === "refine" ? MODES.refine : MODES.explain;
+
+  // §3.4 — this is the headline case for the Resource Bank: the student asks
+  // "does this match the criteria?" and the answer comes from the criteria
+  // they actually uploaded, with the panel naming what was read.
+  const briefs = asBriefs(resources);
+  const block = resourceBlock(briefs, "json");
 
   const schedule =
     typeof context === "string" && context.trim()
@@ -40,8 +47,8 @@ ${modeRules}
 
 The note is HTML. Any revisedNote you return must be the FULL note as HTML using only these tags: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">. Preserve the student's existing formatting exactly — emphasis, colours, checklist items written as <p class="check" data-done="true|false"> with their ticked state, tables with every row keeping the same number of cells, and equations copied through character for character. Your reply text itself is plain text, not HTML.
 
-Respond ONLY as JSON in this exact shape:
-{"reply": "<your message to the student>", "revisedNote": "<the full updated note as HTML, or null if nothing should change>"}
+${block ? `${block}\n\n` : ""}Respond ONLY as JSON in this exact shape:
+{"reply": "<your message to the student>", "revisedNote": "<the full updated note as HTML, or null if nothing should change>", "used": ["<ids of the resources you drew on, or empty>"]}
 
 The student's full note is:
 """${noteBody}"""
@@ -69,8 +76,9 @@ The highlighted passage is:
     return NextResponse.json({
       reply: parsed.reply ?? "",
       revisedNote: revised || null,
+      used: pickUsed(parsed.used, briefs),
     });
   } catch {
-    return NextResponse.json({ reply: raw, revisedNote: null });
+    return NextResponse.json({ reply: raw, revisedNote: null, used: [] });
   }
 }

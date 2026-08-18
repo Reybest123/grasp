@@ -8,6 +8,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { SUBJECTS, createSubject, type Subject } from "@/lib/subjects";
+import { isResourceKind, type Resource } from "@/lib/resources";
 import { autoColorKey } from "@/lib/subjectColors";
 
 const STORAGE_KEY = "grasp.subjects.v1";
@@ -81,6 +82,37 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
 /** The pre-multi-exam shape, still possibly sitting in a returning user's storage. */
 type LegacySubject = Partial<Subject> & { examDate?: string; examTitle?: string };
 
+/** Resources used to be a name and a one-line hand-written note (CLAUDE.md §11). */
+type LegacyResource = Partial<Resource> & { note?: string };
+
+/**
+ * A stored resource predating the extraction model has no entries — its old
+ * one-liner becomes the summary, which is still perfectly usable as a digest.
+ * One holding neither is marked failed: it stays on screen to be replaced
+ * rather than sitting in the bank contributing nothing.
+ */
+function normalizeResource(r: LegacyResource, i: number): Resource {
+  const summary = (r.summary ?? r.note ?? "").trim();
+  const entries = Array.isArray(r.entries) ? r.entries : [];
+  // Status is decided by whether there is anything to hand the AI, not by what
+  // the record claims: the legacy shape has a note and no entries and is
+  // perfectly usable, while a record holding neither is not.
+  const status = r.status !== "failed" && (entries.length > 0 || summary) ? "ready" : "failed";
+  return {
+    id: r.id ?? `r${i}${Math.random().toString(36).slice(2, 6)}`,
+    name: r.name ?? "Untitled document",
+    kind: isResourceKind(r.kind) ? r.kind : "Other",
+    summary,
+    entries,
+    added: r.added ?? "",
+    status,
+    error:
+      status === "failed"
+        ? r.error ?? "Grasp did not finish reading this one. Remove it and add it again."
+        : undefined,
+  };
+}
+
 /** Tolerate older/partial stored records so a schema tweak never blanks the app. */
 function normalize(s: LegacySubject): Subject {
   // Subjects used to carry a single examDate/examTitle pair — fold it into the list.
@@ -97,7 +129,7 @@ function normalize(s: LegacySubject): Subject {
     classes: Array.isArray(s.classes) ? s.classes : [],
     exams,
     notes: Array.isArray(s.notes) ? s.notes : [],
-    resources: Array.isArray(s.resources) ? s.resources : [],
+    resources: Array.isArray(s.resources) ? s.resources.map(normalizeResource) : [],
     quizTopics: Array.isArray(s.quizTopics) ? s.quizTopics : [],
     quizzes: Array.isArray(s.quizzes) ? s.quizzes : [],
   };

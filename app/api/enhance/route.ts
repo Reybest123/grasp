@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
+import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 
 // Notes are HTML (see lib/richText.ts), so enhancement round-trips HTML too —
 // otherwise every enhance would flatten the student's bold, colours and
@@ -23,21 +24,36 @@ Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size=
 
 Never use emojis.`;
 
+function line(label: string, value: unknown): string {
+  return typeof value === "string" && value.trim() ? `${label}: ${value.trim()}\n` : "";
+}
+
 export async function POST(req: NextRequest) {
-  const { body } = await req.json();
+  const { body, instructions, subjectName, context, resources } = await req.json();
   if (!body || typeof body !== "string" || !body.trim()) {
     return NextResponse.json({ error: "No note body provided" }, { status: 400 });
   }
 
+  // §3.4 — the student's own criteria, planners and rubrics, already read once
+  // and stored, so an enhance can align the note with what is actually marked.
+  const briefs = asBriefs(resources);
+  const block = resourceBlock(briefs, "marker");
+
+  const head =
+    line("Subject", subjectName) +
+    line("Background on the student (never write this into the note)", context) +
+    line("What the student asked you to focus on", instructions);
+
   const result = await chatCompletion({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: SYSTEM },
-      { role: "user", content: body },
+      { role: "system", content: block ? `${SYSTEM}\n\n${block}` : SYSTEM },
+      { role: "user", content: head ? `${head}\nThe note:\n${body}` : body },
     ],
     temperature: 0.4,
   });
   if (!result.ok) return result.response;
 
-  return NextResponse.json({ enhanced: stripFence(result.content) || body });
+  const { text, used } = splitUsed(stripFence(result.content), briefs);
+  return NextResponse.json({ enhanced: text || body, used });
 }

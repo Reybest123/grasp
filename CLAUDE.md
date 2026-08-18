@@ -205,12 +205,18 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - **A finished quiz can be retaken, and the action row splits in half to hold it.** Review answers and Retake sit side by side on the card, together occupying exactly the width the single button does on an unfinished quiz, rather than stacking. Retake keeps the questions and clears `answers`/`submitted`/`score`, so it goes behind a `ConfirmDialog` that names what is being thrown away ("the 3 out of 5 you scored") — it destroys marked work and any explanations already paid for, which is the same bar note and quiz deletion are held to.
   - **Quizzes are renameable everywhere their name is shown** (`QuizTitle.tsx`) — the grid card, the runner's header, and the results screen — plus an optional Name field at the foot of the setup form whose placeholder is the live auto-generated name. Auto-naming (`autoTitle`) moved from `QuizzesTab` to `QuizSetup` so the form can preview the exact string the quiz would otherwise get; blank still means "name it after what it covers". Clicking a title selects it whole, since renaming usually means replacing the generated name rather than appending to it, and an empty commit reverts rather than leaving a card with nothing to identify it by.
   - The old tab generated 4 throwaway MCQs into component state and showed a pre-written `why` under each one the moment it was answered. Nothing of that flow survives.
-- Resource Bank UI (display only; upload not wired yet)
+- **Resource Bank (§3.4) — documents are read once, then cited everywhere they're used.** A resource is uploaded (screenshot, photo, PDF, or pasted text, up to 3MB), sent to GPT-4o once through `/api/resource-extract`, and what comes back — a `kind`, a one-paragraph `summary` and an `entries[]` of `{label, detail}` rows — is what gets stored. **The file itself is never kept**, matching how audio is handled in §5: it goes through the route to the provider and the buffer is dropped when the request ends. Re-reading the same screenshot on every quiz would be the obvious shape and the wrong one — it pays the vision cost again for an answer that cannot change.
+  - **`lib/resources.ts` is the whole contract.** `resourceDigest()` flattens a stored resource to the text the model sees; `briefsFor()` narrows a subject's resources to the `ready` ones as `ResourceBrief`s (id / name / kind / digest), which is the only shape that ever crosses into `lib/ai.ts`; `asBriefs()` re-validates that shape server-side, since it arrives in a request body and is therefore untrusted; `resourceBlock()` writes the prompt fragment; `pickUsed()` / `splitUsed()` read the citation back out.
+  - **Every AI route takes resources and returns `used`.** `/api/enhance`, `/api/generate`, `/api/explain-chat`, `/api/quiz`, `/api/mark-quiz`, `/api/quiz-explain` and `/api/live-notes` all do. Two citation modes, because the routes do not all return JSON: routes with a JSON envelope carry a `used` array validated by `pickUsed`; routes that return bare note HTML end with a `USED: id, id` marker line that `splitUsed` peels off. Ids the model invents are dropped either way — a citation naming a document that does not exist is worse than none.
+  - **`ResourceCitation.tsx` is the single component that says so**, and it renders in the explain/refine thread under each reply, under the enhance/generate result, under the live-notes draft while a lecture runs, at the top of a quiz, on the results screen, and inside a quiz explanation. It renders nothing when nothing was cited — a "used: none" line on every reply would train the student to stop reading it.
+  - **Quizzes snapshot their citations rather than referencing them.** `builtWith` (generation) and `markedWith` (marking) are stored on the `Quiz`, so a card can still say what it was written against after that document has been deleted from the bank. `markedWith` is cleared on retake; `explanationCited` is stored per `QuizResponse` alongside the explanation it belongs to.
+  - **AI enhance is a popup now, not a single press.** `EnhanceMenu.tsx` opens under the note's AI button with an optional instruction box and a checkbox per resource. This was the one feature with nowhere to show what it would consult — it fired the instant the button was hit. Pressing straight through with nothing typed does exactly what the old single press did.
+  - **The bank is capped per plan** (`lib/plan.ts`): free holds 2 per subject, pro 5, max 10. At the cap the "Add a document" tile becomes a locked tile naming the higher tiers, and the Add button disables — the limit is stated where it is hit, not discovered after filling out the form.
 - Terms of Service + Privacy Policy pages
 
 **Still mocked / not yet built:**
 - Timetable screenshot extraction (needs image upload + vision model)
-- Auth / accounts, Postgres persistence (subjects *and* notes currently persist to localStorage only), Resource Bank file upload, weekly usage-limit enforcement
+- Auth / accounts, Postgres persistence (subjects, notes *and* extracted resources currently persist to localStorage only), weekly usage-limit enforcement (including the resource cap, which is enforced in the UI only)
 - Only one recording at a time, and it ends if the page itself is reloaded (the recorder state is in memory, not persisted).
 
 **Design conventions:**
@@ -221,7 +227,7 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - Subjects are represented by a monogram (first letter) on a coloured gradient tile.
 - Subject colours come from `lib/subjectColors.ts` and are auto-assigned on creation, then editable per subject.
 
-**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*` through one shared `postJson` helper — plus `postForm` for `/api/transcribe`, since audio can't be stringified into JSON and `fetch` has to set the multipart boundary itself. There is **no `openai` npm package** in this project; `package.json` is next/react/react-dom only, and every provider call is a raw `fetch` inside `lib/openai.ts`. Text routes (`/api/enhance`, `/api/generate`, `/api/explain-chat`, `/api/quiz`, `/api/mark-quiz`, `/api/quiz-explain`, `/api/live-notes`) go through `chatCompletion()`; `/api/transcribe` goes through `transcribeAudio()`, which is multipart and so can't share that path but masks failures identically. That helper is the only place a provider failure is logged (`console.error`, full detail, server-side only) — the client always gets back the same generic `"Grasp could not reach the AI just now. Try again in a moment."` string. **Never let a raw OpenAI error object reach `NextResponse.json`** — its `message` field echoes back a masked version of the API key, and a route that returns it verbatim will display that in the browser. The `OPENAI_API_KEY` env var itself is only ever read server-side inside `lib/openai.ts`.
+**API layer:** `lib/ai.ts` calls server-side routes under `app/api/*` through one shared `postJson` helper — plus `postForm` for `/api/transcribe`, since audio can't be stringified into JSON and `fetch` has to set the multipart boundary itself. There is **no `openai` npm package** in this project; `package.json` is next/react/react-dom only, and every provider call is a raw `fetch` inside `lib/openai.ts`. Text routes (`/api/enhance`, `/api/generate`, `/api/explain-chat`, `/api/quiz`, `/api/mark-quiz`, `/api/quiz-explain`, `/api/live-notes`, `/api/resource-extract`) go through `chatCompletion()`; `/api/transcribe` goes through `transcribeAudio()`, which is multipart and so can't share that path but masks failures identically. That helper is the only place a provider failure is logged (`console.error`, full detail, server-side only) — the client always gets back the same generic `"Grasp could not reach the AI just now. Try again in a moment."` string. **Never let a raw OpenAI error object reach `NextResponse.json`** — its `message` field echoes back a masked version of the API key, and a route that returns it verbatim will display that in the browser. The `OPENAI_API_KEY` env var itself is only ever read server-side inside `lib/openai.ts`.
 
 **Local `OPENAI_API_KEY` footgun (Windows):** if AI calls fail with `invalid_api_key` even though `.env.local` has a correct, active key, check for a stale `OPENAI_API_KEY` set as a **Windows user-level environment variable** (`[Environment]::GetEnvironmentVariable("OPENAI_API_KEY","User")` in PowerShell) — Next.js's dotenv loader does not override a var that's already present in `process.env`, so an old OS-level key silently wins over `.env.local` with no warning. If you clear it, note that the fix only takes effect for **brand-new process trees**: an already-running shell (and anything it spawns, including a backgrounded `npm run dev`) keeps the value it inherited at its own launch. `unset OPENAI_API_KEY` and the `npm run dev` restart must happen in the *same* shell invocation, chained together, or the unset silently doesn't reach the server process.
 
@@ -230,16 +236,19 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 ```
 app/            routes — page.tsx (landing), home/, onboarding/, legal/,
                 api/ (enhance, generate, explain-chat, quiz,
-                      mark-quiz, quiz-explain, transcribe, live-notes)
+                      mark-quiz, quiz-explain, transcribe, live-notes,
+                      resource-extract)
 components/     icons.tsx, Logo, ConfirmDialog, SubjectCard, SubjectEditor
 components/workspace/
                 SubjectWorkspace (shell + tab routing + note & quiz CRUD)
                 NotesTab, NoteToolbar, EquationEditor, TablePicker, TableMenu,
-                ExplainPanel, RecordTab, ResourcesTab,
+                ExplainPanel, RecordTab, EnhanceMenu,
+                ResourcesTab, ResourceCard, ResourceAdd, ResourceCitation,
                 QuizzesTab (grid/setup/run shell), QuizCard, QuizSetup,
                 QuizRunner, QuizResults, QuizTitle
 lib/            subjects (model + seed), subjectsStore, recordingStore,
-                schedule, subjectColors,
+                schedule, subjectColors, plan (tier caps),
+                resources (extraction model + digests + citations),
                 richText (HTML <-> text + sanitiser + block helpers),
                 tables (table build/navigate/edit + cell rectangles),
                 history (undo/redo stack),

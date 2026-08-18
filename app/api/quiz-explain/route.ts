@@ -6,13 +6,19 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
+import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 
 export async function POST(req: NextRequest) {
-  const { question, kind, studentAnswer, correctAnswer, notes, context } = await req.json();
+  const { question, kind, studentAnswer, correctAnswer, notes, context, resources } = await req.json();
 
   if (typeof question !== "string" || !question.trim()) {
     return NextResponse.json({ error: "Nothing to explain." }, { status: 400 });
   }
+
+  // §3.4 — "you lost the mark because the band asks you to compare provenance"
+  // is a far more useful explanation than a restatement of the right answer.
+  const briefs = asBriefs(resources);
+  const block = resourceBlock(briefs, "marker");
 
   const noteList = Array.isArray(notes) ? notes : [];
   const notesContext = noteList.length
@@ -30,7 +36,8 @@ export async function POST(req: NextRequest) {
           "You are Grasp, explaining to a school student why the answer they gave to a quiz question was not right. " +
           "Start from what they actually wrote or picked: name the specific misunderstanding it points to, rather than only restating the correct answer. If their answer was close, say what it was missing. If they left it blank, skip straight to the reasoning. " +
           "Then walk through how to get to the right answer, so they could do it again on a different question. " +
-          "Two or three short paragraphs at most. Plain sentences, no headings, no bullet points, no markdown, no emojis. Address the student directly as 'you'. Be matter-of-fact and encouraging without being patronising — never open by praising the attempt.",
+          "Two or three short paragraphs at most. Plain sentences, no headings, no bullet points, no markdown, no emojis. Address the student directly as 'you'. Be matter-of-fact and encouraging without being patronising — never open by praising the attempt." +
+          (block ? `\n\n${block}` : ""),
       },
       {
         role: "user",
@@ -53,5 +60,6 @@ export async function POST(req: NextRequest) {
   });
   if (!result.ok) return result.response;
 
-  return NextResponse.json({ explanation: result.content.trim() });
+  const { text, used } = splitUsed(result.content.trim(), briefs);
+  return NextResponse.json({ explanation: text, used });
 }

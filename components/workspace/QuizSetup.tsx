@@ -6,7 +6,8 @@
 import { useState } from "react";
 import type { Note, Subject } from "@/lib/subjects";
 import type { QuizCounts } from "@/lib/ai";
-import { BackIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
+import type { ResourceBrief } from "@/lib/resources";
+import { BackIcon, BankIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
 
 const MAX_PER_KIND = 10;
 const MAX_TOTAL = 20;
@@ -18,6 +19,8 @@ export type QuizRequest = {
   instructions: string;
   noteIds: string[];
   counts: QuizCounts;
+  /** which of the subject's resources to weight the questions toward (§3.4) */
+  resourceIds: string[];
 };
 
 /**
@@ -86,6 +89,7 @@ function Stepper({
 export function QuizSetup({
   subject,
   notes,
+  resources,
   loading,
   error,
   onGenerate,
@@ -93,6 +97,8 @@ export function QuizSetup({
 }: {
   subject: Subject;
   notes: Note[];
+  /** the subject's Resource Bank, already read and extracted (§3.4) */
+  resources: ResourceBrief[];
   loading: boolean;
   error: string;
   onGenerate: (req: QuizRequest) => void;
@@ -105,6 +111,9 @@ export function QuizSetup({
   const [counts, setCounts] = useState<QuizCounts>({ mcq: 5, short: 2, long: 1 });
   const [instructions, setInstructions] = useState("");
   const [name, setName] = useState("");
+  // The bank is on by default — questions weighted toward what is actually
+  // assessed is the reason it exists.
+  const [resourceIds, setResourceIds] = useState<string[]>(resources.map((r) => r.id));
 
   const total = counts.mcq + counts.short + counts.long;
   const overCap = total > MAX_TOTAL;
@@ -112,6 +121,10 @@ export function QuizSetup({
 
   function toggleTopic(t: string) {
     setTopics((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
+  }
+
+  function toggleResource(id: string) {
+    setResourceIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   }
 
   function toggleNote(id: string) {
@@ -257,6 +270,38 @@ export function QuizSetup({
           )}
         </section>
 
+        {resources.length > 0 && (
+          <section className="mt-7">
+            <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+              <BankIcon className="h-3.5 w-3.5" /> Weight it to your Resource Bank
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Grasp pushes the questions toward what these say is assessed, and names any it used.
+            </p>
+            <div className="mt-3 space-y-1 rounded-xl border border-slate-200 p-2">
+              {resources.map((r) => (
+                <label
+                  key={r.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition hover:bg-slate-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={resourceIds.includes(r.id)}
+                    onChange={() => toggleResource(r.id)}
+                    className="h-4 w-4 shrink-0 accent-brand-600"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-slate-700">
+                      {r.kind}
+                    </span>
+                    <span className="block truncate text-xs text-slate-400">{r.name}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="mt-7">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">
             Anything else? (optional)
@@ -285,7 +330,7 @@ export function QuizSetup({
         </section>
 
         <button
-          onClick={() => onGenerate({ name, topics, instructions, noteIds, counts })}
+          onClick={() => onGenerate({ name, topics, instructions, noteIds, counts, resourceIds })}
           disabled={total === 0 || overCap || noNotesPicked}
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60 disabled:hover:bg-brand-600"
         >

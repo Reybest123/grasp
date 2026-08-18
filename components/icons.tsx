@@ -314,3 +314,30 @@ export function ImageIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function UploadIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 16V4" />
+      <path d="M8 8l4-4 4 4" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function LockIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="4" y="10" width="16" height="10" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "@/lib/subjects";
 import { enhanceNote, generateNote, type ExplainMode } from "@/lib/ai";
+import type { Citation, ResourceBrief } from "@/lib/resources";
 import {
   ensureHtml,
   textToHtml,
@@ -41,6 +42,8 @@ import { mathToHtml } from "@/lib/math";
 import { NoteToolbar } from "@/components/workspace/NoteToolbar";
 import { EquationEditor } from "@/components/workspace/EquationEditor";
 import { ExplainPanel } from "@/components/workspace/ExplainPanel";
+import { EnhanceMenu } from "@/components/workspace/EnhanceMenu";
+import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { TableMenu, type TableAction } from "@/components/workspace/TableMenu";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -67,6 +70,7 @@ export function NotesTab({
   deleteNote,
   context,
   subjectName,
+  resources,
 }: {
   notes: Note[];
   activeId: string | undefined;
@@ -76,11 +80,17 @@ export function NotesTab({
   deleteNote: (id: string) => void;
   context: string;
   subjectName: string;
+  /** the subject's Resource Bank, already read and extracted (§3.4) */
+  resources: ResourceBrief[];
 }) {
   const active = notes.find((n) => n.id === activeId) ?? notes[0];
 
   const [enhancing, setEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  // The popup on the AI button, and what the last run drew on. The citation
+  // is transient by design: it belongs to the press, not to the note.
+  const [enhanceMenu, setEnhanceMenu] = useState(false);
+  const [enhanceCited, setEnhanceCited] = useState<Citation[]>([]);
   const [tipHidden, setTipHidden] = useState(false);
   // Deleting a note is confirmed first: it is the one action here that
   // destroys writing outright, and there is no undo across notes.
@@ -832,18 +842,22 @@ export function NotesTab({
   const blank = isEmptyHtml(active?.body ?? "");
 
   /** Enhancement round-trips HTML, so bold, colours and checklists survive it. */
-  async function enhance() {
+  async function enhance(instructions: string, useIds: string[]) {
     if (!active) return;
+    setEnhanceMenu(false);
     setEnhancing(true);
     setEnhanceError(null);
-    const { html, error } = blank
-      ? await generateNote(active.title, subjectName, context)
-      : await enhanceNote(ensureHtml(active.body));
+    setEnhanceCited([]);
+    const picked = resources.filter((r) => useIds.includes(r.id));
+    const { html, cited, error } = blank
+      ? await generateNote({ title: active.title, instructions, subjectName, context, resources: picked })
+      : await enhanceNote({ html: ensureHtml(active.body), instructions, subjectName, context, resources: picked });
     setEnhancing(false);
     if (error) {
       setEnhanceError(error);
       return;
     }
+    setEnhanceCited(cited);
     commitHtml(html);
   }
 
@@ -1161,14 +1175,33 @@ export function NotesTab({
             placeholder="Untitled note"
             className="w-full min-w-0 border-none bg-transparent text-2xl font-bold text-ink outline-none placeholder:text-slate-300"
           />
-          <button
-            onClick={enhance}
-            disabled={enhancing}
-            className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-          >
-            <SparkleIcon className="h-4 w-4" />
-            {blank ? (enhancing ? "Generating…" : "AI generate") : enhancing ? "Enhancing…" : "AI enhance"}
-          </button>
+          {/* The popup anchors to this button, so the wrapper is the position
+              context rather than the header row. */}
+          <div className="relative mt-1 shrink-0">
+            <button
+              onClick={() => setEnhanceMenu((v) => !v)}
+              disabled={enhancing}
+              aria-expanded={enhanceMenu}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+            >
+              <SparkleIcon className="h-4 w-4" />
+              {blank
+                ? enhancing
+                  ? "Generating…"
+                  : "AI generate"
+                : enhancing
+                  ? "Enhancing…"
+                  : "AI enhance"}
+            </button>
+            {enhanceMenu && !enhancing && (
+              <EnhanceMenu
+                mode={blank ? "generate" : "enhance"}
+                resources={resources}
+                onClose={() => setEnhanceMenu(false)}
+                onRun={enhance}
+              />
+            )}
+          </div>
         </div>
 
         <div className="mt-4 border-y border-slate-100 bg-slate-50/60 px-6 py-1.5">
@@ -1184,6 +1217,20 @@ export function NotesTab({
             canRedo={canStep.redo}
           />
         </div>
+
+        {enhanceCited.length > 0 && (
+          <div className="flex items-start gap-2 border-b border-slate-100 px-8 py-2.5">
+            <ResourceCitation cited={enhanceCited} className="flex-1" />
+            <button
+              onClick={() => setEnhanceCited([])}
+              title="Dismiss"
+              aria-label="Dismiss"
+              className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-ink"
+            >
+              <CloseIcon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {enhanceError && (
           <div className="flex items-start gap-2 border-b border-red-100 bg-red-50 px-8 py-2.5 text-sm text-red-700">
@@ -1299,6 +1346,7 @@ export function NotesTab({
         selected={selectedText}
         noteHtml={noteHtml}
         context={context}
+        resources={resources}
         onApplyRevision={commitHtml}
       />
 

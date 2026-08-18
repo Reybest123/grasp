@@ -7,7 +7,7 @@
 import type { Quiz } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
 import { QuizTitle } from "@/components/workspace/QuizTitle";
-import { QuizIcon, TrashIcon, PlusIcon, CheckIcon, RetakeIcon } from "@/components/icons";
+import { QuizIcon, TrashIcon, PlusIcon, CheckIcon, RetakeIcon, BankIcon } from "@/components/icons";
 
 /** Short relative age, e.g. "just now", "3 days ago". */
 function ago(iso: string, now: Date | null): string {
@@ -100,6 +100,17 @@ export function QuizCard({
                 ? `From ${quiz.noteIds.length} note${quiz.noteIds.length === 1 ? "" : "s"}`
                 : "General questions for this subject")}
         </p>
+
+        {/* Provenance, snapshotted when the quiz was made: it still reads
+            correctly after that document has been removed from the bank. */}
+        {quiz.builtWith && quiz.builtWith.length > 0 && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand-700">
+            <BankIcon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              Weighted to {quiz.builtWith.map((c) => c.kind.toLowerCase()).join(", ")}
+            </span>
+          </p>
+        )}
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-4 text-xs font-medium text-slate-500">
           <span>

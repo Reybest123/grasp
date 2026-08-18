@@ -5,18 +5,23 @@
 // subject) must not end the lecture.
 
 import { useRecording, mmss, MAX_SECONDS } from "@/lib/recordingStore";
-import { MicIcon, AlertIcon } from "@/components/icons";
+import type { ResourceBrief } from "@/lib/resources";
+import { ResourceCitation } from "@/components/workspace/ResourceCitation";
+import { MicIcon, AlertIcon, BankIcon } from "@/components/icons";
 
 export function RecordTab({
   subjectId,
   subjectName,
   context,
+  resources,
   onSaved,
   onOpenSubject,
 }: {
   subjectId: string;
   subjectName: string;
   context: string;
+  /** the subject's Resource Bank, already read and extracted (§3.4) */
+  resources: ResourceBrief[];
   onSaved: (noteId: string) => void;
   onOpenSubject: (subjectId: string) => void;
 }) {
@@ -78,8 +83,17 @@ export function RecordTab({
             </p>
           )}
 
+          {resources.length > 0 && (
+            <p className="mt-5 flex max-w-md items-start gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-left text-xs text-slate-500">
+              <BankIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+              Grasp will lean on the {resources.length} document
+              {resources.length === 1 ? "" : "s"} in your Resource Bank to work out which parts of
+              the lecture are the assessed ones, and name any it uses.
+            </p>
+          )}
+
           <button
-            onClick={() => void rec.start({ id: subjectId, name: subjectName, context })}
+            onClick={() => void rec.start({ id: subjectId, name: subjectName, context, resources })}
             disabled={rec.starting}
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
@@ -133,10 +147,13 @@ export function RecordTab({
             </div>
 
             {rec.notesHtml ? (
-              <div
-                className="editor text-[15px] leading-7 text-slate-700"
-                dangerouslySetInnerHTML={{ __html: rec.notesHtml }}
-              />
+              <>
+                <div
+                  className="editor text-[15px] leading-7 text-slate-700"
+                  dangerouslySetInnerHTML={{ __html: rec.notesHtml }}
+                />
+                <ResourceCitation cited={rec.cited} className="mt-4 bg-white" />
+              </>
             ) : (
               <p className="text-sm text-slate-400">
                 {rec.noMaterial

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
+import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 
 /** Keeps one press from running up a large call. Mirrors the cap in the UI. */
 const MAX_PER_KIND = 10;
@@ -11,7 +12,7 @@ function clamp(n: unknown): number {
 }
 
 export async function POST(req: NextRequest) {
-  const { topics, instructions, notes, context, counts, subjectName } = await req.json();
+  const { topics, instructions, notes, context, counts, subjectName, resources } = await req.json();
 
   const mcq = clamp(counts?.mcq);
   const short = clamp(counts?.short);
@@ -42,6 +43,11 @@ export async function POST(req: NextRequest) {
     ? "Every question must be answerable from the notes below. Do not test material the notes never cover."
     : "The student has not written any notes for this subject yet, so base the questions on the subject itself at a normal school level. Keep them general rather than pretending to know what the class has covered.";
 
+  // §3.4 — the whole point of the bank for quizzes: weight the questions toward
+  // what is actually assessed, in the command words the student is marked on.
+  const briefs = asBriefs(resources);
+  const block = resourceBlock(briefs, "json");
+
   const wanted = [
     mcq ? `${mcq} multiple-choice question${mcq > 1 ? "s" : ""} (kind "mcq")` : "",
     short ? `${short} short-answer question${short > 1 ? "s" : ""} (kind "short")` : "",
@@ -65,7 +71,8 @@ export async function POST(req: NextRequest) {
           'Both "short" and "long" carry a modelAnswer: what a full-mark answer would say. ' +
           'Do not explain the answers — explanations are generated later, only if the student asks. ' +
           'Order the questions multiple-choice first, then short, then long. ' +
-          'Respond ONLY with JSON of the shape: {"questions":[{"kind":"mcq","question":"...","options":["...","...","...","..."],"answerIndex":0},{"kind":"short","question":"...","modelAnswer":"..."},{"kind":"long","question":"...","modelAnswer":"..."}]}.',
+          (block ? `\n\n${block}\n\n` : "") +
+          'Respond ONLY with JSON of the shape: {"questions":[{"kind":"mcq","question":"...","options":["...","...","...","..."],"answerIndex":0},{"kind":"short","question":"...","modelAnswer":"..."},{"kind":"long","question":"...","modelAnswer":"..."}],"used":[]}.',
       },
       {
         role: "user",
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest) {
         q.answerIndex < q.options.length
       );
     });
-    return NextResponse.json({ questions: clean });
+    return NextResponse.json({ questions: clean, used: pickUsed(parsed.used, briefs) });
   } catch {
     console.error("[grasp] quiz JSON did not parse:", result.content.slice(0, 300));
     return NextResponse.json(

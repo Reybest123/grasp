@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { JSX } from "react";
 import type { Note, Quiz, Subject } from "@/lib/subjects";
+import { briefsFor, type Resource } from "@/lib/resources";
 import { useSubjects } from "@/lib/subjectsStore";
 import { getColor } from "@/lib/subjectColors";
 import { nextExam, weeklyLabel, subjectContext } from "@/lib/schedule";
@@ -113,6 +114,21 @@ export function SubjectWorkspace({
     [subject.id, subject.quizzes, updateSubject]
   );
 
+  // §3.4 — a document is read once, on the way in; nothing here re-reads one.
+  const addResource = useCallback(
+    (resource: Resource) => {
+      updateSubject(subject.id, { resources: [...subject.resources, resource] });
+    },
+    [subject.id, subject.resources, updateSubject]
+  );
+
+  const deleteResource = useCallback(
+    (id: string) => {
+      updateSubject(subject.id, { resources: subject.resources.filter((r) => r.id !== id) });
+    },
+    [subject.id, subject.resources, updateSubject]
+  );
+
   const deleteQuiz = useCallback(
     (id: string) => {
       updateSubject(subject.id, { quizzes: subject.quizzes.filter((q) => q.id !== id) });
@@ -127,6 +143,11 @@ export function SubjectWorkspace({
   // Class times + exams travel with every AI request for this subject, so
   // explanations and quizzes can reference the student's actual week.
   const context = now ? subjectContext(subject.name, subject.classes, subject.exams, now) : "";
+
+  // The Resource Bank travels with every AI request for this subject as the
+  // extraction Grasp already made of each document (§3.4) — never the file, and
+  // never a second read. Whatever the AI draws on comes back named.
+  const resources = briefsFor(subject.resources);
 
   return (
     <div>
@@ -206,6 +227,7 @@ export function SubjectWorkspace({
             deleteNote={deleteNote}
             context={context}
             subjectName={subject.name}
+            resources={resources}
           />
         )}
         {tab === "record" && (
@@ -213,6 +235,7 @@ export function SubjectWorkspace({
             subjectId={subject.id}
             subjectName={subject.name}
             context={context}
+            resources={resources}
             onSaved={(noteId) => {
               setActiveId(noteId);
               setTab("notes");
@@ -225,13 +248,20 @@ export function SubjectWorkspace({
             subject={subject}
             notes={subject.notes}
             context={context}
+            resources={resources}
             now={now}
             addQuiz={addQuiz}
             updateQuiz={updateQuiz}
             deleteQuiz={deleteQuiz}
           />
         )}
-        {tab === "resources" && <ResourcesTab subject={subject} />}
+        {tab === "resources" && (
+          <ResourcesTab
+            subject={subject}
+            addResource={addResource}
+            deleteResource={deleteResource}
+          />
+        )}
       </section>
     </div>
   );
