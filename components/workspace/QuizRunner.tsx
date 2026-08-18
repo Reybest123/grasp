@@ -9,6 +9,7 @@ import type { Quiz, QuizQuestion, QuizResponse } from "@/lib/subjects";
 import type { NoteContext } from "@/lib/ai";
 import { markQuiz, explainWrongAnswer } from "@/lib/ai";
 import { formatScore } from "@/components/workspace/QuizCard";
+import { QuizResults } from "@/components/workspace/QuizResults";
 import { BackIcon, CheckIcon, CloseIcon, SparkleIcon } from "@/components/icons";
 
 /** What a full-mark answer says — used for review display and for explanations. */
@@ -47,6 +48,10 @@ export function QuizRunner({
   const [error, setError] = useState("");
   // Which questions are mid-explanation, so two clicks can't race.
   const [explaining, setExplaining] = useState<string[]>([]);
+  // The results screen. Component state, not stored on the quiz, so it only
+  // ever shows for the submit that just happened — reopening a finished quiz
+  // from the grid goes straight to the marked answers.
+  const [showResults, setShowResults] = useState(false);
 
   function setAnswer(id: string, patch: Partial<QuizResponse>) {
     // Unmarked until submit, so a fresh answer starts as `correct: false`.
@@ -107,6 +112,7 @@ export function QuizRunner({
     }
 
     onUpdate({ answers, submitted: true, score: { got, total: quiz.questions.length } });
+    setShowResults(true);
     setMarking(false);
   }
 
@@ -127,6 +133,14 @@ export function QuizRunner({
 
   const score = quiz.score;
   const pct = score && score.total ? score.got / score.total : 0;
+
+  // Guarded on `submitted` too, so a failed mark can never strand the student
+  // on a results screen for a quiz that was never marked.
+  if (showResults && quiz.submitted) {
+    return (
+      <QuizResults quiz={quiz} onReview={() => setShowResults(false)} onBack={onBack} />
+    );
+  }
 
   return (
     <div>

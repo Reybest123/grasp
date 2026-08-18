@@ -199,6 +199,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - **Topics and the note picker are hidden when the subject has no notes**, since neither has anything to draw on. Generation still goes ahead from the subject name — the prompt is told outright that there are no notes and to keep it general. Blocking the feature on a fresh account is a worse first impression than an admittedly generic quiz, and the empty state says so in as many words.
   - **Marking is split.** MCQ is marked client-side by index — no model call can get that wrong. Short and long go to `/api/mark-quiz` in **one** call returning `correct | partial | wrong` plus a one-line note each. A `partial` scores half, so `score.got` can land on a `.5` (`formatScore` in `QuizCard.tsx`). A failed mark commits nothing, so Submit can just be pressed again.
   - **Explanations are lazy and one-shot.** `/api/quiz-explain` is only called when the student presses the button, only after submitting, and only on a question they did not get fully right — "Explain why I'm wrong", or "Explain what I missed" on a half-mark. The result is stored on the `QuizResponse` and never regenerated. `why` was correspondingly **dropped from generation**: writing an explanation for every question up front spent tokens on help nobody asked for. Not a thread, unlike `/api/explain-chat` — the notes themselves are where a conversation belongs.
+  - **Submitting lands on a results screen, not on the marked list** (`QuizResults.tsx`). Marking used to re-render the same questions with marks on them, which gave the work no moment of payoff. The screen shows one **understanding score** — an SVG progress ring counting up to the percentage — the verdict for its band ("Strong grasp" / "Getting there" / "Worth another pass"), the mark total, and a correct / half-marks / missed tally, then **Review answers** into the existing marked list. The ring and the number are driven by one `requestAnimationFrame` clock rather than a CSS transition plus a separate count-up, so they cannot drift apart; `prefers-reduced-motion` jumps straight to the final value. Bands are the same 0.8 / 0.5 thresholds the score chip and question borders already use. The half-marks tally is hidden on an all-MCQ quiz, where it could only ever read zero.
+  - **The results screen is component state (`showResults` in `QuizRunner`), never stored on the `Quiz`.** It only appears for the submit that just happened — reopening a finished quiz from the grid goes straight to the marked answers, which is where a student coming back to re-read something actually wants to be. It is additionally guarded on `quiz.submitted`, so a failed mark cannot strand the student on a results screen for a quiz that was never marked.
   - The old tab generated 4 throwaway MCQs into component state and showed a pre-written `why` under each one the moment it was answered. Nothing of that flow survives.
 - Resource Bank UI (display only; upload not wired yet)
 - Terms of Service + Privacy Policy pages
@@ -231,7 +233,8 @@ components/workspace/
                 SubjectWorkspace (shell + tab routing + note & quiz CRUD)
                 NotesTab, NoteToolbar, EquationEditor, TablePicker, TableMenu,
                 ExplainPanel, RecordTab, ResourcesTab,
-                QuizzesTab (grid/setup/run shell), QuizCard, QuizSetup, QuizRunner
+                QuizzesTab (grid/setup/run shell), QuizCard, QuizSetup,
+                QuizRunner, QuizResults
 lib/            subjects (model + seed), subjectsStore, recordingStore,
                 schedule, subjectColors,
                 richText (HTML <-> text + sanitiser + block helpers),
