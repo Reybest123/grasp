@@ -60,6 +60,15 @@ export function QuizResults({
   // apart the way a CSS transition and a rAF count-up would.
   const [t, setT] = useState(0);
 
+  // Submit is at the foot of the quiz, so the page is scrolled well down when
+  // this mounts — the score card would come up with the subject header and its
+  // tabs off-screen above it. Instant rather than smooth: `html` carries
+  // `scroll-behavior: smooth`, and animating the whole length of a 20-question
+  // page reads as a glitch when the content underneath has changed completely.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, []);
+
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setT(1);

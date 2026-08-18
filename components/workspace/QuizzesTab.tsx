@@ -106,7 +106,12 @@ export function QuizzesTab({
         noteContexts={contextsFor(open.noteIds)}
         context={context}
         onUpdate={(patch) => updateQuiz(open.id, patch)}
-        onBack={() => setOpenId(null)}
+        onBack={() => {
+          setOpenId(null);
+          // Leaving from the foot of a long quiz would drop the student into
+          // the grid still scrolled past the subject header and its tabs.
+          window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+        }}
       />
     );
   }

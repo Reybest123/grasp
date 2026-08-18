@@ -329,6 +329,19 @@ export function QuizRunner({
           })}
         </ol>
 
+        {/* Reviewing runs to the foot of the page, which is a long way from the
+            "All quizzes" link at the top. */}
+        {quiz.submitted && (
+          <div className="mt-6 text-center">
+            <button
+              onClick={onBack}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto sm:px-10"
+            >
+              Back to quizzes
+            </button>
+          </div>
+        )}
+
         {!quiz.submitted && (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
             <button
