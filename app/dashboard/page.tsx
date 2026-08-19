@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// The dashboard now lives inside the single-page /home shell.
+// The notebooks grid this route used to show is now the workspace.
 export default function DashboardRedirect() {
-  redirect("/home");
+  redirect("/workspace");
 }

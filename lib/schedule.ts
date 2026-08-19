@@ -159,6 +159,20 @@ export function nextExamAcross<T extends { exams: Exam[] }>(
   return best;
 }
 
+/**
+ * Every still-upcoming exam across every subject, soonest first — the home
+ * dashboard's assessments panel, which lists them rather than showing only the
+ * nearest one the way the cards do.
+ */
+export function upcomingExamsAcross<T extends { exams: Exam[] }>(
+  subjects: T[],
+  now: Date
+): { subject: T; status: ExamStatus }[] {
+  return subjects
+    .flatMap((subject) => upcomingExams(subject.exams, now).map((status) => ({ subject, status })))
+    .sort((a, b) => a.status.days - b.status.days);
+}
+
 /** One-line summary of the whole weekly timetable, for the workspace header. */
 export function weeklyLabel(classes: ClassSlot[]): string | null {
   if (!classes.length) return null;

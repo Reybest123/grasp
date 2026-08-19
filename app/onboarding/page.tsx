@@ -7,13 +7,26 @@ import { Logo } from "@/components/Logo";
 import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
 import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
+import { ProfileProvider, useProfile } from "@/lib/profileStore";
 import { ImageIcon, CheckIcon, ArrowRightIcon } from "@/components/icons";
 
-type Stage = "upload" | "reading" | "done";
-
+// The name is asked for here and nowhere else in the signup flow, so the page
+// needs the profile store even though it sits outside the logged-in shell.
 export default function Onboarding() {
+  return (
+    <ProfileProvider>
+      <OnboardingFlow />
+    </ProfileProvider>
+  );
+}
+
+type Stage = "name" | "upload" | "reading" | "done";
+
+function OnboardingFlow() {
   const router = useRouter();
-  const [stage, setStage] = useState<Stage>("upload");
+  const { setName } = useProfile();
+  const [stage, setStage] = useState<Stage>("name");
+  const [nameValue, setNameValue] = useState("");
   const [subjects, setSubjects] = useState<ExtractedSubject[]>([]);
 
   async function handleUpload() {
@@ -22,6 +35,8 @@ export default function Onboarding() {
     setSubjects(result);
     setStage("done");
   }
+
+  const naming = stage === "name";
 
   return (
     <main className="min-h-screen">
@@ -32,13 +47,43 @@ export default function Onboarding() {
       <section className="mx-auto max-w-2xl px-6 py-10">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-ink">
-            Let&apos;s set up your notebooks
+            {naming ? "First — what should we call you?" : "Let's set up your notebooks"}
           </h1>
           <p className="mt-2 text-slate-600">
-            Upload a screenshot of your timetable. Grasp reads it and builds a notebook for every
-            subject automatically.
+            {naming
+              ? "Just your first name is fine. Grasp uses it to greet you on your home page."
+              : "Upload a screenshot of your timetable. Grasp reads it and builds a notebook for every subject automatically."}
           </p>
         </div>
+
+        {naming && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setName(nameValue);
+              setStage("upload");
+            }}
+            className="rounded-3xl border border-slate-200 bg-white px-6 py-8 shadow-sm"
+          >
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-ink">Your name</span>
+              <input
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                placeholder="e.g. Reyan"
+                autoFocus
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={nameValue.trim() === ""}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Continue <ArrowRightIcon className="h-5 w-5" />
+            </button>
+          </form>
+        )}
 
         {stage === "upload" && (
           <button

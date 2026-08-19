@@ -132,12 +132,28 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 
 **Stack as built:** Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS. Repo: `github.com/Reybest123/grasp`. Hosted on Vercel (`grasp-indol.vercel.app`).
 
-**Routing:** Landing page at `/`. The entire logged-in app lives at `/home` as a single-page shell — selecting a subject swaps the view in place without changing the URL. Legacy `/dashboard` and `/subject/[id]` routes redirect to `/home`.
+**Routing:** Landing page at `/`. The logged-in app is a route group, `app/(app)/`, holding `/home` (the dashboard), `/workspace` (the notebooks grid), `/workspace/[subjectId]` (one subject) and `/settings`. Legacy `/dashboard` redirects to `/workspace`; legacy `/subject/[id]` redirects to `/workspace/[id]`, carrying the id across rather than dropping the student on the grid.
 
-**Landing page:** top nav has How it works / Features / Pricing anchor links plus **Log in** (→ `/home`) and **Sign up** (→ `/onboarding`) buttons. Hero CTA "Start with your timetable" → `/onboarding`. Includes a How-it-works section and a placeholder Pricing section (Free $0 / Pro $6/mo — not final). All "demo" labeling has been removed from the landing and the `/home` header.
+- **The route group's `layout.tsx` is load-bearing, not organisational.** It holds `ProfileProvider` > `SubjectsProvider` > `RecordingProvider` > `AppShell`, and a layout is what keeps those mounted across navigations between its pages. `RecordingProvider` owns a live microphone, a transcript and a promise chain, so moving it (or anything it wraps) down into a page would end the lecture the moment the student clicked Home. Verified by instrumenting the provider's mount/unmount and watching the console across `/home` → `/workspace` → `/workspace/<id>`: nothing after React's dev-mode double-invoke on first load. **Don't move the providers out of the layout.**
+- **Tabs inside a subject are component state, not routes.** Notes / Record / Quizzes / Resource Bank all leave the URL at `/workspace/<id>`, so a link points at a subject rather than at a tab.
+- **`app/(app)/workspace/[subjectId]/page.tsx` waits for `ready` before saying a subject is missing.** Before hydration the store still holds the seed list, so an id restored from localStorage legitimately misses on the first render; rendering "Subject not found" off that would flash on every deep link.
+
+**App chrome** (`components/app/`): `AppShell` is the header + sidebar + subject editor, and exports a `useChrome()` context carrying `openRecording(id)`, the `focusRecord` counter and `editSubject(id)` — the three things pages used to receive as props from the old single-page shell.
+
+- **The header is fixed and full-width, above the sidebar** (`z-50` against the sidebar's `z-40`). It started out beginning beside the rail, which put the expanded sidebar panel on top of the button that opened it — a toggle that hides itself when toggled. Content reserves both with `pt-[69px] lg:pl-16`; keep the two `69px` figures in step with the header's height.
+- **`Sidebar` is one component in two shapes.** Collapsed it is a 4rem icon rail, pinned left on desktop and translated off-screen below `lg`. Expanded it is a 15rem labelled panel that **overlays** rather than pushes, so opening it never reflows the page. It expands only from the button beside the logo — deliberately not on hover, and it closes on navigation, on the scrim and on Escape.
+- **Log out is guarded when a recording is live.** It is the one nav item that leaves the shell, which unmounts `RecordingProvider`; Next treats it as a client-side route change so `beforeunload` never fires. `NavLink` takes a `block` prop that `preventDefault`s the navigation so the `ConfirmDialog` can decide — without it the click would navigate underneath the dialog, exactly the way the logo's nested `Link` used to (see the `Logo` note below).
+- **Known rough edge:** `recordingStore`'s history guard predates real routing. It still catches Back while recording and still errs safe (it asks rather than silently ending the lecture), but it now fires on in-app Backs that are actually harmless, since the recording survives those. Over-confirming, not under-confirming — worth tightening, not urgent.
+
+**Landing page:** top nav has How it works / Features / Pricing anchor links plus **Log in** (→ `/home`) and **Sign up** (→ `/onboarding`) buttons. Hero CTA "Start with your timetable" → `/onboarding`. Includes a How-it-works section and a placeholder Pricing section (Free $0 / Pro $6/mo — not final). All "demo" labeling has been removed from the landing and the app header.
 
 **Built & working:**
 - Landing page (school-focused positioning)
+- **Home dashboard (`/home`)** — "Welcome back, {first name}", then two columns: every subject as a plain stacked list on the left, upcoming assessments across all subjects on the right. Deliberately **not** a second notebooks grid; the cards live in `/workspace` and repeating them here would make the two routes read as the same page. The subject list shows names only for the same reason — counts, timetables and countdowns would turn it back into a grid.
+  - **Two empty states, and they differ in kind.** With no subjects there is nothing to study and nothing to be assessed on, so the assessments column is not shown empty, it is **not rendered at all**, and the page becomes a single "You have no subjects yet" panel pointing at the workspace. With subjects but no assessments, the column stays and offers "Add assessment".
+  - **`AddAssessmentDialog`** carries the subject as a field of its own rather than sending the student off to the subject editor — reaching the same exam rows there means picking a subject, opening its panel and scrolling past colour swatches and class times to get to the one field they came for. Date is required (there is nothing to count down to otherwise); the title is optional, matching the editor.
+  - `upcomingExamsAcross()` in `lib/schedule.ts` is the across-every-subject counterpart to `upcomingExams`, sorted soonest first.
+- **Profile (`lib/profileStore.tsx`)** — the student's name, asked for as the first step of onboarding, shown in the dashboard greeting and as the header avatar's monogram, editable at `/settings`. Same localStorage-standing-in-for-Postgres shape as `subjectsStore`, including the `ready` flag: the greeting and the avatar letter wait for it rather than addressing nobody and swapping the name in a frame later.
 - Onboarding UI: timetable upload → subject list → notebooks (extraction still mocked)
 - Subject notebooks grid (`/home`) — cards lead with the subject name at the top (monogram + name + teacher), then the **next class only** (never the full week), an exam countdown chip, content counts, and an **Open notes** / **Edit** action row. An **Add a subject** tile sits at the end of the grid and drops straight into the editor. Above the grid, a "Next up" strip shows the soonest class and nearest exam across all subjects.
 - **Edit subject** slide-in panel: rename, teacher, colour swatch picker, weekly class times (day + start/end, add/remove rows), **multiple exams/assessments** (date + title per row, add/remove), and delete. Everything except the name is optional.
@@ -216,7 +232,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 
 **Still mocked / not yet built:**
 - Timetable screenshot extraction (needs image upload + vision model)
-- Auth / accounts, Postgres persistence (subjects, notes *and* extracted resources currently persist to localStorage only), weekly usage-limit enforcement (including the resource cap, which is enforced in the UI only)
+- Auth / accounts, Postgres persistence (the student's name, subjects, notes *and* extracted resources currently persist to localStorage only). Log out is a link to the landing page, not a session teardown — there is no session yet
+- Weekly usage-limit enforcement (including the resource cap, which is enforced in the UI only)
 - Only one recording at a time, and it ends if the page itself is reloaded (the recorder state is in memory, not persisted).
 
 **Design conventions:**
@@ -234,11 +251,18 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 **File layout:**
 
 ```
-app/            routes — page.tsx (landing), home/, onboarding/, legal/,
+app/            page.tsx (landing), onboarding/, legal/,
+                (app)/ — logged-in route group; its layout.tsx holds the
+                      providers, so they survive navigation between:
+                      home/ (dashboard), workspace/, workspace/[subjectId]/,
+                      settings/
+                dashboard/, subject/[id]/ — legacy redirects
                 api/ (enhance, generate, explain-chat, quiz,
                       mark-quiz, quiz-explain, transcribe, live-notes,
                       resource-extract)
 components/     icons.tsx, Logo, ConfirmDialog, SubjectCard, SubjectEditor
+components/app/ AppShell (header + useChrome context), Sidebar,
+                AddAssessmentDialog
 components/workspace/
                 SubjectWorkspace (shell + tab routing + note & quiz CRUD)
                 NotesTab, NoteToolbar, EquationEditor, TablePicker, TableMenu,
@@ -246,8 +270,8 @@ components/workspace/
                 ResourcesTab, ResourceCard, ResourceAdd, ResourceCitation,
                 QuizzesTab (grid/setup/run shell), QuizCard, QuizSetup,
                 QuizRunner, QuizResults, QuizTitle
-lib/            subjects (model + seed), subjectsStore, recordingStore,
-                schedule, subjectColors, plan (tier caps),
+lib/            subjects (model + seed), subjectsStore, profileStore,
+                recordingStore, schedule, subjectColors, plan (tier caps),
                 resources (extraction model + digests + citations),
                 richText (HTML <-> text + sanitiser + block helpers),
                 tables (table build/navigate/edit + cell rectangles),
