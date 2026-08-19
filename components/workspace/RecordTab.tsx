@@ -35,6 +35,10 @@ export function RecordTab({
 
   const remaining = MAX_SECONDS - rec.seconds;
   const hasContent = Boolean(rec.notesHtml || rec.transcript.trim());
+  // Stop moves straight to "naming", but the final pass over the whole
+  // transcript is still running behind it — that gap is what the polishing
+  // state fills.
+  const polishing = rec.phase === "naming" && rec.finishing;
 
   function save() {
     const saved = rec.save();
@@ -115,7 +119,11 @@ export function RecordTab({
                 </>
               ) : (
                 <span className="text-slate-500">
-                  {rec.finishing ? "Finishing your notes…" : "Recording finished"}
+                  {polishing
+                    ? "Polishing your notes…"
+                    : rec.noMaterial
+                      ? "Not enough to write up"
+                      : "Notes ready"}
                 </span>
               )}
             </div>
@@ -138,34 +146,73 @@ export function RecordTab({
             </p>
           )}
 
-          {/* Live note-taking view. The .editor class is reused so the drafted
-              notes render exactly as they will once saved. */}
-          <div className="mt-4 min-h-[240px] rounded-2xl bg-slate-50 p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Live notes</p>
-              {rec.drafting && <span className="text-xs text-slate-400">Writing…</span>}
+          {/* Polishing. The draft on screen mid-lecture is written from a
+              partial transcript, and the final pass rewrites it whole — over
+              everything, including whatever was said in the last few seconds
+              before Stop, which no earlier draft had yet. Showing the stale
+              draft through that wait meant the notes silently changed under the
+              student with nothing to say they had, and the name box sat there
+              asking them to name a note that wasn't written yet. */}
+          {polishing ? (
+            <div className="mt-4 grid min-h-[240px] place-items-center rounded-2xl bg-slate-50 p-5 text-center">
+              <div>
+                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
+                <p className="mt-4 font-semibold text-ink">Polishing your notes</p>
+                <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+                  Going back over the whole lecture, including the last thing said, to write the
+                  final version.
+                </p>
+              </div>
             </div>
+          ) : rec.noMaterial ? (
+            /* The final pass came back with nothing teachable — a lecture that
+               was mostly admin and greetings. Said plainly here rather than as
+               grey placeholder text under a heading claiming there are notes. */
+            <div className="mt-4 grid min-h-[240px] place-items-center rounded-2xl bg-amber-50 p-5 text-center">
+              <div>
+                <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700">
+                  <AlertIcon className="h-5 w-5" />
+                </span>
+                <p className="mt-4 font-semibold text-amber-900">
+                  Grasp couldn&apos;t capture enough to write notes
+                </p>
+                <p className="mx-auto mt-1 max-w-sm text-sm text-amber-800">
+                  There wasn&apos;t enough teaching in this recording to write up. Saving it keeps
+                  the transcript, so nothing said is lost.
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Live note-taking view, and the finished article once the polish
+               lands. The .editor class is reused so the drafted notes render
+               exactly as they will once saved. */
+            <div className="mt-4 min-h-[240px] rounded-2xl bg-slate-50 p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  {rec.phase === "recording" ? "Live notes" : "Your notes"}
+                </p>
+                {rec.drafting && <span className="text-xs text-slate-400">Writing…</span>}
+              </div>
 
-            {rec.notesHtml ? (
-              <>
-                <div
-                  className="editor text-[15px] leading-7 text-slate-700"
-                  dangerouslySetInnerHTML={{ __html: rec.notesHtml }}
-                />
-                <ResourceCitation cited={rec.cited} className="mt-4 bg-white" />
-              </>
-            ) : (
-              <p className="text-sm text-slate-400">
-                {rec.noMaterial
-                  ? "There wasn't enough in this lecture to write notes from — the transcript will be saved instead."
-                  : rec.phase !== "recording" && !rec.transcript
+              {rec.notesHtml ? (
+                <>
+                  <div
+                    className="editor text-[15px] leading-7 text-slate-700"
+                    dangerouslySetInnerHTML={{ __html: rec.notesHtml }}
+                  />
+                  <ResourceCitation cited={rec.cited} className="mt-4 bg-white" />
+                </>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  {rec.phase !== "recording" && !rec.transcript
                     ? "Nothing was captured."
                     : rec.transcript
                       ? "Writing up what you've covered so far…"
                       : "Listening…"}
-              </p>
-            )}
-          </div>
+                </p>
+              )}
+            </div>
+          )}
 
           {/* The transcript is the fastest proof the microphone is actually
               working — the notes lag it by a segment. */}
@@ -194,10 +241,13 @@ export function RecordTab({
             </div>
           )}
 
-          {rec.phase === "naming" && (
+          {/* Only once the polish has landed. Naming a note while it is still
+              being written asks the student to title something they cannot
+              read yet, and the Save button spent that whole wait disabled. */}
+          {rec.phase === "naming" && !polishing && (
             <div className="mt-5">
               <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Name this note
+                {rec.noMaterial ? "Name this transcript" : "Name this note"}
               </label>
               <input
                 value={rec.name}
@@ -214,10 +264,10 @@ export function RecordTab({
                 </button>
                 <button
                   onClick={save}
-                  disabled={rec.finishing || !hasContent}
+                  disabled={!hasContent}
                   className="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
                 >
-                  {rec.finishing ? "Finishing…" : "Save to notes"}
+                  {rec.noMaterial ? "Save transcript" : "Save to notes"}
                 </button>
               </div>
             </div>
