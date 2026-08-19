@@ -3,15 +3,7 @@
 import type { Subject } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
 import { upcomingExams, nextClassLabel } from "@/lib/schedule";
-import {
-  NoteIcon,
-  QuizIcon,
-  BankIcon,
-  ClockIcon,
-  ExamIcon,
-  EditIcon,
-  PlusIcon,
-} from "@/components/icons";
+import { ClockIcon, ExamIcon, EditIcon, PlusIcon } from "@/components/icons";
 
 export function SubjectCard({
   subject,
@@ -78,22 +70,12 @@ export function SubjectCard({
           )}
         </div>
 
-        {/* Content counts — `mt-auto` keeps the action row aligned across the
-            grid even when a subject has no exam chip. */}
-        <div className="mt-auto flex gap-4 pt-4 text-xs font-medium text-slate-500">
-          <span className="inline-flex items-center gap-1">
-            <NoteIcon className="h-3.5 w-3.5" /> {subject.notes.length}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <BankIcon className="h-3.5 w-3.5" /> {subject.resources.length}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <QuizIcon className="h-3.5 w-3.5" /> {subject.quizzes.length}
-          </span>
-        </div>
-
-        {/* Actions fill the space the emoji block used to waste */}
-        <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+        {/* No content counts. Three bare numbers said nothing a student was
+            asking — whether a subject holds 2 notes or 5 doesn't help decide
+            which to open, and the row read as stray metadata. `mt-auto` moved
+            onto the action row, which is what has to stay aligned across the
+            grid when a subject has no exam chip. */}
+        <div className="mt-auto flex gap-2 border-t border-slate-100 pt-4">
           <button
             onClick={onOpen}
             className="flex-1 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"

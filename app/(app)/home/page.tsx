@@ -11,6 +11,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSubjects, useNow } from "@/lib/subjectsStore";
+import { useRecording } from "@/lib/recordingStore";
 import { useProfile, firstName } from "@/lib/profileStore";
 import { getColor } from "@/lib/subjectColors";
 import { upcomingExamsAcross } from "@/lib/schedule";
@@ -23,6 +24,7 @@ export default function HomePage() {
   const router = useRouter();
   const { subjects, ready, updateSubject } = useSubjects();
   const { profile, ready: profileReady } = useProfile();
+  const { guard } = useRecording();
   const now = useNow();
   const [adding, setAdding] = useState(false);
 
@@ -36,7 +38,7 @@ export default function HomePage() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-6 py-10">
+    <section className="px-6 py-10 sm:px-8">
       <h1 className="text-3xl font-bold tracking-tight text-ink">
         {/* Wait for storage rather than greeting nobody and then swapping the
             name in a frame later. */}
@@ -48,13 +50,13 @@ export default function HomePage() {
       ) : (
         // The assessments column is fixed-width and secondary; the subjects
         // list takes the rest. On narrow screens they stack, subjects first.
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
-          <StudyList subjects={subjects} onOpen={(id) => router.push(`/workspace/${id}`)} />
+        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <StudyList subjects={subjects} onOpen={(id) => guard(() => router.push(`/workspace/${id}`))} />
           <Assessments
             subjects={subjects}
             now={now}
             onAdd={() => setAdding(true)}
-            onOpen={(id) => router.push(`/workspace/${id}`)}
+            onOpen={(id) => guard(() => router.push(`/workspace/${id}`))}
           />
         </div>
       )}

@@ -57,6 +57,14 @@ export type RecordingState = {
   fatal: { subjectId: string; message: string } | null;
   name: string;
   setName: (name: string) => void;
+  /** true while the live recording UI is actually on screen — see `guard` */
+  viewing: boolean;
+  setViewing: (viewing: boolean) => void;
+  /**
+   * Run `proceed`, asking first if doing so would take the live recording off
+   * screen. Wrap any navigation that leaves the Record tab in this.
+   */
+  guard: (proceed: () => void) => void;
   start: (subject: {
     id: string;
     name: string;
@@ -274,6 +282,35 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  // Leaving the recording out of sight.
+  //
+  // The recording itself survives navigation now — the provider sits in the
+  // route group's layout (CLAUDE.md §11), so moving around the app doesn't end
+  // it. What navigation does destroy is *visibility*: the transcript and the
+  // notes being drafted live are only on the Record tab, and a student who
+  // wanders off has no view of the lecture they're still recording.
+  //
+  // So the prompt is tied to what is on screen, not to the URL. It fires when
+  // the live view would stop being visible — which covers switching to the
+  // Notes tab just as much as it covers navigating to another route, since
+  // neither shows the draft any more. Once the student is already away from it
+  // they have been told, so further moves are silent.
+  const [viewing, setViewing] = useState(false);
+  const [leavingView, setLeavingView] = useState(false);
+  const proceedRef = useRef<(() => void) | null>(null);
+
+  const guard = useCallback(
+    (proceed: () => void) => {
+      if (phase === "idle" || !viewing) {
+        proceed();
+        return;
+      }
+      proceedRef.current = proceed;
+      setLeavingView(true);
+    },
+    [phase, viewing]
+  );
+
   // Browser Back/Forward.
   //
   // Measured, not assumed: pressing Back on /home fires `popstate`, changes the
@@ -359,6 +396,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         fatal,
         name,
         setName,
+        viewing,
+        setViewing,
+        guard,
         start,
         stop,
         discard,
@@ -379,6 +419,34 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         cancelLabel="Stay here"
         onConfirm={confirmLeave}
         onCancel={() => setLeaving(false)}
+      />
+
+      {/* Leaving the live view. Nothing is lost here — say so plainly rather
+          than borrowing the language of the destructive prompt above it. */}
+      <ConfirmDialog
+        open={leavingView}
+        title={
+          phase === "recording"
+            ? "Leave the live notes?"
+            : "Leave this recording unsaved?"
+        }
+        body={
+          phase === "recording"
+            ? `Your ${subjectName} lecture keeps recording, but you won't see the notes being drafted. The chip in the header brings you back to it.`
+            : `Your ${subjectName} recording still needs a name before it's saved to your notes. The chip in the header brings you back to it.`
+        }
+        confirmLabel="Leave"
+        cancelLabel="Stay here"
+        onConfirm={() => {
+          setLeavingView(false);
+          const proceed = proceedRef.current;
+          proceedRef.current = null;
+          proceed?.();
+        }}
+        onCancel={() => {
+          setLeavingView(false);
+          proceedRef.current = null;
+        }}
       />
     </RecordingContext.Provider>
   );

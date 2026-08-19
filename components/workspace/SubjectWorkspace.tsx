@@ -5,6 +5,7 @@ import type { JSX } from "react";
 import type { Note, Quiz, Subject } from "@/lib/subjects";
 import { briefsFor, type Resource } from "@/lib/resources";
 import { useSubjects } from "@/lib/subjectsStore";
+import { useRecording } from "@/lib/recordingStore";
 import { getColor } from "@/lib/subjectColors";
 import { nextExam, weeklyLabel, subjectContext } from "@/lib/schedule";
 import { NotesTab } from "@/components/workspace/NotesTab";
@@ -51,6 +52,7 @@ export function SubjectWorkspace({
   // Notes live in the subject store, not local state, so edits and formatting
   // survive a refresh. Both the Notes tab and the Record tab write through here.
   const { updateSubject } = useSubjects();
+  const rec = useRecording();
   const [activeId, setActiveId] = useState<string | undefined>(subject.notes[0]?.id);
 
   // A counter rather than a boolean: clicking the chip again after browsing
@@ -58,6 +60,19 @@ export function SubjectWorkspace({
   useEffect(() => {
     if (focusRecord) setTab("record");
   }, [focusRecord]);
+
+  // Tell the store whether the live recording is actually on screen. This is
+  // the only place that can know — it depends on both the route (which subject)
+  // and the tab, and the store sees neither. `guard` uses it to decide whether
+  // a navigation would take the draft out of sight and so needs confirming.
+  const showingLive = rec.phase !== "idle" && rec.subjectId === subject.id && tab === "record";
+  const { setViewing } = rec;
+  useEffect(() => {
+    setViewing(showingLive);
+    // Leaving the workspace entirely unmounts this without another render, so
+    // the flag has to be cleared on the way out or it would stay stuck true.
+    return () => setViewing(false);
+  }, [showingLive, setViewing]);
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Note>) => {
@@ -152,9 +167,9 @@ export function SubjectWorkspace({
   return (
     <div>
       {onBack && (
-        <div className="mx-auto max-w-6xl px-6 pt-5">
+        <div className="px-6 pt-5 sm:px-8">
           <button
-            onClick={onBack}
+            onClick={() => rec.guard(onBack)}
             className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
           >
             <BackIcon className="h-4 w-4" /> All notebooks
@@ -163,7 +178,7 @@ export function SubjectWorkspace({
       )}
 
       {/* Subject header */}
-      <div className="mx-auto max-w-6xl px-6 pb-6 pt-5">
+      <div className="px-6 pb-6 pt-5 sm:px-8">
         <div className="flex flex-wrap items-center gap-4">
           <span
             className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${color.gradient} text-2xl font-bold text-white shadow-sm`}
@@ -198,11 +213,11 @@ export function SubjectWorkspace({
 
       {/* Tabs — each takes an equal quarter so they span the full width */}
       <div className="border-b border-slate-200">
-        <div className="mx-auto flex max-w-6xl px-6">
+        <div className="flex px-6 sm:px-8">
           {TABS.map(([key, label, icon]) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => rec.guard(() => setTab(key))}
               className={`-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
                 tab === key
                   ? "border-brand-600 text-brand-700"
@@ -216,7 +231,7 @@ export function SubjectWorkspace({
         </div>
       </div>
 
-      <section className="mx-auto max-w-6xl px-6 py-8">
+      <section className="px-6 py-8 sm:px-8">
         {tab === "notes" && (
           <NotesTab
             notes={subject.notes}

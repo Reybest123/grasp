@@ -18,7 +18,7 @@ import { SubjectEditor } from "@/components/SubjectEditor";
 import { useSubjects } from "@/lib/subjectsStore";
 import { useProfile, monogram } from "@/lib/profileStore";
 import { useRecording, mmss } from "@/lib/recordingStore";
-import { MenuIcon, MicIcon } from "@/components/icons";
+import { MicIcon } from "@/components/icons";
 
 type Chrome = {
   /** open a subject straight on its Record tab */
@@ -40,7 +40,9 @@ export function useChrome(): Chrome {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { subjects, updateSubject, removeSubject } = useSubjects();
-  const [navOpen, setNavOpen] = useState(false);
+  // The logo navigates, so it goes through the same guard every other exit
+  // from the live recording view does.
+  const { guard } = useRecording();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [focusRecord, setFocusRecord] = useState(0);
 
@@ -61,24 +63,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ChromeContext.Provider value={{ openRecording, focusRecord, editSubject }}>
-      {/* The header spans the full width above the sidebar rather than starting
-          beside it, so the button that opens the sidebar is still visible — and
-          still a toggle — once the expanded panel is covering the page. */}
+      {/* Spans the full width above the sidebar rather than starting beside it,
+          so the logo sits at the true top-left corner of the app. */}
       <header className="fixed inset-x-0 top-0 z-50 h-[69px] border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setNavOpen((v) => !v)}
-              aria-label={navOpen ? "Close menu" : "Open menu"}
-              aria-expanded={navOpen}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-ink"
-            >
-              <MenuIcon className="h-5 w-5" />
-            </button>
-            {/* Stays a link to the marketing page everywhere else in the app;
-                  inside the shell "home" is the dashboard, not the landing. */}
-            <Logo onClick={() => router.push("/home")} />
-          </div>
+          {/* Stays a link to the marketing page everywhere else in the app;
+              inside the shell "home" is the dashboard, not the landing. */}
+          <Logo onClick={() => guard(() => router.push("/home"))} />
 
           <div className="flex items-center gap-3 text-sm">
             <RecordingChip onOpen={openRecording} />
@@ -90,12 +81,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
+      <Sidebar />
 
       {/* Both the header and the rail are fixed, so the content reserves their
-          space rather than sitting under them. Expanding the sidebar overlays
-          and changes nothing here, which is why it never reflows the page. */}
-      <div className="pt-[69px] lg:pl-16">
+          space rather than sitting under them. The rail is the only navigation
+          there is, so it stays visible at every width — hiding it on small
+          screens would leave nothing to navigate with. */}
+      <div className="pl-16 pt-[69px]">
         <main className="min-h-[calc(100dvh-69px)]">{children}</main>
       </div>
 

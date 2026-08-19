@@ -26,7 +26,7 @@ export default function SubjectPage() {
     // once the stored subjects have actually been read.
     if (!ready) return null;
     return (
-      <section className="mx-auto max-w-6xl px-6 py-20 text-center">
+      <section className="px-6 py-20 text-center sm:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Subject not found</h1>
         <p className="mt-2 text-slate-600">
           This notebook has been deleted, or the link points somewhere that no longer exists.
