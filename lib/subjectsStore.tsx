@@ -9,15 +9,21 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { SUBJECTS, createSubject, type Subject } from "@/lib/subjects";
 import { isResourceKind, type Resource } from "@/lib/resources";
+import type { ClassSlot } from "@/lib/schedule";
 import { autoColorKey } from "@/lib/subjectColors";
 
 const STORAGE_KEY = "grasp.subjects.v1";
+
+/** A subject before it has an id or a colour — what onboarding extracts. */
+export type NewSubject = { name: string; teacher?: string; classes: ClassSlot[] };
 
 type Store = {
   subjects: Subject[];
   /** false until localStorage has been read — gate date-sensitive UI on this */
   ready: boolean;
   addSubject: (name: string) => Subject;
+  /** onboarding (§2): the timetable becomes the whole subject list */
+  replaceSubjects: (built: NewSubject[]) => void;
   updateSubject: (id: string, patch: Partial<Subject>) => void;
   removeSubject: (id: string) => void;
 };
@@ -64,6 +70,18 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
     [subjects.length]
   );
 
+  // Onboarding replaces rather than appends: the list it is replacing is the
+  // demo seed, and a student who has just handed over their real timetable
+  // should not find Biology and History sitting alongside their own subjects.
+  const replaceSubjects = useCallback((built: NewSubject[]) => {
+    setSubjects(
+      built.map((s, i) => {
+        const created = createSubject(s.name, i);
+        return { ...created, teacher: s.teacher, classes: s.classes };
+      })
+    );
+  }, []);
+
   const updateSubject = useCallback((id: string, patch: Partial<Subject>) => {
     setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }, []);
@@ -73,7 +91,9 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SubjectsContext.Provider value={{ subjects, ready, addSubject, updateSubject, removeSubject }}>
+    <SubjectsContext.Provider
+      value={{ subjects, ready, addSubject, replaceSubjects, updateSubject, removeSubject }}
+    >
       {children}
     </SubjectsContext.Provider>
   );

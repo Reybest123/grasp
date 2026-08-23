@@ -8,7 +8,6 @@
 // resolved to something the UI can name. Ids are validated server-side against
 // what was sent, so a citation can never point at a document that wasn't there.
 //
-// extractTimetable() is still mocked; it needs image upload plus a vision model.
 
 import { makeSlot } from "@/lib/subjects";
 import type { QuizKind, QuizQuestion } from "@/lib/subjects";
@@ -30,7 +29,7 @@ export type { Citation, ResourceBrief } from "@/lib/resources";
 
 export type NoteContext = { title: string; body: string };
 export type ChatMsg = { role: "user" | "assistant"; content: string };
-export type ExtractedSubject = { name: string; classes: ClassSlot[] };
+export type ExtractedSubject = { name: string; teacher?: string; classes: ClassSlot[] };
 
 /** Every route answers with this alongside its own payload. */
 type Used = { used?: string[] };
@@ -133,17 +132,31 @@ export async function liveNotes(params: {
 }
 
 // §2 Onboarding — a vision model reads the timetable screenshot into subjects.
-// STILL MOCKED: returns a sample set after a short delay.
-export async function extractTimetable(): Promise<ExtractedSubject[]> {
-  await new Promise((r) => setTimeout(r, 1600));
-  return [
-    { name: "Biology", classes: [makeSlot(1, "09:00"), makeSlot(3, "11:00"), makeSlot(5, "09:00")] },
-    { name: "History", classes: [makeSlot(2, "10:00"), makeSlot(4, "13:00")] },
-    { name: "Mathematics", classes: [makeSlot(1, "13:00"), makeSlot(3, "09:00"), makeSlot(5, "11:00")] },
-    { name: "Chemistry", classes: [makeSlot(2, "14:00"), makeSlot(4, "09:00")] },
-    { name: "English Lit.", classes: [makeSlot(1, "11:00"), makeSlot(4, "11:00")] },
-  ];
+//
+// The route validates every day and time it gets back, so what arrives here is
+// already placeable in a week; all this does is give each slot the id the rest
+// of the app identifies it by. The image is not stored anywhere (§5).
+export async function extractTimetable(dataUrl: string): Promise<{
+  subjects: ExtractedSubject[];
+  error: string | null;
+}> {
+  const data = await postJson<{ subjects?: RawSubject[] }>("/api/timetable-extract", { dataUrl });
+  if (data.error) return { subjects: [], error: data.error };
+
+  const subjects = (data.subjects ?? []).map((s) => ({
+    name: s.name,
+    teacher: s.teacher,
+    classes: (s.classes ?? []).map((c) => ({ ...makeSlot(c.day, c.start, c.end), room: c.room })),
+  }));
+  return { subjects, error: null };
 }
+
+/** The route's own shape: slots without ids, since ids are minted client-side. */
+type RawSubject = {
+  name: string;
+  teacher?: string;
+  classes?: { day: number; start: string; end?: string; room?: string }[];
+};
 
 // §3.2 Highlight to Explain — a thread, so the student can push back and the AI
 // can hand back a corrected version of the whole note. `context` carries the
