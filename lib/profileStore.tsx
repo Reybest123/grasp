@@ -101,7 +101,7 @@ export function useProfile(): Store {
 }
 
 /**
- * First name only — "Welcome back, Reyan" reads right where the full name does
+ * First name only — "Welcome back, Sam" reads right where the full name does
  * not. Falls back to the whole string when there is no space in it.
  */
 export function firstName(name: string): string {

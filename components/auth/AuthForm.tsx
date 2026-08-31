@@ -95,7 +95,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
               label="Your name"
               value={name}
               onChange={setName}
-              placeholder="e.g. Reyan"
+              placeholder="e.g. Sam"
               autoFocus
               autoComplete="given-name"
             />
