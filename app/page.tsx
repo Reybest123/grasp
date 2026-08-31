@@ -120,13 +120,13 @@ export default function Home() {
         {/* Auth on the right */}
         <div className="flex items-center gap-1 sm:gap-2">
           <Link
-            href="/home"
+            href="/login"
             className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
           >
             Log in
           </Link>
           <Link
-            href="/onboarding"
+            href="/signup"
             className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700"
           >
             Sign up
@@ -154,7 +154,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/onboarding"
+              href="/signup"
               className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
             >
               Start with your timetable <ArrowRightIcon className="h-5 w-5" />
@@ -275,7 +275,7 @@ export default function Home() {
                 ))}
               </ul>
               <Link
-                href="/onboarding"
+                href="/signup"
                 className={`mt-8 block rounded-xl px-5 py-3 text-center text-sm font-semibold transition ${
                   p.featured
                     ? "bg-brand-600 text-white hover:bg-brand-700"
@@ -300,7 +300,7 @@ export default function Home() {
             Upload your timetable and get a notebook for every subject in seconds.
           </p>
           <Link
-            href="/onboarding"
+            href="/signup"
             className="mt-8 inline-block rounded-xl bg-white px-6 py-3 font-semibold text-brand-700 transition hover:bg-brand-50"
           >
             Get started free

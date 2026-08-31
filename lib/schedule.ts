@@ -104,6 +104,37 @@ export function daysUntil(isoDate: string, now: Date): number | null {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+/**
+ * How long ago a note was touched, for the note list: "just now", "2h ago",
+ * "yesterday", then a plain date once it is old enough that a count of days
+ * stops meaning anything.
+ *
+ * `Note.updated` used to hold this string itself — the seed set it to "2 hours
+ * ago" and the list printed it verbatim, so a note saved yesterday still
+ * claimed to be two hours old forever. It holds an ISO timestamp now, which is
+ * the only version of this that can be stored, and the wording is derived here
+ * at render time instead.
+ *
+ * Returns "" for anything unparseable rather than "Invalid Date", so a legacy
+ * note carrying the old prose shows no timestamp instead of showing nonsense.
+ */
+export function updatedLabel(iso: string, now: Date): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "";
+
+  const seconds = Math.round((now.getTime() - then) / 1000);
+  // A clock skew between server and browser can put a save slightly in the
+  // future; "in 3 seconds" would be a strange thing for a note list to say.
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86_400) return `${Math.floor(seconds / 3600)}h ago`;
+
+  const days = Math.floor(seconds / 86_400);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 export type ExamStatus = {
   exam: Exam;
   /** "Paper 2 mock Wednesday · in 3 days" */

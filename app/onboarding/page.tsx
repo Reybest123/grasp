@@ -1,6 +1,6 @@
 "use client";
 
-// §2 Onboarding — name, timetable, notebooks.
+// §2 Onboarding — timetable in, notebooks out.
 //
 // The timetable is read by a real vision model now (/api/timetable-extract) and
 // what comes back becomes the student's subjects: this page is the only place
@@ -14,7 +14,6 @@ import { Logo } from "@/components/Logo";
 import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
 import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
-import { ProfileProvider, useProfile } from "@/lib/profileStore";
 import { SubjectsProvider, useSubjects } from "@/lib/subjectsStore";
 import {
   AlertIcon,
@@ -30,20 +29,18 @@ import {
 const MAX_BYTES = 3 * 1024 * 1024;
 const ACCEPT = "image/*,application/pdf";
 
-// The name is asked for here and nowhere else in the signup flow, and the
-// extracted subjects have to be written somewhere, so this page needs both
-// stores even though it sits outside the logged-in shell.
+// The account already exists by the time a student gets here — signup asks for
+// the name, and proxy.ts will have sent them to /login if they are not signed
+// in — so this page only needs the subject store, to write what it extracts.
 export default function Onboarding() {
   return (
-    <ProfileProvider>
-      <SubjectsProvider>
-        <OnboardingFlow />
-      </SubjectsProvider>
-    </ProfileProvider>
+    <SubjectsProvider>
+      <OnboardingFlow />
+    </SubjectsProvider>
   );
 }
 
-type Stage = "name" | "upload" | "reading" | "done";
+type Stage = "upload" | "reading" | "done";
 
 function readDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -56,10 +53,8 @@ function readDataUrl(file: File): Promise<string> {
 
 function OnboardingFlow() {
   const router = useRouter();
-  const { setName } = useProfile();
   const { replaceSubjects } = useSubjects();
-  const [stage, setStage] = useState<Stage>("name");
-  const [nameValue, setNameValue] = useState("");
+  const [stage, setStage] = useState<Stage>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -104,11 +99,9 @@ function OnboardingFlow() {
     // Written the moment the read succeeds, so "Notebook ready" below is a
     // statement of fact rather than a promise the next page has to keep.
     setSubjects(result.subjects);
-    replaceSubjects(result.subjects);
+    await replaceSubjects(result.subjects);
     setStage("done");
   }
-
-  const naming = stage === "name";
 
   return (
     <main className="min-h-screen">
@@ -119,43 +112,13 @@ function OnboardingFlow() {
       <section className="mx-auto max-w-2xl px-6 py-10">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-ink">
-            {naming ? "First — what should we call you?" : "Let's set up your notebooks"}
+            Let&apos;s set up your notebooks
           </h1>
           <p className="mt-2 text-slate-600">
-            {naming
-              ? "Just your first name is fine. Grasp uses it to greet you on your home page."
-              : "Upload a screenshot of your timetable. Grasp reads it and builds a notebook for every subject automatically."}
+            Upload a screenshot of your timetable. Grasp reads it and builds a notebook for every
+            subject automatically.
           </p>
         </div>
-
-        {naming && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setName(nameValue);
-              setStage("upload");
-            }}
-            className="rounded-3xl border border-slate-200 bg-white px-6 py-8 shadow-sm"
-          >
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-ink">Your name</span>
-              <input
-                value={nameValue}
-                onChange={(e) => setNameValue(e.target.value)}
-                placeholder="e.g. Reyan"
-                autoFocus
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              />
-            </label>
-            <button
-              type="submit"
-              disabled={nameValue.trim() === ""}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Continue <ArrowRightIcon className="h-5 w-5" />
-            </button>
-          </form>
-        )}
 
         {stage === "upload" && (
           <div>

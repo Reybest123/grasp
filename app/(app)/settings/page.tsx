@@ -2,9 +2,10 @@
 
 // Settings.
 //
-// Only the name so far — it is the one piece of account data that exists before
-// auth lands (lib/profileStore.tsx), and the dashboard greets the student by it,
-// so there has to be somewhere to fix a typo in it.
+// The name, which the dashboard greets the student by, and the email the
+// account is under. The email is shown but not editable: changing the address
+// an account logs in with needs a confirmation step on the new address, and
+// there is no mail being sent yet.
 
 import { useEffect, useState } from "react";
 import { useProfile } from "@/lib/profileStore";
@@ -15,7 +16,7 @@ export default function SettingsPage() {
   const [value, setValue] = useState("");
   const [saved, setSaved] = useState(false);
 
-  // Fill the field once storage has been read, not on every render — typing
+  // Fill the field once the account has loaded, not on every render — typing
   // would otherwise fight the stored value.
   useEffect(() => {
     if (ready) setValue(profile.name);
@@ -51,6 +52,13 @@ export default function SettingsPage() {
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
         </label>
+
+        <div className="mt-5 border-t border-slate-200 pt-5">
+          <span className="mb-1.5 block text-sm font-semibold text-ink">Email</span>
+          <p className="text-sm text-slate-500">
+            {ready ? profile.email : "—"}
+          </p>
+        </div>
 
         <div className="mt-5 flex items-center gap-3">
           <button

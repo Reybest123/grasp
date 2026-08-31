@@ -102,7 +102,7 @@ export function SubjectWorkspace({
     (title: string, body: string) => {
       const id = "n" + Date.now();
       updateSubject(subject.id, {
-        notes: [{ id, title, body, updated: "just now" }, ...subject.notes],
+        notes: [{ id, title, body, updated: new Date().toISOString() }, ...subject.notes],
       });
       setActiveId(id);
       setTab("notes");

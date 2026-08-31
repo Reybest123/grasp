@@ -39,6 +39,8 @@ import {
   type Cell,
 } from "@/lib/tables";
 import { mathToHtml } from "@/lib/math";
+import { updatedLabel } from "@/lib/schedule";
+import { useNow } from "@/lib/subjectsStore";
 import { NoteToolbar } from "@/components/workspace/NoteToolbar";
 import { EquationEditor } from "@/components/workspace/EquationEditor";
 import { ExplainPanel } from "@/components/workspace/ExplainPanel";
@@ -84,6 +86,11 @@ export function NotesTab({
   resources: ResourceBrief[];
 }) {
   const active = notes.find((n) => n.id === activeId) ?? notes[0];
+
+  // "2m ago" in the note list is relative to a clock, so it has to be the
+  // client's — rendering it during SSR would hydrate into a different string.
+  // `useNow` re-reads every minute, so the labels age on their own.
+  const now = useNow();
 
   const [enhancing, setEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
@@ -203,7 +210,7 @@ export function NotesTab({
       const html = stripCaretMark(el.innerHTML);
       historyRef.current.record(html, caretOffset(el), coalesce);
       syncHistory();
-      updateNote(active.id, { body: html, updated: "just now" });
+      updateNote(active.id, { body: html, updated: new Date().toISOString() });
     },
     [active, updateNote, syncHistory]
   );
@@ -214,7 +221,7 @@ export function NotesTab({
       if (!active) return;
       historyRef.current.record(html, 0);
       syncHistory();
-      updateNote(active.id, { body: html, updated: "just now" });
+      updateNote(active.id, { body: html, updated: new Date().toISOString() });
     },
     [active, updateNote, syncHistory]
   );
@@ -231,7 +238,7 @@ export function NotesTab({
       dragAnchor.current = null;
       setCellSel(null);
       syncHistory();
-      updateNote(active.id, { body: step.html, updated: "just now" });
+      updateNote(active.id, { body: step.html, updated: new Date().toISOString() });
     },
     [active, updateNote, syncHistory]
   );
@@ -1136,7 +1143,9 @@ export function NotesTab({
                 }`}
               >
                 <span className="block truncate">{n.title || "Untitled note"}</span>
-                <span className="block text-xs font-normal text-slate-400">{n.updated}</span>
+                <span className="block text-xs font-normal text-slate-400">
+                  {now ? updatedLabel(n.updated, now) : ""}
+                </span>
               </button>
               <button
                 onClick={() => setPendingDelete(n)}

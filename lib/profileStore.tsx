@@ -1,65 +1,94 @@
 "use client";
 
-// Who the student is.
+// Who the student is — now the account row, not a browser.
 //
-// Currently just a name, asked for once during onboarding and used to address
-// them on the home dashboard and to draw the avatar monogram in the header.
-// Stands in for the account row in Postgres (CLAUDE.md §5) the same way
-// lib/subjectsStore.tsx stands in for the subject tables — swap the
-// load/save pair for API calls when auth lands.
+// This used to read a name out of localStorage, which meant the greeting
+// belonged to a device: the same person on their phone was a stranger, and
+// anyone else on that laptop was them. It now asks /api/auth/me, so the name
+// follows the account.
+//
+// `ready` still exists and still means the same thing — nothing that shows the
+// name renders until the answer is in, rather than greeting nobody for a frame
+// and swapping the name in afterwards.
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-const STORAGE_KEY = "grasp.profile.v1";
-
 export type Profile = {
   name: string;
+  email: string;
 };
 
 type Store = {
   profile: Profile;
-  /** false until localStorage has been read — gate name-dependent UI on this */
+  /** false until /api/auth/me has answered — gate name-dependent UI on this */
   ready: boolean;
-  setName: (name: string) => void;
+  /** false when nobody is signed in; the app shell should not render */
+  signedIn: boolean;
+  setName: (name: string) => Promise<void>;
+  logOut: () => Promise<void>;
 };
 
 const ProfileContext = createContext<Store | null>(null);
 
-const EMPTY: Profile = { name: "" };
+const EMPTY: Profile = { name: "", email: "" };
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile>(EMPTY);
+  const [signedIn, setSignedIn] = useState(false);
   const [ready, setReady] = useState(false);
 
-  // Hydrate once on mount. The server render always sees the empty profile, so
-  // markup matches; anything that shows the name waits for `ready` rather than
-  // flashing a greeting addressed to nobody.
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<Profile>;
-        if (parsed && typeof parsed.name === "string") setProfile({ name: parsed.name });
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.user) {
+          setProfile({ name: data.user.name ?? "", email: data.user.email ?? "" });
+          setSignedIn(true);
+        }
+      } catch {
+        // Offline or the route is down — treated as signed out, which is the
+        // safe reading: better an unexpected login screen than an app shell
+        // showing nothing with no explanation.
       }
-    } catch {
-      // Corrupt or unavailable storage — carry on unnamed.
-    }
-    setReady(true);
+      if (!cancelled) setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  useEffect(() => {
-    if (!ready) return;
+  // Optimistic: the field updates as they type and the write follows. A failed
+  // rename is not worth a dialog, and the next load corrects it.
+  const setName = useCallback(async (name: string) => {
+    const trimmed = name.trim();
+    setProfile((p) => ({ ...p, name: trimmed }));
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
     } catch {
-      // Quota or private mode — persistence is best-effort.
+      // Best effort.
     }
-  }, [profile, ready]);
+  }, []);
 
-  const setName = useCallback((name: string) => setProfile({ name: name.trim() }), []);
+  const logOut = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // The cookie may survive a failed request, but the destination is the
+      // landing page either way and the session expires on its own.
+    }
+    setProfile(EMPTY);
+    setSignedIn(false);
+  }, []);
 
   return (
-    <ProfileContext.Provider value={{ profile, ready, setName }}>
+    <ProfileContext.Provider value={{ profile, ready, signedIn, setName, logOut }}>
       {children}
     </ProfileContext.Provider>
   );

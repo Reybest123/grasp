@@ -17,6 +17,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import type { JSX } from "react";
 import { useRecording } from "@/lib/recordingStore";
+import { useProfile } from "@/lib/profileStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { HomeIcon, WorkspaceIcon, SettingsIcon, LogOutIcon } from "@/components/icons";
 
@@ -38,6 +39,7 @@ const SETTINGS: Item = {
 };
 
 export function Sidebar() {
+  const { logOut } = useProfile();
   const pathname = usePathname();
   const router = useRouter();
   const rec = useRecording();
@@ -99,9 +101,12 @@ export function Sidebar() {
         }
         confirmLabel={recording ? "End recording and log out" : "Log out"}
         cancelLabel="Stay here"
-        onConfirm={() => {
+        onConfirm={async () => {
           setConfirmLogOut(false);
           rec.discard();
+          // The session row goes before the navigation does: leaving first
+          // would unmount this and the request would never be sent.
+          await logOut();
           router.push("/");
         }}
         onCancel={() => setConfirmLogOut(false)}

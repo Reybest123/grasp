@@ -264,7 +264,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     const existing = subjects.find((s) => s.id === id)?.notes ?? [];
     updateSubject(id, {
       notes: [
-        { id: noteId, title: name.trim() || "Untitled recording", body, updated: "just now" },
+        { id: noteId, title: name.trim() || "Untitled recording", body, updated: new Date().toISOString() },
         ...existing,
       ],
     });
