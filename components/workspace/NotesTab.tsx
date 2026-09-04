@@ -52,6 +52,7 @@ import {
   AlertIcon,
   CloseIcon,
   EditIcon,
+  MicIcon,
   PlusIcon,
   SparkleIcon,
   TrashIcon,
@@ -86,6 +87,26 @@ export function NotesTab({
   resources: ResourceBrief[];
 }) {
   const active = notes.find((n) => n.id === activeId) ?? notes[0];
+
+  // A subject with no notes opens on a blank one rather than on an empty state.
+  // "No notes yet" was a dead end wearing the shape of a card: the only thing
+  // to do on it was press New note, so the screen existed to ask a question
+  // that had exactly one answer. Deleting the last note lands here too, which
+  // is why the guard clears itself the moment a note exists again — the next
+  // time the list empties it seeds a fresh one.
+  //
+  // The ref is what survives React's dev-mode double-invoke of this effect;
+  // without it a fresh subject would open with two blank notes in it.
+  const seeding = useRef(false);
+  useEffect(() => {
+    if (notes.length > 0) {
+      seeding.current = false;
+      return;
+    }
+    if (seeding.current) return;
+    seeding.current = true;
+    addNote("", "");
+  }, [notes.length, addNote]);
 
   // "2m ago" in the note list is relative to a clock, so it has to be the
   // client's — rendering it during SSR would hydrate into a different string.
@@ -1110,17 +1131,9 @@ export function NotesTab({
   }
 
   if (!active) {
-    return (
-      <div className="grid place-items-center rounded-2xl border border-dashed border-slate-300 bg-white p-16 text-center text-slate-500">
-        <p>No notes yet.</p>
-        <button
-          onClick={() => addNote("", "")}
-          className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          New note
-        </button>
-      </div>
-    );
+    // One frame at most — the effect above is already creating the note. Held
+    // at the editor's own height so the page does not jump when it arrives.
+    return <div className="min-h-[440px]" aria-hidden="true" />;
   }
 
   return (
@@ -1142,7 +1155,15 @@ export function NotesTab({
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <span className="block truncate">{n.title || "Untitled note"}</span>
+                {/* A lecture note is an ordinary note and lives in this list
+                    like any other — the mic just says where it came from, and
+                    that it is also readable in the Record tab. */}
+                <span className="flex items-center gap-1.5">
+                  {n.recorded && <MicIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
+                  <span className="truncate">
+                    {n.title || (n.recorded ? "Untitled recording" : "Untitled note")}
+                  </span>
+                </span>
                 <span className="block text-xs font-normal text-slate-400">
                   {now ? updatedLabel(n.updated, now) : ""}
                 </span>

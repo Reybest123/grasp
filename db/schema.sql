@@ -99,6 +99,12 @@ create table if not exists notes (
   updated_at timestamptz not null default now()
 );
 
+-- Provenance: true for a note a lecture recording wrote, false for a typed one.
+-- Added after the table already existed, so it grows the table rather than
+-- being declared inside it -- `create table if not exists` above is a no-op on
+-- a database that already has `notes`, and would silently skip a new column.
+alter table notes add column if not exists recorded boolean not null default false;
+
 create index if not exists notes_subject_idx on notes (subject_id, position);
 
 create table if not exists resources (

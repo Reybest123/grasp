@@ -264,7 +264,15 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     const existing = subjects.find((s) => s.id === id)?.notes ?? [];
     updateSubject(id, {
       notes: [
-        { id: noteId, title: name.trim() || "Untitled recording", body, updated: new Date().toISOString() },
+        {
+          id: noteId,
+          title: name.trim() || "Untitled recording",
+          body,
+          updated: new Date().toISOString(),
+          // Marks it as written by a lecture rather than typed, which is what
+          // puts it in the Record tab's list. It is still an ordinary note.
+          recorded: true,
+        },
         ...existing,
       ],
     });

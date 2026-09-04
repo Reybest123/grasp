@@ -24,6 +24,13 @@ export type Note = {
    */
   updated: string;
   body: string; // sanitised HTML — see lib/richText.ts
+  /**
+   * True for a note written by a lecture recording rather than typed. It is
+   * only provenance — the note is an ordinary note in every other way, lives in
+   * the same list, and is edited in the same editor. The Record tab uses it to
+   * show which notes came from lectures without keeping a second copy of them.
+   */
+  recorded?: boolean;
 };
 
 // The Resource Bank model lives in lib/resources.ts, which the API routes also

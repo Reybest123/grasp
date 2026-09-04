@@ -91,7 +91,7 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
 
   const slotsBy = bucket<{ subject_id: string; id: string; day: number; start_time: string; end_time: string | null; room: string | null }>(slots);
   const examsBy = bucket<{ subject_id: string; id: string; exam_date: unknown; title: string | null }>(exams);
-  const notesBy = bucket<{ subject_id: string; id: string; title: string; body: string; updated_at: unknown }>(notes);
+  const notesBy = bucket<{ subject_id: string; id: string; title: string; body: string; updated_at: unknown; recorded: boolean }>(notes);
   const resourcesBy = bucket<{ subject_id: string; id: string; name: string; kind: string; summary: string; entries: unknown; status: string; error: string | null; added_at: unknown }>(resources);
   const quizzesBy = bucket<Record<string, unknown> & { subject_id: string }>(quizzes);
 
@@ -117,6 +117,9 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
       title: n.title,
       body: n.body,
       updated: isoStamp(n.updated_at),
+      // Only carried when true. Every note predating the column reads back
+      // false, which is correct — they were all typed.
+      ...(n.recorded ? { recorded: true as const } : {}),
     })),
     resources: (resourcesBy.get(s.id) ?? []).map<Resource>((r) => ({
       id: r.id,
@@ -206,8 +209,8 @@ export async function saveSubject(userId: string, subject: Subject): Promise<boo
     ),
     ...subject.notes.map(
       (n, i) => sql`
-        insert into notes (id, subject_id, title, body, position, updated_at)
-        values (${n.id}, ${subject.id}, ${n.title}, ${n.body}, ${i}, now())
+        insert into notes (id, subject_id, title, body, position, updated_at, recorded)
+        values (${n.id}, ${subject.id}, ${n.title}, ${n.body}, ${i}, now(), ${n.recorded ?? false})
       `
     ),
     ...subject.resources.map(
