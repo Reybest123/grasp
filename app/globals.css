@@ -10,16 +10,64 @@
 
 html {
   scroll-behavior: smooth;
+  /* Anchor links land under the fixed header rather than behind it. */
+  scroll-padding-top: 90px;
 }
 
 body {
   @apply bg-slate-50 text-ink antialiased;
+  font-feature-settings: "cv05" 1, "ss01" 1;
 }
 
-/* Dotted backdrop behind the landing hero. */
-.grid-bg {
-  background-image: radial-gradient(circle at 1px 1px, rgba(98, 87, 239, 0.12) 1px, transparent 0);
-  background-size: 28px 28px;
+/* Headings are set in the display face. Declared once here rather than as a
+   font-display class on every heading in the app. */
+h1,
+h2,
+h3 {
+  @apply font-display;
+  letter-spacing: -0.02em;
+}
+
+/* Everything focusable gets a visible ring in the brand colour, so keyboard
+   users are never guessing. Mouse users do not see it (:focus-visible).
+   Form controls are excluded because they style their own focus state, and
+   two rings on one field reads as an error rather than as focus. */
+:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+  outline: 2px solid theme("colors.brand.500");
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* -------------------------------- motifs ---------------------------------- */
+
+/* Ruled paper. The subject of this product is a notebook, so the backdrop is
+   the thing a notebook is actually made of — not a generic dot grid. The
+   28px rhythm matches the editor's own line-height. */
+.ruled {
+  background-image: linear-gradient(
+    to bottom,
+    theme("colors.slate.200") 0 1px,
+    transparent 1px 28px
+  );
+  background-size: 100% 28px;
+}
+
+/* The red margin rule down the left of a school exercise book — ours is the
+   brand orange. Sits on a positioned parent. */
+.margin-rule::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: theme("colors.brand.300");
+}
+
+/* Softens a motif out at its edges so it never ends on a hard line. */
+.fade-out-b {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
 }
 
 /* ------------------------------- animations ------------------------------- */
@@ -45,5 +93,32 @@ body {
   to {
     opacity: 1;
     transform: translate(-50%, 0);
+  }
+}
+
+/* Landing-page entrance. Runs from a visible resting state on load — nothing
+   is parked invisible waiting on a scroll observer, so the first frame of the
+   page is already the whole page. */
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: riseIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
   }
 }

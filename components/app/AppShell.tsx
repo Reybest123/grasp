@@ -65,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ChromeContext.Provider value={{ openRecording, focusRecord, editSubject }}>
       {/* Spans the full width above the sidebar rather than starting beside it,
           so the logo sits at the true top-left corner of the app. */}
-      <header className="fixed inset-x-0 top-0 z-50 h-[69px] border-b border-slate-200 bg-white">
+      <header className="fixed inset-x-0 top-0 z-50 h-[69px] border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-4 sm:px-6">
           {/* Stays a link to the marketing page everywhere else in the app;
               inside the shell "home" is the dashboard, not the landing. */}
@@ -73,8 +73,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3 text-sm">
             <RecordingChip onOpen={openRecording} />
-            <span className="hidden text-slate-500 sm:block">
-              Free plan · 1 recording left this week
+            <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-3 pr-3.5 text-xs font-semibold text-slate-600 sm:inline-flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+              Free plan
+              <span className="text-slate-400">1 recording left</span>
             </span>
             <Avatar />
           </div>
@@ -113,11 +115,11 @@ function Avatar() {
   const { profile } = useProfile();
   const letter = monogram(profile.name);
   return (
-    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-100 font-semibold text-brand-700">
+    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-sm font-bold text-white">
       {letter || (
         // Nothing to draw before the name is known — a placeholder letter would
         // read as somebody else's initial.
-        <span className="h-4 w-4 rounded-full bg-brand-200" />
+        <span className="h-4 w-4 rounded-full bg-white/20" />
       )}
     </span>
   );

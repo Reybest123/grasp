@@ -138,19 +138,28 @@ function RailLink({
       // There is no label to read, so the icon carries the name itself.
       aria-label={item.label}
       title={item.label}
-      className={`group grid flex-1 place-items-center transition ${
-        active ? "bg-brand-50 text-brand-700" : "text-slate-400 hover:bg-slate-50 hover:text-ink"
-      }`}
+      className="group relative grid flex-1 place-items-center"
     >
-      <span className="relative grid place-items-center">
-        {/* A short bar on the leading edge, so which half is active reads at a
-            glance rather than depending on the tint alone. */}
-        <span
-          className={`absolute -left-[22px] h-8 w-[3px] rounded-r-full bg-brand-600 transition-opacity ${
-            active ? "opacity-100" : "opacity-0"
-          }`}
-        />
-        {item.icon("h-[22px] w-[22px]")}
+      {/* A short bar on the leading edge, so which half is active reads at a
+          glance rather than depending on the tint alone. Anchored to the rail's
+          own edge rather than offset from the icon, which put it adrift in the
+          middle of the rail. */}
+      <span
+        className={`absolute left-0 top-1/2 h-9 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-600 transition-opacity ${
+          active ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      {/* The tint is a pill behind the icon, not a wash over the whole half.
+          Filling half the rail with brand colour made the app's left edge read
+          as a coloured panel rather than as navigation. */}
+      <span
+        className={`grid h-10 w-10 place-items-center rounded-xl transition ${
+          active
+            ? "bg-brand-50 text-brand-700"
+            : "text-slate-400 group-hover:bg-slate-100 group-hover:text-ink"
+        }`}
+      >
+        {item.icon("h-[21px] w-[21px]")}
       </span>
     </Link>
   );

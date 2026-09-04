@@ -61,11 +61,17 @@ export default function HomePage() {
 
   return (
     <section className="px-6 py-10 sm:px-8">
-      <h1 className="text-3xl font-bold tracking-tight text-ink">
-        {/* Wait for storage rather than greeting nobody and then swapping the
-            name in a frame later. */}
-        {profileReady && name ? `Welcome back, ${name}` : "Welcome back"}
-      </h1>
+      <div className="border-b border-slate-200 pb-6">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-600">Dashboard</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
+          {/* Wait for storage rather than greeting nobody and then swapping the
+              name in a frame later. */}
+          {profileReady && name ? `Welcome back, ${name}` : "Welcome back"}
+        </h1>
+        <p className="mt-1.5 text-slate-600">
+          How the work is landing, and what is coming up.
+        </p>
+      </div>
 
       {!ready ? null : !hasSubjects ? (
         <NoSubjects />

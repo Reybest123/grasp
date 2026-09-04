@@ -25,9 +25,17 @@ export default function WorkspacePage() {
 
   return (
     <section className="px-6 py-10 sm:px-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-ink">Your notebooks</h1>
-        <p className="mt-1 text-slate-600">One space per subject, built from your timetable.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-6">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-600">Workspace</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">Your notebooks</h1>
+          <p className="mt-1.5 text-slate-600">One space per subject, built from your timetable.</p>
+        </div>
+        {subjects.length > 0 && (
+          <p className="text-sm tabular-nums text-slate-500">
+            {subjects.length} {subjects.length === 1 ? "subject" : "subjects"}
+          </p>
+        )}
       </div>
 
       {/* No "next up" strip here. The soonest class and nearest exam belong on
