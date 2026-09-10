@@ -14,11 +14,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
 import type { JSX } from "react";
 import { useRecording } from "@/lib/recordingStore";
-import { useProfile } from "@/lib/profileStore";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { HomeIcon, WorkspaceIcon, SettingsIcon, LogOutIcon } from "@/components/icons";
 
 type Item = {
@@ -38,19 +35,15 @@ const SETTINGS: Item = {
   icon: (c) => <SettingsIcon className={c} />,
 };
 
-export function Sidebar() {
-  const { logOut } = useProfile();
+export function Sidebar({ onLogOut }: { onLogOut: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const rec = useRecording();
-  const [confirmLogOut, setConfirmLogOut] = useState(false);
 
   // /workspace/<id> is still Workspace, so match on the segment rather than the
   // whole path. Home is exact — nothing nests under it.
   const isActive = (href: string) =>
     href === "/workspace" ? pathname.startsWith("/workspace") : pathname === href;
-
-  const recording = rec.phase !== "idle";
 
   return (
     <>
@@ -78,39 +71,15 @@ export function Sidebar() {
             active={isActive(SETTINGS.href)}
             onClick={() => rec.guard(() => router.push(SETTINGS.href))}
           />
-          {/* Always confirms, recording or not — logging out is the one thing
-              here the student cannot undo by clicking back. */}
+          {/* The confirm itself lives in AppShell, shared with the profile menu. */}
           <FootButton
             item={{ href: "/", label: "Log out", icon: (c) => <LogOutIcon className={c} /> }}
             active={false}
             danger
-            onClick={() => setConfirmLogOut(true)}
+            onClick={onLogOut}
           />
         </div>
       </nav>
-
-      <ConfirmDialog
-        open={confirmLogOut}
-        title="Log out of Grasp?"
-        body={
-          recording
-            ? // Log out is the one exit that really does destroy the lecture:
-              // it leaves the route group, which unmounts RecordingProvider.
-              `You're still recording your ${rec.subjectName} lecture. Logging out ends it, and the notes drafted so far are lost.`
-            : "You'll need to sign back in to get to your notebooks."
-        }
-        confirmLabel={recording ? "End recording and log out" : "Log out"}
-        cancelLabel="Stay here"
-        onConfirm={async () => {
-          setConfirmLogOut(false);
-          rec.discard();
-          // The session row goes before the navigation does: leaving first
-          // would unmount this and the request would never be sent.
-          await logOut();
-          router.push("/");
-        }}
-        onCancel={() => setConfirmLogOut(false)}
-      />
     </>
   );
 }

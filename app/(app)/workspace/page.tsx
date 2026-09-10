@@ -1,58 +1,54 @@
 "use client";
 
-// The notebooks grid — one card per subject, plus the tile that creates one.
-// Opening a card is a real navigation to /workspace/<id>.
+// /workspace on its own opens a subject rather than being a page of its own:
+// the list down the left is the navigation, so the right-hand pane always holds
+// a notebook when there is one. It reopens whichever subject was open last on
+// this device, falling back to the first.
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSubjects, useNow } from "@/lib/subjectsStore";
-import { useRecording } from "@/lib/recordingStore";
+import { useSubjects } from "@/lib/subjectsStore";
 import { useChrome } from "@/components/app/AppShell";
-import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
+import { LAST_SUBJECT } from "@/components/app/SubjectList";
+import { PlusIcon, WorkspaceIcon } from "@/components/icons";
 
 export default function WorkspacePage() {
   const router = useRouter();
-  const { subjects, addSubject } = useSubjects();
+  const { subjects, ready, addSubject } = useSubjects();
   const { editSubject } = useChrome();
-  const { guard } = useRecording();
-  const now = useNow();
 
-  function handleAdd() {
-    // Create it empty and drop the student straight into the editor to fill in
-    // whatever they want — nothing is required beyond the name.
-    const created = addSubject("New subject");
-    editSubject(created.id);
-  }
+  useEffect(() => {
+    if (!ready || subjects.length === 0) return;
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(LAST_SUBJECT);
+    } catch {}
+    const target = subjects.find((s) => s.id === last) ?? subjects[0];
+    router.replace(`/workspace/${target.id}`);
+  }, [ready, subjects, router]);
+
+  if (!ready || subjects.length > 0) return null;
 
   return (
-    <section className="px-6 py-10 sm:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-6">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-600">Workspace</p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">Your notebooks</h1>
-          <p className="mt-1.5 text-slate-600">One space per subject, built from your timetable.</p>
-        </div>
-        {subjects.length > 0 && (
-          <p className="text-sm tabular-nums text-slate-500">
-            {subjects.length} {subjects.length === 1 ? "subject" : "subjects"}
-          </p>
-        )}
-      </div>
-
-      {/* No "next up" strip here. The soonest class and nearest exam belong on
-          the home dashboard, which exists now — repeating them above the grid
-          made the two routes read as the same page. Each card still carries its
-          own next class and exam countdown, which is where they mean something. */}
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        {subjects.map((s) => (
-          <SubjectCard
-            key={s.id}
-            subject={s}
-            now={now}
-            onOpen={() => guard(() => router.push(`/workspace/${s.id}`))}
-            onEdit={() => editSubject(s.id)}
-          />
-        ))}
-        <AddSubjectCard onClick={handleAdd} />
+    <section className="grid min-h-[calc(100dvh-69px)] place-items-center px-6 py-16 text-center">
+      <div>
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+          <WorkspaceIcon className="h-6 w-6" />
+        </span>
+        <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink">No notebooks yet</h1>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+          One notebook per subject. Class times and exam dates are optional.
+        </p>
+        <button
+          onClick={() => {
+            const created = addSubject("New subject");
+            router.push(`/workspace/${created.id}`);
+            editSubject(created.id);
+          }}
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700"
+        >
+          <PlusIcon className="h-4 w-4" /> Add a subject
+        </button>
       </div>
     </section>
   );

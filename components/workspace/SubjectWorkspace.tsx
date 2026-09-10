@@ -17,7 +17,6 @@ import {
   QuizIcon,
   BankIcon,
   MicIcon,
-  BackIcon,
   EditIcon,
   ExamIcon,
 } from "@/components/icons";
@@ -34,14 +33,12 @@ const TABS: [Tab, string, (c: string) => JSX.Element][] = [
 export function SubjectWorkspace({
   subject,
   now,
-  onBack,
   onEdit,
   onOpenSubject,
   focusRecord = 0,
 }: {
   subject: Subject;
   now: Date | null;
-  onBack?: () => void;
   onEdit?: () => void;
   /** jump to another subject — the Record tab uses it to reach a running lecture */
   onOpenSubject?: (id: string) => void;
@@ -166,19 +163,8 @@ export function SubjectWorkspace({
 
   return (
     <div>
-      {onBack && (
-        <div className="px-6 pt-5 sm:px-8">
-          <button
-            onClick={() => rec.guard(onBack)}
-            className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
-          >
-            <BackIcon className="h-4 w-4" /> All notebooks
-          </button>
-        </div>
-      )}
-
       {/* Subject header */}
-      <div className="px-6 pb-6 pt-5 sm:px-8">
+      <div className="px-6 pb-6 pt-6 sm:px-8">
         <div className="flex flex-wrap items-center gap-4">
           <span
             className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${color.gradient} text-2xl font-bold text-white shadow-sm`}

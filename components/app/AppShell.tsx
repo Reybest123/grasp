@@ -14,9 +14,11 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/app/Sidebar";
+import { ProfileMenu } from "@/components/app/ProfileMenu";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubjectEditor } from "@/components/SubjectEditor";
 import { useSubjects } from "@/lib/subjectsStore";
-import { useProfile, monogram } from "@/lib/profileStore";
+import { useProfile } from "@/lib/profileStore";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { MicIcon } from "@/components/icons";
 
@@ -42,9 +44,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { subjects, updateSubject, removeSubject } = useSubjects();
   // The logo navigates, so it goes through the same guard every other exit
   // from the live recording view does.
-  const { guard } = useRecording();
+  const rec = useRecording();
+  const { guard } = rec;
+  const { logOut } = useProfile();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [focusRecord, setFocusRecord] = useState(0);
+  // One confirm, raised from both the rail and the profile menu.
+  const [confirmLogOut, setConfirmLogOut] = useState(false);
+  const recording = rec.phase !== "idle";
 
   const editing = subjects.find((s) => s.id === editingId) ?? null;
 
@@ -78,12 +85,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Free plan
               <span className="text-slate-400">1 recording left</span>
             </span>
-            <Avatar />
+            <ProfileMenu onLogOut={() => setConfirmLogOut(true)} />
           </div>
         </div>
       </header>
 
-      <Sidebar />
+      <Sidebar onLogOut={() => setConfirmLogOut(true)} />
 
       {/* Both the header and the rail are fixed, so the content reserves their
           space rather than sitting under them. The rail is the only navigation
@@ -107,21 +114,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           removeSubject(editing.id);
         }}
       />
-    </ChromeContext.Provider>
-  );
-}
 
-function Avatar() {
-  const { profile } = useProfile();
-  const letter = monogram(profile.name);
-  return (
-    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-sm font-bold text-white">
-      {letter || (
-        // Nothing to draw before the name is known — a placeholder letter would
-        // read as somebody else's initial.
-        <span className="h-4 w-4 rounded-full bg-white/20" />
-      )}
-    </span>
+      {/* Always confirms, recording or not — logging out is the one thing in the
+          shell the student cannot undo by clicking back. */}
+      <ConfirmDialog
+        open={confirmLogOut}
+        title="Log out of Grasp?"
+        body={
+          recording
+            ? // Log out is the one exit that really does destroy the lecture:
+              // it leaves the route group, which unmounts RecordingProvider.
+              `You're still recording your ${rec.subjectName} lecture. Logging out ends it, and the notes drafted so far are lost.`
+            : "You'll need to sign back in to get to your notebooks."
+        }
+        confirmLabel={recording ? "End recording and log out" : "Log out"}
+        cancelLabel="Stay here"
+        onConfirm={async () => {
+          setConfirmLogOut(false);
+          rec.discard();
+          // The session row goes before the navigation does: leaving first
+          // would unmount this and the request would never be sent.
+          await logOut();
+          router.push("/");
+        }}
+        onCancel={() => setConfirmLogOut(false)}
+      />
+    </ChromeContext.Provider>
   );
 }
 

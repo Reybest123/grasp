@@ -173,6 +173,19 @@ export function activeDays(week: ActivityDay[]): number {
   return week.filter((d) => d.total > 0).length;
 }
 
+/**
+ * Consecutive days with work on them, counting back from today. An empty today
+ * does not break it — the day is not over yet — so the count starts from
+ * yesterday instead.
+ */
+export function currentStreak(week: ActivityDay[]): number {
+  let i = week.length - 1;
+  if (i >= 0 && week[i].today && week[i].total === 0) i -= 1;
+  let n = 0;
+  for (; i >= 0 && week[i].total > 0; i--) n += 1;
+  return n;
+}
+
 /** Quizzes generated inside the window — what the plan's weekly cap counts. */
 export function quizzesIn(week: ActivityDay[]): number {
   return week.reduce((n, d) => n + d.quizzes, 0);
