@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
+import { requireUser } from "@/lib/session";
 
 /** Vercel caps a serverless request body at ~4.5MB; base64 inflates by a third. */
 const MAX_DATA_URL = 4_200_000;
@@ -89,6 +90,12 @@ type Slot = { day: number; start: string; end?: string; room?: string };
 type Extracted = { name: string; teacher?: string; classes: Slot[] };
 
 export async function POST(req: NextRequest) {
+  // Every call spends a vision-model request, so it is for signed-in students
+  // only. Without this, anyone could run the reader at Grasp's cost — which
+  // mattered once /sample put the same upload screen on a public URL.
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { dataUrl } = await req.json();
 
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {

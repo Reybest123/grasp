@@ -76,6 +76,17 @@ export async function destroySession(): Promise<void> {
 }
 
 /**
+ * Ends every session the user has except the one making this request. A
+ * password change calls it, so a device that signed in with the old password
+ * does not stay signed in after it is replaced.
+ */
+export async function endOtherSessions(userId: string): Promise<void> {
+  const jar = await cookies();
+  const token = jar.get(SESSION_COOKIE)?.value ?? "";
+  await sql`delete from sessions where user_id = ${userId} and token_hash <> ${hashToken(token)}`;
+}
+
+/**
  * Who the request is from, or null. One query, joined, because every protected
  * route calls this before it does anything else.
  *

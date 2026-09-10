@@ -35,6 +35,7 @@ import {
 import { CURRENT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
 import { AddAssessmentDialog } from "@/components/app/AddAssessmentDialog";
 import { StatRing } from "@/components/StatRing";
+import { Skeleton } from "@/components/Skeleton";
 import { makeExam } from "@/lib/subjects";
 import type { Subject } from "@/lib/subjects";
 import {
@@ -81,15 +82,20 @@ export default function HomePage() {
   return (
     <section className="flex flex-col px-6 py-6 sm:px-8 lg:h-[calc(100dvh-69px)] lg:overflow-hidden">
       <div className="shrink-0 border-b border-slate-200 pb-5">
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink">
-          {/* Wait for the account rather than greeting nobody and then swapping
-              the name in a frame later. */}
-          {profileReady && name ? `Welcome back, ${name}` : "Welcome back"}
-        </h1>
-        <p className="mt-1 text-slate-600">How the work is landing, and what is coming up.</p>
+        {/* Wait for the account rather than greeting nobody and then swapping
+            the name in a frame later. */}
+        {profileReady ? (
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">
+            {name ? `Welcome back, ${name}` : "Welcome back"}
+          </h1>
+        ) : (
+          <Skeleton className="h-9 w-72 max-w-full" />
+        )}
       </div>
 
-      {!ready ? null : !hasSubjects ? (
+      {!ready ? (
+        <HomeSkeleton />
+      ) : !hasSubjects ? (
         <NoSubjects />
       ) : (
         <>
@@ -142,6 +148,63 @@ function NoSubjects() {
         </Link>
       </div>
     </div>
+  );
+}
+
+/** The dashboard's own layout in grey, so nothing jumps when the data lands. */
+function HomeSkeleton() {
+  return (
+    <>
+      <p className="sr-only" role="status">
+        Loading your dashboard
+      </p>
+      <div className="mt-5 grid shrink-0 gap-4 sm:grid-cols-3" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <Skeleton className="h-16 w-16 shrink-0 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-40 max-w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        aria-hidden="true"
+        className="mt-6 grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)]"
+      >
+        <div className="flex min-h-0 flex-col">
+          <Skeleton className="h-4 w-36" />
+          <div className="mt-3 flex h-72 items-end gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:h-auto lg:min-h-0 lg:flex-1">
+            {[45, 70, 30, 85, 55, 20, 60].map((h, i) => (
+              <div key={i} className="flex h-full flex-1 items-end px-[18%]">
+                <Skeleton className="w-full rounded-b-none" style={{ height: `${h}%` }} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-col">
+          <Skeleton className="h-4 w-44" />
+          <div className="mt-3 flex-1 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-4 w-4 rounded" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-3/4" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+                <Skeleton className="h-5 w-10 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 

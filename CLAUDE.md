@@ -147,7 +147,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - The rail stays visible at **every** width. It is the only navigation there is, so hiding it below `lg` would leave nothing to navigate with — hence `pl-16` rather than `lg:pl-16` on the content.
 - **Log out always confirms**, recording or not: it is the one thing in the shell a student cannot undo by clicking back. When a recording is live the dialog says so and the confirm becomes destructive, because logging out really does end it — it leaves the route group, which unmounts `RecordingProvider`, and Next treats that as a client-side route change so `beforeunload` never fires.
 - **The header avatar opens an account menu** (`components/app/ProfileMenu.tsx`): name and email, then **Settings and Log out only** — Terms/Privacy links were tried and cut at the user's request. It closes on an outside pointerdown or Escape. Log out from the menu and from the rail raise the **same** `ConfirmDialog`, which lives in `AppShell` rather than in either caller.
-- **No page carries an orange eyebrow label** ("Dashboard", "Workspace") above its heading any more. The rail already says where the student is.
+- **No page carries an orange eyebrow label** ("Dashboard", "Workspace") above its heading any more, and no subtitle under it either ("How the work is landing…" and "One space per subject…" were both cut). The rail already says where the student is.
+- **Every page in the shell has a skeleton loader** (`components/Skeleton.tsx`, a pulsing grey `span` that can stand in for text or a whole card). `/home`, `/workspace`, `/workspace/<id>` and `/settings` each draw their own layout in grey while `ready` is false, rather than rendering nothing, so the page does not jump when the data lands. The dashboard greeting is a skeleton bar until the profile has loaded. Each carries an `sr-only` `role="status"` line so a screen reader hears that it is loading.
 - **`devIndicators: false` in `next.config.mjs` is deliberate.** Next's dev-only floating badge is pinned bottom-left, exactly where the rail keeps Settings and Log out — it covered them outright and made those controls unclickable in development.
 
 **Leaving a recording out of sight** (`guard` in `lib/recordingStore.tsx`): the recording itself survives navigation now, so what a move destroys is not the lecture but *visibility* of it — the transcript and the live draft only exist on the Record tab. So the prompt is tied to **what is on screen, not to the URL**: it fires when the live view would stop being visible, which covers switching to the Notes tab exactly as much as it covers changing route, since neither shows the draft any more.
@@ -177,6 +178,10 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - **`AddAssessmentDialog`** carries the subject as a field of its own rather than sending the student off to the subject editor — reaching the same exam rows there means picking a subject, opening its panel and scrolling past colour swatches and class times to get to the one field they came for. Date is required (there is nothing to count down to otherwise); the title is optional, matching the editor.
   - `upcomingExamsAcross()` in `lib/schedule.ts` is the across-every-subject counterpart to `upcomingExams`, sorted soonest first.
 - **Profile (`lib/profileStore.tsx`)** — the student's name and email, read from `/api/auth/me`, shown in the dashboard greeting and as the header avatar's monogram, and editable (the name; not the email) at `/settings`. It used to read the name out of localStorage, which meant the greeting belonged to a *device*: the same person on their phone was a stranger and anyone else on that laptop was them. The `ready` flag survives the move and still means the same thing — the greeting and the avatar letter wait for the answer rather than addressing nobody and swapping the name in a frame later. The email is shown but not editable: changing the address an account logs in with needs a confirmation step on the new address, and no mail is being sent yet.
+- **Settings (`/settings`)** — laid out like the other shell pages (full width, heading over a rule, uppercase section labels above white cards) rather than the narrow centred column it started as. Three sections: Profile (the name; the email read-only), Password, and Delete account.
+  - **Change password** (`POST /api/auth/password`) asks for the current password even though the request is signed in, so an unattended session on a shared computer cannot lock the owner out. It then ends every *other* session (`endOtherSessions` in `lib/session.ts`) and keeps this one.
+  - **Delete account** (`DELETE /api/auth/account`) opens an inline confirmation that needs the password, rather than a one-click dialog. Deleting the `users` row takes everything else with it through `on delete cascade`; the cookie is then cleared, any live recording discarded, and the student lands on `/`.
+  - **Email confirmation is not built yet**, which is also why the email cannot be changed here.
 - **Onboarding (§2) — the timetable is really read now.** A real file picker (drag-and-drop or click; image or PDF, 3MB), then `/api/timetable-extract` reads it with GPT-4o and the subjects it finds *become* the student's notebooks. Verified end to end against a five-day grid with abbreviated subject codes: all 14 lessons placed on the right day and period, teachers and rooms picked up, and Break / Lunch / Study Hall dropped.
   - **The image is never stored**, the same treatment as lecture audio (§5) and Resource Bank documents (§3.4): it goes through the route to the provider and the buffer is dropped when the request ends.
   - **`day` is a day *name* in the response, not an index — this is load-bearing.** Asked for a number, the model reliably answered with the day's *position on the sheet*: Monday came back as 0 because Monday was the first column, silently shifting the student's entire week by a day. There is nothing to get wrong about "Monday". `asDay` still accepts a number for the odd reply that sends one.
@@ -184,6 +189,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - Every day and time is re-validated server-side, subjects arriving twice under one name are folded together, and a slot missing a day or a start time is dropped rather than guessed at — a class in the wrong place is worse than one the student adds by hand.
   - **No subjects found is its own failure, with the model's reason attached** ("Grasp could not find any subjects on that. The document is a store receipt, not a school timetable."), which tells the student what to do about it where a generic error does not. This is the first thing a new user ever does (§9.5), so the failure has to be legible.
   - **`replaceSubjects` (in `subjectsStore`) replaces rather than appends**, and onboarding is its only caller: a student re-running the step should end up with the timetable they just handed over, not it stacked on top of the last one. It writes immediately rather than on the debounce, since the next thing that happens is a navigation to `/home`, which re-reads the list from the server — a pending flush would race that read. The page mounts its own `SubjectsProvider` since it sits outside the logged-in route group; it no longer needs `ProfileProvider`, because signup already asked for the name.
+  - **`/sample` previews this screen** (`app/sample/page.tsx`): exactly what a new student sees the moment they press Create account, without making an account to get there. The screen itself lives in `components/onboarding/OnboardingFlow.tsx`. `/onboarding` passes `save={replaceSubjects}`; `/sample` passes `preview` and no `save`, so nothing is ever written. The preview adds an amber banner, its done step offers "Start the preview again" instead of going to `/home`, and it is `noindex`. It is not in `proxy.ts`'s protected list, so it opens signed out too.
+  - **`/api/timetable-extract` requires a signed-in user.** It used to have no `requireUser` at all, so anyone could run GPT-4o reads at Grasp's expense, and a public `/sample` would have advertised it. The preview rewords the resulting 401 as "Log in to try the timetable reader in this preview". **The other AI routes (enhance, explain-chat, generate, live-notes, mark-quiz, quiz, quiz-explain, resource-extract, transcribe) still have no auth check** — the same hole, not yet closed.
 - Subject notebooks grid (`/workspace`) — cards lead with the subject name at the top (monogram + name + teacher), then the **next class only** (never the full week), an exam countdown chip, and an **Open notes** / **Edit** action row. An **Add a subject** tile sits at the end of the grid and drops straight into the editor.
   - **No content counts and no "Next up" strip.** The three bare numbers (notes / resources / quizzes) said nothing a student was asking — whether a subject holds 2 notes or 5 doesn't help decide which to open — and read as stray metadata. The strip above the grid duplicated what the home dashboard now shows; each card still carries its own next class and exam countdown, which is where they mean something.
   - **A OneNote-style layout was tried and reverted at the user's request** — subjects as a sticky list down the left with the open subject beside it. The card grid is the intended design; don't reintroduce the side list.
@@ -284,6 +291,8 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 **Still mocked / not yet built:**
 - Weekly usage-limit enforcement (including the resource cap, which is enforced in the UI only). `QUIZ_LIMIT` in `lib/plan.ts` now carries the §6 figure and the dashboard's allowance tile *reports* against it, but nothing refuses a generation at the cap. Free is the number §6 states; Pro and Max are placeholders, since what a paid tier allows is a pricing decision rather than a code one.
 - Only one recording at a time, and it ends if the page itself is reloaded (the recorder state is in memory, not persisted).
+- Email confirmation on signup, and with it changing an account's email.
+- Auth checks on the AI routes other than `/api/timetable-extract` (see Onboarding above).
 
 **Design conventions:**
 
@@ -314,19 +323,22 @@ proxy.ts        route protection (Next 16's middleware) — cookie presence
                 only; the real check is requireUser() in lib/session
 db/             schema.sql (the schema), setup.mjs (npm run db:setup)
 app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
+                sample/ (onboarding preview, saves nothing),
                 (app)/ — logged-in route group; its layout.tsx holds the
                       providers, so they survive navigation between:
                       home/ (dashboard), workspace/, workspace/[subjectId]/,
                       settings/
                 dashboard/, subject/[id]/ — legacy redirects
-                api/auth/ (signup, login, logout, me)
+                api/auth/ (signup, login, logout, me, password, account)
                 api/subjects/ + api/subjects/[subjectId]
                 api/ (enhance, generate, explain-chat, quiz,
                       mark-quiz, quiz-explain, transcribe, live-notes,
                       resource-extract, timetable-extract)
-components/     icons.tsx, Logo, ConfirmDialog, SubjectCard, SubjectEditor,
+components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEditor,
                 StatRing (shared by the dashboard tiles and quiz results)
 components/auth/ AuthForm (login and signup are the same form)
+components/onboarding/ OnboardingFlow (the timetable step; /onboarding saves,
+                /sample previews)
 components/app/ AppShell (header + useChrome context + log-out confirm),
                 Sidebar, ProfileMenu (avatar menu), AddAssessmentDialog
 components/workspace/
