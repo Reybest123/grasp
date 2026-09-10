@@ -4,35 +4,26 @@
 // inside it are component state, not routes — the URL stays at
 // /workspace/<id> for all four, so the subject is what a link points at.
 
-import { useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSubjects, useNow } from "@/lib/subjectsStore";
 import { useChrome } from "@/components/app/AppShell";
-import { LAST_SUBJECT } from "@/components/app/SubjectList";
 import { SubjectWorkspace } from "@/components/workspace/SubjectWorkspace";
 import { BackIcon } from "@/components/icons";
 
 export default function SubjectPage() {
+  const router = useRouter();
   const params = useParams<{ subjectId: string }>();
   const { subjects, ready } = useSubjects();
   const { editSubject, openRecording, focusRecord } = useChrome();
   const now = useNow();
 
   const subject = subjects.find((s) => s.id === params.subjectId);
-  const id = subject?.id;
-
-  useEffect(() => {
-    if (!id) return;
-    try {
-      localStorage.setItem(LAST_SUBJECT, id);
-    } catch {}
-  }, [id]);
 
   if (!subject) {
-    // The store starts empty and fills once /api/subjects answers, so a
-    // deep-linked id legitimately misses on the first render. Only say it is
-    // gone once the subjects have actually been read.
+    // Before hydration the store still holds the seed list, so an id saved from
+    // localStorage legitimately misses on the first render. Only say it is gone
+    // once the stored subjects have actually been read.
     if (!ready) return null;
     return (
       <section className="px-6 py-20 text-center sm:px-8">
@@ -54,6 +45,7 @@ export default function SubjectPage() {
     <SubjectWorkspace
       subject={subject}
       now={now}
+      onBack={() => router.push("/workspace")}
       onEdit={() => editSubject(subject.id)}
       onOpenSubject={openRecording}
       focusRecord={focusRecord}
