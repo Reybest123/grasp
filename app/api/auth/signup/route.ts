@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { hashPassword, passwordProblem } from "@/lib/password";
-import { createSession } from "@/lib/session";
+import { createSession, destroySession } from "@/lib/session";
 import { normalizeEmail, emailProblem } from "@/lib/accounts";
 
 export async function POST(req: NextRequest) {
@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Signing up while logged in to another account switches accounts, so that
+  // account's session is ended properly rather than left valid behind the new one.
+  await destroySession();
   await createSession(result.data.id);
   return NextResponse.json({ user: { id: result.data.id, email, name } });
 }

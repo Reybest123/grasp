@@ -61,7 +61,6 @@ const PLANS: {
   price: string;
   period: string;
   tagline: string;
-  cta: string;
   featured: boolean;
   perks: string[];
 }[] = [
@@ -70,7 +69,6 @@ const PLANS: {
     price: "$0",
     period: "forever",
     tagline: "Everything you need to try Grasp for real.",
-    cta: "Start free",
     featured: false,
     perks: [
       "Unlimited subjects & notes",
@@ -85,7 +83,6 @@ const PLANS: {
     price: "$6",
     period: "/ month",
     tagline: "For students who live in their notes.",
-    cta: "Go Pro",
     featured: true,
     perks: [
       "Everything in Free",
@@ -293,16 +290,6 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/signup"
-                className={`mt-8 block rounded-xl px-5 py-3 text-center text-sm font-semibold transition ${
-                  p.featured
-                    ? "bg-brand-600 text-white hover:bg-brand-700"
-                    : "border border-slate-300 text-ink hover:border-slate-400 hover:bg-slate-50"
-                }`}
-              >
-                {p.cta}
-              </Link>
             </div>
           ))}
         </div>

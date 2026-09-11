@@ -18,8 +18,12 @@ import { SESSION_COOKIE } from "@/lib/sessionCookie";
 /** Everything inside the logged-in route group, plus onboarding's later steps. */
 const PROTECTED = ["/home", "/workspace", "/settings", "/dashboard", "/subject", "/onboarding"];
 
-/** Signed in, these are the wrong place to be. */
-const AUTH_PAGES = ["/login", "/signup"];
+/**
+ * Signed in, logging in again is pointless, so /login goes to the app. /signup
+ * deliberately stays reachable: someone on a shared or family device has to be
+ * able to make their own account, and the form says whose session it replaces.
+ */
+const AUTH_PAGES = ["/login"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
