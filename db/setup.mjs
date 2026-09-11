@@ -3,8 +3,8 @@
 //   npm run db:setup
 //
 // This exists because there is no psql on a plain Windows box, and asking a
-// student-project maintainer to install a Postgres client just to create seven
-// tables is a worse first step than reusing the driver the app already depends
+// student-project maintainer to install a Postgres client just to create a
+// handful of tables is a worse first step than reusing the driver the app already depends
 // on. Every statement in the schema is `if not exists`, so running it twice is
 // harmless — it is a setup script, not a migration system, and the day the
 // schema needs to change shape rather than grow is the day this needs replacing

@@ -22,9 +22,9 @@ export default function SubjectPage() {
   const subject = subjects.find((s) => s.id === params.subjectId);
 
   if (!subject) {
-    // Before hydration the store still holds the seed list, so an id saved from
-    // localStorage legitimately misses on the first render. Only say it is gone
-    // once the stored subjects have actually been read.
+    // The store starts empty and fills once /api/subjects answers, so a
+    // deep-linked id legitimately misses on the first render. Only say it is
+    // gone once the subjects have actually been read.
     if (!ready) return <SubjectSkeleton />;
     return (
       <section className="px-6 py-20 text-center sm:px-8">

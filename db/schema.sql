@@ -18,7 +18,7 @@
 -- the database re-minted them on insert, every save would hand back different
 -- ids and quietly break those references.
 --
--- Run against a fresh database with:  psql "$DATABASE_URL" -f db/schema.sql
+-- Apply with `npm run db:setup` (db/setup.mjs), which is safe to re-run.
 
 create table if not exists users (
   id            uuid primary key default gen_random_uuid(),

@@ -13,7 +13,7 @@
 // it can do is over- or under-report against a list we already know.
 //
 // Shared by the client and by the routes under app/api, so nothing here may
-// touch the DOM or pull in the subject seed data.
+// touch the DOM or import client-only modules.
 
 export const RESOURCE_KINDS = [
   "Assessment criteria",

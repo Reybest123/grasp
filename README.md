@@ -1,72 +1,122 @@
 # Grasp
 
-**AI note-taking website built for students, not boardrooms.**
+**AI note-taking for students, built for lectures, not boardrooms.**
 
-Grasp turns your school timetable into ready-to-use subject notebooks, explains anything you
-highlight directly in your notes, and generates quizzes from your *own* material and assessment
-criteria — not a generic question bank.
+Grasp turns a screenshot of your school timetable into a notebook for every subject, drafts notes
+live while you record a lecture, explains anything you highlight right inside your notes, and
+quizzes you from your own notes and assessment criteria rather than a generic question bank.
 
-See [`CLAUDE.md`](./CLAUDE.md) for the full product spec, positioning, and roadmap.
-
----
-
-## This repo: first demo
-
-This is the **first interactive demo** — a Next.js website you can click through end to end. It runs
-in **demo mode**: all AI responses are mocked (no API keys needed) so you can experience the UX
-immediately. Every mock is a drop-in point for the real API.
-
-### What you can do in the demo
-
-| Flow | Where | CLAUDE.md ref |
-|------|-------|---------------|
-| School-focused landing page | `/` | §1 |
-| Timetable screenshot → auto-created subject notebooks | `/onboarding` | §2 |
-| Subject notebooks dashboard | `/dashboard` | — |
-| Manual notes + **AI enhance** | subject → Notes | §3.1 |
-| **Highlight-to-explain** in the margin | subject → Notes (select text) | §3.2 |
-| **Quiz mode** (pick topics + focus instructions → generated MCQs) | subject → Quizzes | §3.3 |
-| **Resource Bank** (assessment-aware docs) | subject → Resource Bank | §3.4 |
-| Terms of Service / Privacy Policy | `/legal/terms`, `/legal/privacy` | §7 |
+Live at [grasp-indol.vercel.app](https://grasp-indol.vercel.app). The full product spec, design
+conventions and a detailed changelog of how everything is built live in [`CLAUDE.md`](./CLAUDE.md).
 
 ---
 
-## Run it locally
+## Features
 
-```bash
-npm install
-npm run dev
-```
+| Feature | Where |
+| --- | --- |
+| Accounts (sign up, log in, change password, delete account) | `/signup`, `/login`, `/settings` |
+| Timetable screenshot or PDF read by GPT-4o into subject notebooks | `/onboarding` (preview without an account at `/sample`) |
+| Dashboard: understanding score, weekly activity, quiz allowance, upcoming assessments | `/home` |
+| Notebooks grid with next class and exam countdowns | `/workspace` |
+| Rich-text notes: lists, checklists, tables, equations, undo/redo, AI enhance and AI generate | subject > Notes |
+| Highlight to Explain or Refine, as a thread beside the note | subject > Notes (select text) |
+| Lecture recording with Whisper transcription and notes drafted live | subject > Record |
+| Quizzes from your notes: multiple choice, short and long answer, AI marking with half marks, "explain why I'm wrong" | subject > Quizzes |
+| Resource Bank: rubrics, criteria and term planners read once and cited wherever the AI uses them | subject > Resource Bank |
+| Weekly plan limits (3 quizzes, 1 five-minute recording on free), enforced server-side | `lib/usage.ts` |
+| Flag an AI answer as wrong | under AI output |
+| Terms of Service and Privacy Policy | `/legal/terms`, `/legal/privacy` |
 
-Then open http://localhost:3000
-
-## Build for production
-
-```bash
-npm run build
-npm start
-```
+Audio, timetable images and uploaded documents are never stored; only the text extracted from them
+is kept.
 
 ---
 
 ## Tech
 
-- **Next.js 14** (App Router) + **React 18** + **TypeScript**
-- **Tailwind CSS**
-- No database or API keys required for the demo (all state is in-memory / mocked)
-
-### Going live (next steps)
-
-Replace the mocks in [`lib/ai.ts`](./lib/ai.ts) with real server-side calls:
-
-- `extractTimetable()` → vision model (e.g. GPT-4o) reads the uploaded screenshot → subjects JSON
-- `enhanceNote()` / `explainHighlight()` → GPT-4o-mini for cheap note cleanup & explanations
-- `generateQuiz()` → a stronger model for quality quiz generation
-- Lecture recording → Whisper transcription
-
-Then wire in Railway Postgres for accounts/subjects/notes, file storage for the Resource Bank, and
-per-tier usage limits (see `CLAUDE.md` §5–6).
+- **Next.js 16** (App Router) + **React 19** + **TypeScript** + **Tailwind CSS**
+- **Postgres on Neon**, through `@neondatabase/serverless` (HTTP, not a TCP socket)
+- **OpenAI**: GPT-4o for timetable and document reading, GPT-4o-mini for notes, explanations and
+  quizzes, Whisper for transcription. Called with plain `fetch` from `lib/openai.ts`; there is no
+  OpenAI SDK dependency.
+- Hosted on **Vercel**
 
 ---
 
-> ⚠️ AI-generated content may be inaccurate — Grasp is a study aid, not an authoritative source.
+## Run it locally
+
+You need Node 20+, a Neon database and an OpenAI API key.
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Copy `.env.local.example` to `.env.local` and fill in both values:
+
+   ```bash
+   OPENAI_API_KEY=sk-...
+   DATABASE_URL=postgresql://user:password@host.neon.tech/dbname?sslmode=require
+   ```
+
+   `DATABASE_URL` must be a Neon connection string; a plain local Postgres will not answer the HTTP
+   driver.
+
+3. Create the tables (safe to re-run, and needed again whenever `db/schema.sql` grows):
+
+   ```bash
+   npm run db:setup
+   ```
+
+4. Start the dev server and open http://localhost:3000:
+
+   ```bash
+   npm run dev
+   ```
+
+**Windows note:** if AI calls fail with `invalid_api_key` even though `.env.local` is correct, an
+old `OPENAI_API_KEY` set as a Windows user environment variable is overriding it. Next does not
+replace a variable that is already set.
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` / `npm start` | Production build and server |
+| `npm run typecheck` | TypeScript check with no output files |
+| `npm run db:setup` | Apply `db/schema.sql` to the database in `DATABASE_URL` |
+
+---
+
+## Deploying
+
+Pushing to `main` deploys to Vercel. The Neon database is attached through Vercel's Storage tab, so
+the deployment gets `DATABASE_URL` automatically; `OPENAI_API_KEY` is set in the project's
+environment variables.
+
+When `db/schema.sql` changes, run `npm run db:setup` against the **production** `DATABASE_URL`
+before the new code needs it. If a deployed page says "Grasp's database has not been set up yet",
+this is what was missed.
+
+---
+
+## Project layout
+
+```
+app/            pages and API routes (the logged-in app is the (app)/ route group)
+components/     UI, one component per file
+lib/            data model, stores, database and session helpers, AI client
+db/             schema.sql and the setup script
+styles/         editor.css for the note editor's generated markup
+proxy.ts        redirects signed-out visitors away from the app shell
+```
+
+See the file layout section of [`CLAUDE.md`](./CLAUDE.md) for a file-by-file map.
+
+---
+
+AI-generated notes, explanations and marks can be wrong. Grasp is a study aid, not an authoritative
+source. Questions: liamspencer549@gmail.com

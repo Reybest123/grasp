@@ -17,7 +17,7 @@ export function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
-/** Plain text (seed notes, AI replies, transcripts) -> paragraph HTML. */
+/** Plain text (AI replies, transcripts) -> paragraph HTML. */
 export function textToHtml(text: string): string {
   const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
   if (!paragraphs.length) return "";
@@ -98,7 +98,7 @@ export function htmlToText(html: string): string {
   return blocks.join("\n\n");
 }
 
-/** Older notes (and seed data) are plain text — upgrade them on the way in. */
+/** Older notes were stored as plain text — upgrade them on the way in. */
 export function ensureHtml(body: string): string {
   if (!body) return "";
   return /<(p|div|br|b|i|u|font|ul|ol|li|span|sup|sub|table|h[1-4])\b/i.test(body)

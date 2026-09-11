@@ -67,20 +67,6 @@ export function nextClass(classes: ClassSlot[], now: Date): NextClass | null {
   return best;
 }
 
-/** Same, but across every subject — powers the "Next up" chip on the home grid. */
-export function nextClassAcross<T extends { classes: ClassSlot[] }>(
-  subjects: T[],
-  now: Date
-): { subject: T; next: NextClass } | null {
-  let best: { subject: T; next: NextClass } | null = null;
-  for (const subject of subjects) {
-    const next = nextClass(subject.classes, now);
-    if (!next) continue;
-    if (!best || next.minutesAway < best.next.minutesAway) best = { subject, next };
-  }
-  return best;
-}
-
 /** "today" / "tomorrow" / "Wed" for a slot that is `daysAway` days out. */
 export function relativeDay(daysAway: number, day: number): string {
   if (daysAway === 0) return "today";
@@ -109,8 +95,8 @@ export function daysUntil(isoDate: string, now: Date): number | null {
  * "yesterday", then a plain date once it is old enough that a count of days
  * stops meaning anything.
  *
- * `Note.updated` used to hold this string itself — the seed set it to "2 hours
- * ago" and the list printed it verbatim, so a note saved yesterday still
+ * `Note.updated` used to hold this string itself — "2 hours ago" was stored
+ * and the list printed it verbatim, so a note saved yesterday still
  * claimed to be two hours old forever. It holds an ISO timestamp now, which is
  * the only version of this that can be stored, and the wording is derived here
  * at render time instead.
@@ -174,20 +160,6 @@ export function upcomingExams(exams: Exam[], now: Date): ExamStatus[] {
 /** Just the soonest upcoming exam — what the cards and header show. */
 export function nextExam(exams: Exam[], now: Date): ExamStatus | null {
   return upcomingExams(exams, now)[0] ?? null;
-}
-
-/** Soonest upcoming exam across every subject, for the home "Next up" strip. */
-export function nextExamAcross<T extends { exams: Exam[] }>(
-  subjects: T[],
-  now: Date
-): { subject: T; status: ExamStatus } | null {
-  let best: { subject: T; status: ExamStatus } | null = null;
-  for (const subject of subjects) {
-    const status = nextExam(subject.exams, now);
-    if (!status) continue;
-    if (!best || status.days < best.status.days) best = { subject, status };
-  }
-  return best;
 }
 
 /**

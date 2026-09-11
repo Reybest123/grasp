@@ -4,15 +4,15 @@
 //
 // This used to live inside RecordTab, which meant every way out of that tab
 // unmounted the recorder and destroyed the lecture: switching to Notes, going
-// back to the notebooks grid, clicking the logo, opening another subject. No
-// URL changes for any of those (CLAUDE.md §11 — /home is one page), so the
-// browser has no navigation to hang its own unsaved-changes prompt on, and
-// guarding each exit with a confirm dialog was a losing game — there is always
-// one more exit.
+// back to the notebooks grid, clicking the logo, opening another subject.
+// Guarding each exit with a confirm that ended the recording was a losing game
+// — there is always one more exit.
 //
-// Held here instead, the recording simply survives all of them. RecordTab is a
-// view onto this state, and the only thing that can still end a recording is a
-// real page unload, which is exactly what beforeunload below is for.
+// Held here instead, in the logged-in route group's layout, the recording
+// survives all of them; `guard` below only warns when the live view is about
+// to go off screen. RecordTab is a view onto this state. What still ends a
+// recording is a real page unload (beforeunload below), logging out, or
+// leaving the route group altogether.
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { textToHtml } from "@/lib/richText";
@@ -367,15 +367,15 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
   // Browser Back/Forward.
   //
-  // Measured, not assumed: pressing Back on /home fires `popstate`, changes the
-  // URL to "/", and keeps the same document — it is a client-side route change,
+  // Measured, not assumed: pressing Back inside the app fires `popstate`,
+  // changes the URL, and keeps the same document — it is a client-side route change,
   // so `beforeunload` never fires and the provider unmounts with no warning of
   // any kind. Next's App Router exposes no way to cancel a route change either.
   //
   // So own a history entry for as long as the recording lasts. Cloning the
   // current state keeps Next's own routing internals intact on the entry, and
   // pushing at the *same* URL means the student's Back pops to an identical
-  // URL — the router has no route change to make, /home stays mounted, and all
+  // URL — the router has no route change to make, the page stays mounted, and all
   // we get is a popstate to intercept. Re-push it and ask.
   const [leaving, setLeaving] = useState(false);
   const guardRef = useRef(false); // do we currently own a pushed entry?
@@ -412,7 +412,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   }, [active]);
 
   // Confirmed: drop the recording and make the Back actually happen. We are two
-  // entries deep (the original /home, plus the one re-pushed in onPop), so -2
+  // entries deep (the original entry, plus the one re-pushed in onPop), so -2
   // lands where the student was trying to go.
   const confirmLeave = useCallback(() => {
     setLeaving(false);

@@ -34,8 +34,7 @@ export type Note = {
 };
 
 // The Resource Bank model lives in lib/resources.ts, which the API routes also
-// import — they must not pull in the seed data below. Re-exported here so the
-// subject model still reads as one piece.
+// import. Re-exported here so the subject model still reads as one piece.
 export type { Resource, ResourceEntry, ResourceKind } from "@/lib/resources";
 
 // §3.3 Subject Quiz Mode.
