@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 /** Keeps one press from running up a large call. Mirrors the cap in the UI. */
 const MAX_PER_KIND = 10;
@@ -12,6 +13,9 @@ function clamp(n: unknown): number {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { topics, instructions, notes, context, counts, subjectName, resources } = await req.json();
 
   const mcq = clamp(counts?.mcq);

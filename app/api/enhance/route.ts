@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 // Notes are HTML (see lib/richText.ts), so enhancement round-trips HTML too —
 // otherwise every enhance would flatten the student's bold, colours and
@@ -29,6 +30,9 @@ function line(label: string, value: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { body, instructions, subjectName, context, resources } = await req.json();
   if (!body || typeof body !== "string" || !body.trim()) {
     return NextResponse.json({ error: "No note body provided" }, { status: 400 });

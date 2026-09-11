@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -20,6 +21,9 @@ Leave the rest of the note alone: every other passage, and all of the note's str
 } as const;
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { noteBody, highlight, context, history, mode, resources } = await req.json();
   if (typeof noteBody !== "string" || typeof highlight !== "string" || !Array.isArray(history)) {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });

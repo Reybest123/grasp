@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { RESOURCE_KINDS, isResourceKind, type ResourceEntry } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 /** Vercel caps a serverless request body at ~4.5MB; base64 inflates by a third. */
 const MAX_DATA_URL = 4_200_000;
@@ -41,6 +42,9 @@ type Part =
   | { type: "file"; file: { filename: string; file_data: string } };
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { name, kind, dataUrl, text, subjectName } = await req.json();
 
   const filename = typeof name === "string" && name.trim() ? name.trim() : "document";

@@ -6,10 +6,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 type Written = { id: string; question: string; modelAnswer: string; answer: string };
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { written, notes, context, resources } = await req.json();
 
   if (!Array.isArray(written) || written.length === 0) {

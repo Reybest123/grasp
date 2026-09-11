@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { transcribeAudio } from "@/lib/openai";
+import { requireUser } from "@/lib/session";
 
 // §3.1 Record — one segment of lecture audio in, its words out.
 //
@@ -14,6 +15,9 @@ import { transcribeAudio } from "@/lib/openai";
 const MAX_BYTES = 25 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   let form: FormData;
   try {
     form = await req.formData();

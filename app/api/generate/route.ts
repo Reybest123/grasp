@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 // The blank-note counterpart to /api/enhance (§3.1): writes a starting set of
 // notes instead of improving existing ones, so the input is a title/subject
@@ -19,6 +20,9 @@ Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size=
 Never use emojis.`;
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { title, instructions, subjectName, context, resources } = await req.json();
   if (typeof subjectName !== "string" || !subjectName.trim()) {
     return NextResponse.json({ error: "No subject provided" }, { status: 400 });

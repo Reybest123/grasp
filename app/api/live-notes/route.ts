@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 // §3.1 Record — turns the lecture transcript so far into notes, re-run as more
 // of the lecture arrives so the student watches the notes build.
@@ -30,6 +31,9 @@ Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size=
 Never use emojis.`;
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { transcript, subjectName, context, final, resources } = await req.json();
 
   if (typeof transcript !== "string" || !transcript.trim()) {

@@ -7,8 +7,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
+import { requireUser } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
   const { question, kind, studentAnswer, correctAnswer, notes, context, resources } = await req.json();
 
   if (typeof question !== "string" || !question.trim()) {
