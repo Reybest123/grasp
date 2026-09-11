@@ -7,7 +7,7 @@
 // narrow column it started as, which read as a different product.
 //
 // The email is shown but not editable: changing the address an account logs in
-// with needs a confirmation step on the new address, and no mail is sent yet.
+// with needs a confirmation step on the new address, which is not built yet.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";

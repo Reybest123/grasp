@@ -34,6 +34,25 @@ create table if not exists users (
 -- way too, or two accounts could differ by capitalisation alone.
 create unique index if not exists users_email_lower_idx on users (lower(email));
 
+-- When the student clicked the link in their confirmation email; null until
+-- then, and an unconfirmed account cannot use the app (lib/session.ts).
+-- Grown onto an existing table, like notes.recorded below. The default fills in
+-- the accounts that already exist, so nobody made before confirmation existed
+-- is locked out; dropping it straight after means every new account starts null.
+alter table users add column if not exists email_verified_at timestamptz default now();
+alter table users alter column email_verified_at drop default;
+
+-- Confirmation links. Stored as the sha256 of the token in the link, for the
+-- same reason sessions are: a dumped table hands out no working links.
+create table if not exists email_verifications (
+  token_hash text primary key,
+  user_id    uuid not null references users(id) on delete cascade,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists email_verifications_user_idx on email_verifications (user_id, created_at);
+
 -- Sessions are rows rather than self-contained tokens so that logging out
 -- really ends the session server-side, rather than asking the browser to
 -- forget a token that would still be valid if it were kept.

@@ -12,6 +12,7 @@
 // route that returns or writes a student's data calls `requireUser` here.
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createHash, randomBytes } from "node:crypto";
 import { sql } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/sessionCookie";
@@ -21,10 +22,10 @@ export { SESSION_COOKIE };
 /** Long enough that a student is not logged out mid-term. */
 const SESSION_DAYS = 30;
 
-export type SessionUser = { id: string; email: string; name: string };
+export type SessionUser = { id: string; email: string; name: string; verified: boolean };
 
-/** The cookie holds the token; the database holds this. */
-function hashToken(token: string): string {
+/** The cookie holds the token; the database holds this. Email links too. */
+export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
@@ -100,11 +101,17 @@ export async function currentUser(): Promise<SessionUser | null> {
 
   try {
     const rows = (await sql`
-      select u.id, u.email, u.name, s.expires_at
+      select u.id, u.email, u.name, u.email_verified_at, s.expires_at
       from sessions s
       join users u on u.id = s.user_id
       where s.token_hash = ${hashToken(token)}
-    `) as { id: string; email: string; name: string; expires_at: string }[];
+    `) as {
+      id: string;
+      email: string;
+      name: string;
+      email_verified_at: string | null;
+      expires_at: string;
+    }[];
 
     const row = rows[0];
     if (!row) return null;
@@ -114,7 +121,7 @@ export async function currentUser(): Promise<SessionUser | null> {
       return null;
     }
 
-    return { id: row.id, email: row.email, name: row.name };
+    return { id: row.id, email: row.email, name: row.name, verified: row.email_verified_at !== null };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);
     return null;
@@ -126,17 +133,48 @@ export type Guard =
   | { ok: false; response: Response };
 
 /**
- * The gate every data route opens with. Returns the user or a 401 to hand
+ * The gate every data route opens with. Returns the user or an error to hand
  * straight back, so a route can never accidentally continue unauthenticated:
  *
  *   const guard = await requireUser();
  *   if (!guard.ok) return guard.response;
+ *
+ * An account whose email is not confirmed is refused too, unless the route
+ * opts in with `allowUnverified` — which only the routes a student needs in
+ * order to get confirmed should do.
  */
-export async function requireUser(): Promise<Guard> {
+export async function requireUser(
+  { allowUnverified = false }: { allowUnverified?: boolean } = {}
+): Promise<Guard> {
   const user = await currentUser();
-  if (user) return { ok: true, user };
-  return {
-    ok: false,
-    response: Response.json({ error: "Not signed in." }, { status: 401 }),
-  };
+  if (!user) {
+    return {
+      ok: false,
+      response: Response.json({ error: "Not signed in." }, { status: 401 }),
+    };
+  }
+  if (!user.verified && !allowUnverified) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: "Confirm your email address first. The link is in your inbox.", unverified: true },
+        { status: 403 }
+      ),
+    };
+  }
+  return { ok: true, user };
+}
+
+/**
+ * The page-level counterpart, for server layouts. Sends an unconfirmed account
+ * to /verify-email before any of the app renders, so there is no flash of an
+ * app shell whose every request is about to be refused.
+ *
+ * A missing or expired session is left alone: proxy.ts already keeps cookieless
+ * visitors out, and a lookup that fails because the database is down should
+ * not bounce a student who is fine.
+ */
+export async function redirectIfUnverified(): Promise<void> {
+  const user = await currentUser();
+  if (user && !user.verified) redirect("/verify-email");
 }

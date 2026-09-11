@@ -130,13 +130,13 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 
 > Keep this section current: whenever something is built, changed, or renamed, record it here (e.g. name changes, features shipped, features still mocked).
 
-**Stack as built:** Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS. Repo: `github.com/Reybest123/grasp`. Hosted on Railway (moving from Vercel's `grasp-indol.vercel.app`; the Railway domain is not recorded here yet). The app service needs `DATABASE_URL` (the Postgres service's private `*.railway.internal` URL) and `OPENAI_API_KEY`.
+**Stack as built:** Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS. Repo: `github.com/Reybest123/grasp`. Hosted on Railway (moving from Vercel's `grasp-indol.vercel.app`; the Railway domain is not recorded here yet). The app service needs `DATABASE_URL` (the Postgres service's private `*.railway.internal` URL), `OPENAI_API_KEY` and `RESEND_API_KEY`, plus `EMAIL_FROM` and `APP_URL` once real students sign up (see email confirmation below).
 
 **Checks:** `npm run typecheck` (`tsc --noEmit`). There is no lint script: Next 16 removed `next lint` and ESLint is not installed, so the old `"lint": "next lint"` entry only errored. `README.md` is the public-facing setup guide; keep it in step with this file when setup, scripts or features change.
 
 **Routing:** Landing page at `/`. The logged-in app is a route group, `app/(app)/`, holding `/home` (the dashboard), `/workspace` (the notebooks grid), `/workspace/[subjectId]` (one subject) and `/settings`. Legacy `/dashboard` redirects to `/workspace`; legacy `/subject/[id]` redirects to `/workspace/[id]`, carrying the id across rather than dropping the student on the grid.
 
-- **The route group's `layout.tsx` is load-bearing, not organisational.** It holds `ProfileProvider` > `SubjectsProvider` > `RecordingProvider` > `AppShell`, and a layout is what keeps those mounted across navigations between its pages. `RecordingProvider` owns a live microphone, a transcript and a promise chain, so moving it (or anything it wraps) down into a page would end the lecture the moment the student clicked Home. Verified by instrumenting the provider's mount/unmount and watching the console across `/home` → `/workspace` → `/workspace/<id>`: nothing after React's dev-mode double-invoke on first load. **Don't move the providers out of the layout.**
+- **The route group's `layout.tsx` is load-bearing, not organisational.** It renders `components/app/AppProviders.tsx`, which holds `ProfileProvider` > `SubjectsProvider` > `RecordingProvider` > `AppShell`. The layout itself is a server component only so it can run `redirectIfUnverified()` first; the providers were split into a client component for that and are still mounted by the layout, which is what matters. A layout is what keeps those mounted across navigations between its pages. `RecordingProvider` owns a live microphone, a transcript and a promise chain, so moving it (or anything it wraps) down into a page would end the lecture the moment the student clicked Home. Verified by instrumenting the provider's mount/unmount and watching the console across `/home` → `/workspace` → `/workspace/<id>`: nothing after React's dev-mode double-invoke on first load. **Don't move the providers out of the layout.**
 - **Tabs inside a subject are component state, not routes.** Notes / Record / Quizzes / Resource Bank all leave the URL at `/workspace/<id>`, so a link points at a subject rather than at a tab.
 - **`app/(app)/workspace/[subjectId]/page.tsx` waits for `ready` before saying a subject is missing.** The store starts empty and fills once `/api/subjects` answers, so a deep-linked id legitimately misses on the first render; rendering "Subject not found" off that would flash on every deep link.
 
@@ -183,7 +183,7 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
 - **Settings (`/settings`)** — laid out like the other shell pages (full width, heading over a rule, uppercase section labels above white cards) rather than the narrow centred column it started as. Three sections: Profile (the name; the email read-only), Password, and Delete account.
   - **Change password** (`POST /api/auth/password`) asks for the current password even though the request is signed in, so an unattended session on a shared computer cannot lock the owner out. It then ends every *other* session (`endOtherSessions` in `lib/session.ts`) and keeps this one.
   - **Delete account** (`DELETE /api/auth/account`) opens an inline confirmation that needs the password, rather than a one-click dialog. Deleting the `users` row takes everything else with it through `on delete cascade`; the cookie is then cleared, any live recording discarded, and the student lands on `/`.
-  - **Email confirmation is not built yet**, which is also why the email cannot be changed here.
+  - **The email still cannot be changed here.** Confirmation on signup now exists (see Accounts below), but changing an address needs the same link sent to the *new* address before it replaces the old one, and that flow is not built.
 - **Onboarding (§2) — the timetable is really read now.** A real file picker (drag-and-drop or click; image or PDF, 3MB), then `/api/timetable-extract` reads it with GPT-4o and the subjects it finds *become* the student's notebooks. Verified end to end against a five-day grid with abbreviated subject codes: all 14 lessons placed on the right day and period, teachers and rooms picked up, and Break / Lunch / Study Hall dropped.
   - **The image is never stored**, the same treatment as lecture audio (§5) and Resource Bank documents (§3.4): it goes through the route to the provider and the buffer is dropped when the request ends.
   - **`day` is a day *name* in the response, not an index — this is load-bearing.** Asked for a number, the model reliably answered with the day's *position on the sheet*: Monday came back as 0 because Monday was the first column, silently shifting the student's entire week by a day. There is nothing to get wrong about "Monday". `asDay` still accepts a number for the odd reply that sends one.
@@ -277,7 +277,7 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - **Quizzes snapshot their citations rather than referencing them.** `builtWith` (generation) and `markedWith` (marking) are stored on the `Quiz`, so a card can still say what it was written against after that document has been deleted from the bank. `markedWith` is cleared on retake; `explanationCited` is stored per `QuizResponse` alongside the explanation it belongs to.
   - **AI enhance is a popup now, not a single press.** `EnhanceMenu.tsx` opens under the note's AI button with an optional instruction box and a checkbox per resource. This was the one feature with nowhere to show what it would consult — it fired the instant the button was hit. Pressing straight through with nothing typed does exactly what the old single press did.
   - **The bank is capped per plan** (`lib/plan.ts`): free holds 2 per subject, pro 5, max 10. At the cap the "Add a document" tile becomes a locked tile naming the higher tiers, and the Add button disables — the limit is stated where it is hit, not discovered after filling out the form.
-- **Terms of Service + Privacy Policy (`app/legal/*`, framed by `components/LegalPage.tsx`)** — real pages now, not the "Draft template" placeholders. The Privacy Policy is written against the code and **must be kept true to it**: what is stored (account, study material, `usage` rows, flagged answers, sessions), what is never kept (audio, timetable images, Resource Bank files), the two processors (OpenAI, and Railway for both hosting and the database), the one `grasp_session` cookie plus the `grasp.hideNoteTip` preference, and deletion via Settings. If a table, a cookie or a provider is added, update the policy in the same change. There is no self-serve data export; the policy says to email `liamspencer549@gmail.com`, which is the contact address on both pages and in the Settings footer.
+- **Terms of Service + Privacy Policy (`app/legal/*`, framed by `components/LegalPage.tsx`)** — real pages now, not the "Draft template" placeholders. The Privacy Policy is written against the code and **must be kept true to it**: what is stored (account, study material, `usage` rows, flagged answers, sessions), what is never kept (audio, timetable images, Resource Bank files), the confirmation-link records, the three processors (OpenAI, Railway for both hosting and the database, and Resend for the confirmation email), the one `grasp_session` cookie plus the `grasp.hideNoteTip` preference, and deletion via Settings. If a table, a cookie or a provider is added, update the policy in the same change. There is no self-serve data export; the policy says to email `liamspencer549@gmail.com`, which is the contact address on both pages and in the Settings footer.
   - **No cookie banner, deliberately.** The only cookie is strictly necessary and there are no analytics or tracking scripts, so none is required. Adding any analytics SDK changes that.
   - **Minimum age is 13**, stated in the Terms, the Privacy Policy and the signup consent line ("you confirm you are 13 or older"), with parent/guardian consent for anyone under the local age of digital consent. No governing-law clause yet; that needs the operator's country.
   - The Terms say paid plans are not available yet and that refund terms will come with them. **The landing page's Pro card is left as it is on purpose** — the user will fix it before production.
@@ -304,11 +304,19 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - **Writes are debounced per subject** (`FLUSH_MS` in `subjectsStore`), which is not an optimisation: `updateSubject` runs on every keystroke in the note editor, and against Postgres-over-HTTP that is a request per character. A `visibilitychange` handler flushes anything still pending with `keepalive`, so closing the tab mid-sentence does not lose it.
   - **`isoDate` in `subjectsDb` reads a `date` with local getters, never `toISOString()`.** The driver parses a bare `2026-11-12` into *local* midnight, so round-tripping it through UTC moved the day for anyone east of Greenwich — caught in testing as an exam saved on the 12th reading back as the 11th, with every countdown built on it a day out. An exam is a day, not an instant, so there is no timezone question here, only a formatting one.
   - **Signup asks for the name, so onboarding no longer does.** `/onboarding` is now the timetable step alone, and it sits behind the proxy like the rest of the app — the account exists before a student ever reaches it.
+- **Email confirmation on signup — an unconfirmed account cannot use the app.** Signup signs the student in, sends a link through Resend and lands them on `/verify-email` ("Check your email", a resend button, and Log out for a mistyped address). The link hits `GET /api/auth/verify`, which confirms the account and goes on to `/onboarding`, or `/home` if the account already has subjects. Verified end to end against the dev server with a throwaway account.
+  - **Enforced twice, for different reasons.** `requireUser()` refuses an unconfirmed account with a 403 and `unverified: true` on every data and AI route; only `/api/auth/verify/resend` opts out, with `allowUnverified`. `redirectIfUnverified()` runs in the `(app)` layout and in `app/onboarding/layout.tsx`, so the student is redirected before the shell renders rather than seeing an app whose every request is refused.
+  - **`users.email_verified_at` was added with `default now()` and the default dropped straight after** (`db/schema.sql`). That confirms every account that existed before this shipped, so nobody was locked out, while new accounts start `null`. Both statements are safe to re-run.
+  - **Links are stored as a sha256, like sessions** (`email_verifications`), last 24 hours, and earlier links stay valid when a new one is sent. All of an account's links are cleared once one works. **A second click on a used link is not an error:** the route checks whether the signed-in student is already confirmed, because mail scanners open links before people do.
+  - **Resend is one email a minute per account** (`RESEND_COOLDOWN_SECONDS` in `lib/verification.ts`), counted off the newest link's `created_at`. A mail that fails to send deletes its row, so a failure does not start the cooldown. A failed send does not fail signup either; the account exists and the page can send again.
+  - **`lib/email.ts` is a raw `fetch` to Resend, not the SDK**, the same discipline as `lib/openai.ts`: the provider's reply is logged server-side and never returned.
+  - **Two env vars matter in production.** Without `EMAIL_FROM`, mail goes from `onboarding@resend.dev`, which Resend only delivers to the address the Resend account was made with — fine for testing, useless for real students, so a verified sending domain is a launch requirement. `APP_URL` pins the address the link points at, since behind a proxy the request's own origin is not guaranteed to be the public one.
 
 **Still mocked / not yet built:**
 - The Resource Bank cap, which is still enforced in the UI only (quizzes and recordings are now enforced server-side, see above). Pro and Max limits in `lib/plan.ts` are placeholders, and every account is on free since there is no billing.
 - Rate limiting on login/signup and per-use limits on explain, refine and Resource Bank extraction. **Deliberately not IP-based:** the user plans a token/credit system for those AI actions instead.
-- Email confirmation on signup, and with it changing an account's email.
+- Changing an account's email, which needs a confirmation link sent to the new address first.
+- A verified sending domain in Resend, and `EMAIL_FROM` set to it. Until then confirmation mail only reaches the Resend account owner's address.
 
 **Recording behaviour is finished, not outstanding — never list it as a next step.** One recording at a time, surviving in-app navigation behind the `guard` warning, and ending on a real page reload (the browser's `beforeunload` prompt covers that) is the settled design. The user has confirmed it more than once; do not propose persisting a recording across reloads, removing the warning, or reworking any of it unless they raise it themselves.
 
@@ -341,13 +349,15 @@ proxy.ts        route protection (Next 16's middleware) — cookie presence
                 only; the real check is requireUser() in lib/session
 db/             schema.sql (the schema), setup.mjs (npm run db:setup)
 app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
+                verify-email/ (check-your-email, where unconfirmed accounts wait),
                 sample/ (onboarding preview, saves nothing),
-                (app)/ — logged-in route group; its layout.tsx holds the
+                (app)/ — logged-in route group; its layout.tsx mounts the
                       providers, so they survive navigation between:
                       home/ (dashboard), workspace/, workspace/[subjectId]/,
                       settings/
                 dashboard/, subject/[id]/ — legacy redirects
-                api/auth/ (signup, login, logout, me, password, account)
+                api/auth/ (signup, login, logout, me, password, account,
+                      verify (the email link), verify/resend)
                 api/subjects/ + api/subjects/[subjectId]
                 api/ (enhance, generate, explain-chat, quiz,
                       mark-quiz, quiz-explain, transcribe, live-notes,
@@ -356,10 +366,11 @@ app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
 components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEditor,
                 StatRing (shared by the dashboard tiles and quiz results),
                 LegalPage + LegalSection (the legal pages' frame)
-components/auth/ AuthForm (login and signup are the same form)
+components/auth/ AuthForm (login and signup are the same form), VerifyEmail
 components/onboarding/ OnboardingFlow (the timetable step; /onboarding saves,
                 /sample previews)
-components/app/ AppShell (header + useChrome context + log-out confirm),
+components/app/ AppProviders (the provider tree the (app) layout mounts),
+                AppShell (header + useChrome context + log-out confirm),
                 Sidebar, ProfileMenu (avatar menu), AddAssessmentDialog
 components/workspace/
                 SubjectWorkspace (shell + tab routing + note & quiz CRUD)
@@ -370,7 +381,9 @@ components/workspace/
                 QuizRunner, QuizResults, QuizTitle
 lib/            subjects (model + factories), subjectsStore, profileStore,
                 db (Postgres client), subjectsDb (subject queries),
-                session (cookie + requireUser), sessionCookie (name only,
+                session (cookie + requireUser + redirectIfUnverified),
+                verification (confirmation links), email (Resend),
+                sessionCookie (name only,
                       so proxy.ts can import it without node:crypto),
                 password (scrypt), accounts (field validation),
                 recordingStore, schedule, subjectColors, plan (tier caps),

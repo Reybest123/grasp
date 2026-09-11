@@ -1,26 +1,14 @@
-"use client";
-
-// The logged-in shell. Everything under this route group — /home, /workspace
-// and /workspace/<id> — shares it.
+// The logged-in shell. Everything under this route group — /home, /workspace,
+// /workspace/<id> and /settings — shares it.
 //
-// A layout is what makes the providers survive navigation between those routes.
-// RecordingProvider in particular holds a live microphone, a transcript and a
-// promise chain (lib/recordingStore.tsx); mounting it per-page would end the
-// lecture the moment the student clicked Home.
+// A server component so an account that has not confirmed its email is sent to
+// /verify-email before the shell renders. The providers themselves live in
+// AppProviders and must stay mounted here, not in a page: see that file.
 
-import { SubjectsProvider } from "@/lib/subjectsStore";
-import { ProfileProvider } from "@/lib/profileStore";
-import { RecordingProvider } from "@/lib/recordingStore";
-import { AppShell } from "@/components/app/AppShell";
+import { redirectIfUnverified } from "@/lib/session";
+import { AppProviders } from "@/components/app/AppProviders";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ProfileProvider>
-      <SubjectsProvider>
-        <RecordingProvider>
-          <AppShell>{children}</AppShell>
-        </RecordingProvider>
-      </SubjectsProvider>
-    </ProfileProvider>
-  );
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  await redirectIfUnverified();
+  return <AppProviders>{children}</AppProviders>;
 }

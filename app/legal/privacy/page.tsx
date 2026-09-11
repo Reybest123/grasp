@@ -21,6 +21,10 @@ export default function Privacy() {
             stored as a one-way scrypt hash, never as the password itself.
           </li>
           <li>
+            <b>Email confirmation:</b> when you confirmed your email address, and a record of each
+            confirmation link sent to you until it is used or expires 24 hours later.
+          </li>
+          <li>
             <b>Your study material:</b> your subjects, class times and assessment dates, the notes you
             write or record, your quizzes with your answers and marks, and the text Grasp reads out
             of documents you add to a Resource Bank.
@@ -62,7 +66,7 @@ export default function Privacy() {
       </LegalSection>
 
       <LegalSection title="Who else handles your information">
-        <p>Grasp relies on two services to run:</p>
+        <p>Grasp relies on three services to run:</p>
         <ul>
           <li>
             <b>OpenAI</b> provides the AI features. When you use one, the material it needs is sent
@@ -75,6 +79,10 @@ export default function Privacy() {
             <b>Railway</b> hosts the website and the database your account and study material are
             stored in. Like any web host, it handles technical details of each request, such as
             your IP address, to deliver the site and keep it secure.
+          </li>
+          <li>
+            <b>Resend</b> sends the email that confirms your address. It receives your email
+            address, your name and the confirmation link, and nothing from your study material.
           </li>
         </ul>
       </LegalSection>

@@ -16,7 +16,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/sessionCookie";
 
 /** Everything inside the logged-in route group, plus onboarding's later steps. */
-const PROTECTED = ["/home", "/workspace", "/settings", "/dashboard", "/subject", "/onboarding"];
+const PROTECTED = [
+  "/home",
+  "/workspace",
+  "/settings",
+  "/dashboard",
+  "/subject",
+  "/onboarding",
+  "/verify-email",
+];
 
 /**
  * Signed in, logging in again is pointless, so /login goes to the app. /signup

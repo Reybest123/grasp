@@ -25,7 +25,16 @@ const PROMISES = [
   "Quizzes written from your own notes, not a generic bank",
 ];
 
-export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: string }) {
+export function AuthForm({
+  mode,
+  next,
+  verified,
+}: {
+  mode: "login" | "signup";
+  next?: string;
+  /** arrived from a confirmation link opened on a device that was not signed in */
+  verified?: boolean;
+}) {
   const router = useRouter();
   const signup = mode === "signup";
 
@@ -72,9 +81,10 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
         return;
       }
 
-      // A fresh account has no subjects, so it goes to the timetable step;
-      // a returning student goes where they were headed.
-      router.push(signup ? "/onboarding" : next || "/home");
+      // A fresh account has to confirm its email before the timetable step; a
+      // returning student goes where they were headed, and the app's layout
+      // sends them to confirm first if they never did.
+      router.push(signup ? "/verify-email" : next || "/home");
       // Deliberately not clearing `busy`: the button stays disabled through the
       // navigation rather than flicking back to "Log in" as the page changes.
     } catch {
@@ -113,6 +123,16 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
                 ? "Then upload your timetable and Grasp builds your notebooks."
                 : "Log in to get back to your notes."}
             </p>
+
+            {verified && !signup && (
+              <p
+                role="status"
+                className="mt-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+              >
+                <CheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                Your email is confirmed. Log in to carry on.
+              </p>
+            )}
 
             {signedInAs && (
               <p className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">

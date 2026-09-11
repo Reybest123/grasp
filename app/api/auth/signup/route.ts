@@ -1,16 +1,16 @@
 // Create an account (CLAUDE.md §10 — auth is the first MVP line item).
 //
 // Signup is the first half of onboarding (§2): the student gives a name, an
-// email and a password here, and goes straight on to the timetable step. There
-// is no email verification step and no welcome mail — near-zero friction is the
-// point, and an unverified address costs nothing while accounts hold only the
-// student's own coursework.
+// email and a password here, is signed in, and is sent a confirmation link.
+// The app stays closed to the account until that link is clicked
+// (requireUser in lib/session.ts); the timetable step comes after.
 
 import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { hashPassword, passwordProblem } from "@/lib/password";
 import { createSession, destroySession } from "@/lib/session";
 import { normalizeEmail, emailProblem } from "@/lib/accounts";
+import { sendVerification } from "@/lib/verification";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -55,5 +55,14 @@ export async function POST(req: NextRequest) {
   // account's session is ended properly rather than left valid behind the new one.
   await destroySession();
   await createSession(result.data.id);
-  return NextResponse.json({ user: { id: result.data.id, email, name } });
+
+  // A mail that fails to send does not fail the signup: the account exists
+  // either way, and the check-your-email page can send it again.
+  const sent = await query(() =>
+    sendVerification({ id: result.data.id, email, name }, req.nextUrl.origin)
+  );
+  return NextResponse.json({
+    user: { id: result.data.id, email, name, verified: false },
+    emailSent: sent.ok && sent.data === "sent",
+  });
 }
