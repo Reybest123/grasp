@@ -33,6 +33,7 @@ import {
   type Understanding,
 } from "@/lib/stats";
 import { CURRENT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
+import { fetchUsage } from "@/lib/ai";
 import { AddAssessmentDialog } from "@/components/app/AddAssessmentDialog";
 import { StatRing } from "@/components/StatRing";
 import { Skeleton } from "@/components/Skeleton";
@@ -215,7 +216,13 @@ function HomeSkeleton() {
 function StatRow({ subjects, week }: { subjects: Subject[]; week: ActivityDay[] }) {
   const marks = understanding(subjects);
   const days = activeDays(week);
-  const used = quizzesIn(week);
+  // The server's count is the one the cap is enforced against — a deleted quiz
+  // still counts there. The local count only fills the gap until it answers.
+  const [serverUsed, setServerUsed] = useState<number | null>(null);
+  useEffect(() => {
+    void fetchUsage().then((u) => u && setServerUsed(u.quizzes.used));
+  }, []);
+  const used = serverUsed ?? quizzesIn(week);
   const limit = quizLimit();
 
   // Read the other way up from the score ring: a full allowance ring is the bad

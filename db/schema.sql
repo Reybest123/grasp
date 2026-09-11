@@ -144,3 +144,29 @@ create table if not exists quizzes (
 );
 
 create index if not exists quizzes_subject_idx on quizzes (subject_id, created_at desc);
+
+-- Weekly plan allowances (§6), counted here rather than from `quizzes` or
+-- `notes`: a student can delete a quiz, and a deleted quiz must not hand its
+-- allowance back. One row per quiz generated and one per recording, whose
+-- `units` counts the audio segments sent so a single recording stays capped.
+create table if not exists usage (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null references users(id) on delete cascade,
+  kind       text not null,
+  ref        text not null,
+  units      integer not null default 1,
+  created_at timestamptz not null default now(),
+  unique (user_id, kind, ref)
+);
+
+create index if not exists usage_window_idx on usage (user_id, kind, created_at);
+
+-- AI answers a student flagged as wrong (§9.2). A copy of the flagged output is
+-- kept so it can be looked into; it goes when the account does.
+create table if not exists feedback (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references users(id) on delete cascade,
+  source     text not null,
+  output     text not null,
+  created_at timestamptz not null default now()
+);

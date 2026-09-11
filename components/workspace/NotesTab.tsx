@@ -7,6 +7,7 @@ import type { Citation, ResourceBrief } from "@/lib/resources";
 import {
   ensureHtml,
   textToHtml,
+  htmlToText,
   isEmptyHtml,
   sanitizeNoteHtml,
   blockTextStart,
@@ -46,6 +47,7 @@ import { EquationEditor } from "@/components/workspace/EquationEditor";
 import { ExplainPanel } from "@/components/workspace/ExplainPanel";
 import { EnhanceMenu } from "@/components/workspace/EnhanceMenu";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
+import { AiFlag } from "@/components/workspace/AiFlag";
 import { TableMenu, type TableAction } from "@/components/workspace/TableMenu";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -118,7 +120,11 @@ export function NotesTab({
   // The popup on the AI button, and what the last run drew on. The citation
   // is transient by design: it belongs to the press, not to the note.
   const [enhanceMenu, setEnhanceMenu] = useState(false);
-  const [enhanceCited, setEnhanceCited] = useState<Citation[]>([]);
+  // What the last enhance or generate produced, kept for its citations and so
+  // the student can flag it. Null once dismissed.
+  const [enhanceResult, setEnhanceResult] = useState<{ cited: Citation[]; output: string } | null>(
+    null
+  );
   const [tipHidden, setTipHidden] = useState(false);
   // Deleting a note is confirmed first: it is the one action here that
   // destroys writing outright, and there is no undo across notes.
@@ -875,7 +881,7 @@ export function NotesTab({
     setEnhanceMenu(false);
     setEnhancing(true);
     setEnhanceError(null);
-    setEnhanceCited([]);
+    setEnhanceResult(null);
     const picked = resources.filter((r) => useIds.includes(r.id));
     const { html, cited, error } = blank
       ? await generateNote({ title: active.title, instructions, subjectName, context, resources: picked })
@@ -885,7 +891,7 @@ export function NotesTab({
       setEnhanceError(error);
       return;
     }
-    setEnhanceCited(cited);
+    setEnhanceResult({ cited, output: htmlToText(html) });
     commitHtml(html);
   }
 
@@ -1248,11 +1254,14 @@ export function NotesTab({
           />
         </div>
 
-        {enhanceCited.length > 0 && (
+        {enhanceResult && (
           <div className="flex items-start gap-2 border-b border-slate-100 px-8 py-2.5">
-            <ResourceCitation cited={enhanceCited} className="flex-1" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <ResourceCitation cited={enhanceResult.cited} />
+              <AiFlag source="enhance" output={enhanceResult.output} className="py-1" />
+            </div>
             <button
-              onClick={() => setEnhanceCited([])}
+              onClick={() => setEnhanceResult(null)}
               title="Dismiss"
               aria-label="Dismiss"
               className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-ink"

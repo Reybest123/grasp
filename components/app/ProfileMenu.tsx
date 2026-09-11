@@ -51,8 +51,8 @@ export function ProfileMenu({ onLogOut }: { onLogOut: () => void }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls="account-menu"
         aria-label="Account menu"
         className={`rounded-full transition hover:ring-4 hover:ring-slate-200 ${
           open ? "ring-4 ring-slate-200" : ""
@@ -62,8 +62,11 @@ export function ProfileMenu({ onLogOut }: { onLogOut: () => void }) {
       </button>
 
       {open && (
+        // A disclosure panel of ordinary buttons rather than role="menu": that
+        // role promises arrow-key navigation, and Tab already reaches these
+        // because the panel follows the button in the document.
         <div
-          role="menu"
+          id="account-menu"
           className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-lift"
         >
           <div className="flex items-center gap-3 px-2.5 py-2.5">
@@ -79,7 +82,6 @@ export function ProfileMenu({ onLogOut }: { onLogOut: () => void }) {
           <div className="my-1 h-px bg-slate-100" />
 
           <button
-            role="menuitem"
             onClick={() => {
               setOpen(false);
               guard(() => router.push("/settings"));
@@ -90,7 +92,6 @@ export function ProfileMenu({ onLogOut }: { onLogOut: () => void }) {
           </button>
 
           <button
-            role="menuitem"
             onClick={() => {
               setOpen(false);
               onLogOut();

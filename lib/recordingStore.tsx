@@ -16,20 +16,23 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { textToHtml } from "@/lib/richText";
-import { transcribeSegment, liveNotes } from "@/lib/ai";
+import { transcribeSegment, liveNotes, fetchUsage } from "@/lib/ai";
 import type { Citation, ResourceBrief } from "@/lib/resources";
 import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/lib/recorder";
 import { useSubjects } from "@/lib/subjectsStore";
+import {
+  CURRENT_PLAN,
+  PLAN_LABEL,
+  RECORDING_MAX_SECONDS,
+  RECORDING_SEGMENT_MS,
+} from "@/lib/plan";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
-// How much audio goes to Whisper at a time. Short enough that the notes feel
-// live, long enough that the model has real context to work with and the
-// request count over a lecture stays sane.
-const SEGMENT_MS = 20_000;
+const SEGMENT_MS = RECORDING_SEGMENT_MS;
 
-// Matches the free plan the Record tab advertises, and doubles as the ceiling
-// on what a single recording can cost in API calls.
-export const MAX_SECONDS = 300;
+// The server enforces the same ceiling; stopping here is what keeps the
+// student from running into it.
+export const MAX_SECONDS = RECORDING_MAX_SECONDS;
 
 // Redrafting on every segment is a model call every 20 seconds for no visible
 // gain — wait until enough new material has landed to change the notes.
@@ -112,6 +115,12 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const contextRef = useRef("");
   const subjectNameRef = useRef("");
   const resourcesRef = useRef<ResourceBrief[]>([]);
+  // Sent with every segment so the server counts recordings, not requests.
+  const recordingIdRef = useRef("");
+  // Set once the plan's cap refuses a segment, so the refusal of the flushed
+  // tail segment does not try to stop a recording that is already stopping.
+  const limitHitRef = useRef(false);
+  const stopRef = useRef<() => Promise<void>>(async () => {});
 
   const draft = useCallback(async (final: boolean) => {
     const text = transcriptRef.current;
@@ -149,7 +158,17 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
   const ingest = useCallback(
     async (blob: Blob, ext: string) => {
-      const { text, error } = await transcribeSegment(blob, ext);
+      const { text, error, limit } = await transcribeSegment(blob, ext, recordingIdRef.current);
+      if (limit) {
+        setNotice(error);
+        if (!limitHitRef.current) {
+          limitHitRef.current = true;
+          // Not awaited: stop() drains this very chain, so awaiting it from
+          // inside the chain would wait on itself.
+          void stopRef.current();
+        }
+        return;
+      }
       if (error) {
         setNotice("Some audio couldn't be transcribed just then — still recording.");
         return;
@@ -168,6 +187,27 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       setFatal(null);
       setStarting(true);
       try {
+        // Checked before the microphone is asked for, so a student out of
+        // recordings is told now rather than twenty seconds into a lecture.
+        // If the check itself fails, the server still enforces the cap.
+        const usage = await fetchUsage();
+        if (usage && usage.recordings.used >= usage.recordings.limit) {
+          const back = usage.recordings.resetsAt
+            ? new Date(usage.recordings.resetsAt).toLocaleDateString(undefined, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })
+            : null;
+          setFatal({
+            subjectId: subject.id,
+            message: `You have used this week's recording on the ${PLAN_LABEL[CURRENT_PLAN]} plan.${
+              back ? ` Your next one is available on ${back}.` : ""
+            }`,
+          });
+          return;
+        }
+
         const handle = await startSegmentedRecording({
           segmentMs: SEGMENT_MS,
           onSegment: ({ blob, ext }) => {
@@ -175,6 +215,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
           },
         });
         handleRef.current = handle;
+        recordingIdRef.current = crypto.randomUUID();
+        limitHitRef.current = false;
         transcriptRef.current = "";
         notesRef.current = "";
         lastDraftRef.current = 0;
@@ -223,6 +265,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       setFinishing(false);
     }
   }, [draft]);
+
+  useEffect(() => {
+    stopRef.current = stop;
+  }, [stop]);
 
   // The advertised cap, enforced rather than just printed.
   useEffect(() => {

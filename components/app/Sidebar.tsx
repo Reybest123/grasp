@@ -125,7 +125,7 @@ function RailLink({
         className={`grid h-10 w-10 place-items-center rounded-xl transition ${
           active
             ? "bg-brand-50 text-brand-700"
-            : "text-slate-400 group-hover:bg-slate-100 group-hover:text-ink"
+            : "text-slate-500 group-hover:bg-slate-100 group-hover:text-ink"
         }`}
       >
         {item.icon("h-[21px] w-[21px]")}
@@ -154,8 +154,8 @@ function FootButton({
         active
           ? "bg-brand-50 text-brand-700"
           : danger
-            ? "text-slate-400 hover:bg-red-50 hover:text-red-600"
-            : "text-slate-400 hover:bg-slate-100 hover:text-ink"
+            ? "text-slate-500 hover:bg-red-50 hover:text-red-600"
+            : "text-slate-500 hover:bg-slate-100 hover:text-ink"
       }`}
     >
       {item.icon("h-5 w-5")}

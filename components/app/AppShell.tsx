@@ -10,7 +10,8 @@
 // §11). Anything moved out of the layout and into a page would take the
 // recording down with it on the next navigation.
 
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { fetchUsage } from "@/lib/ai";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/app/Sidebar";
@@ -53,6 +54,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [confirmLogOut, setConfirmLogOut] = useState(false);
   const recording = rec.phase !== "idle";
 
+  // Read from the server, which is where the cap is enforced. Re-read each time
+  // a recording ends, since that is when the count can have changed.
+  const [recordingsLeft, setRecordingsLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (recording) return;
+    void fetchUsage().then(
+      (u) => u && setRecordingsLeft(Math.max(0, u.recordings.limit - u.recordings.used))
+    );
+  }, [recording]);
+
   const editing = subjects.find((s) => s.id === editingId) ?? null;
 
   // A counter rather than a boolean: clicking the chip again after browsing to
@@ -83,7 +94,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-3 pr-3.5 text-xs font-semibold text-slate-600 sm:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
               Free plan
-              <span className="text-slate-400">1 recording left</span>
+              {recordingsLeft !== null && (
+                <span className="text-slate-500">
+                  {recordingsLeft === 0
+                    ? "No recordings left this week"
+                    : `${recordingsLeft} recording${recordingsLeft === 1 ? "" : "s"} left`}
+                </span>
+              )}
             </span>
             <ProfileMenu onLogOut={() => setConfirmLogOut(true)} />
           </div>

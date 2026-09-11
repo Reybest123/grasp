@@ -43,6 +43,20 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* New tab, not a navigation: /legal sits outside the logged-in route
+          group, so leaving for it in place would unmount a live recording. */}
+      <p className="mt-10 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">
+        <a href="/legal/terms" target="_blank" rel="noopener" className="transition hover:text-ink">
+          Terms of Service
+        </a>
+        <a href="/legal/privacy" target="_blank" rel="noopener" className="transition hover:text-ink">
+          Privacy Policy
+        </a>
+        <a href="mailto:liamspencer549@gmail.com" className="transition hover:text-ink">
+          Contact
+        </a>
+      </p>
     </section>
   );
 }

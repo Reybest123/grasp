@@ -46,7 +46,9 @@ const config: Config = {
           200: "#e6e2dc",
           300: "#d3cdc4",
           400: "#aba49a",
-          500: "#837c72",
+          // Darker than an even step from 400, so small secondary text and
+          // icons in it clear 4.5:1 on white and on slate-50.
+          500: "#716a61",
           600: "#635d55",
           700: "#4a453f",
           800: "#33302b",

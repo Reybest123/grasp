@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { transcribeAudio } from "@/lib/openai";
 import { requireUser } from "@/lib/session";
+import { claimRecordingSegment } from "@/lib/usage";
 
 // §3.1 Record — one segment of lecture audio in, its words out.
 //
@@ -33,10 +34,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That clip is too large to transcribe." }, { status: 413 });
   }
 
+  // §6 — every segment names the recording it belongs to, which is what lets the
+  // weekly cap count recordings rather than requests.
+  const recording = form.get("recording");
+  if (typeof recording !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(recording)) {
+    return NextResponse.json({ error: "That recording could not be read." }, { status: 400 });
+  }
+  const spend = await claimRecordingSegment(guard.user.id, recording);
+  if (!spend.ok) return spend.response;
+
   // Whisper infers the container from the filename, so the extension the
   // recorder picked has to survive the trip.
   const result = await transcribeAudio(file, file.name || "segment.webm");
-  if (!result.ok) return result.response;
+  if (!result.ok) {
+    await spend.release();
+    return result.response;
+  }
 
   return NextResponse.json({ text: result.text });
 }

@@ -165,8 +165,8 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
             </form>
 
             {signup && (
-              <p className="mt-6 text-center text-xs leading-relaxed text-slate-400">
-                By creating an account you agree to our{" "}
+              <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
+                By creating an account you confirm you are 13 or older and agree to our{" "}
                 <Link href="/legal/terms" className="underline underline-offset-2 hover:text-slate-600">
                   Terms
                 </Link>{" "}

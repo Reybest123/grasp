@@ -10,6 +10,7 @@ import type { NoteContext } from "@/lib/ai";
 import { markQuiz, explainWrongAnswer } from "@/lib/ai";
 import type { ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
+import { AiFlag } from "@/components/workspace/AiFlag";
 import { formatScore } from "@/components/workspace/QuizCard";
 import { QuizResults } from "@/components/workspace/QuizResults";
 import { QuizTitle } from "@/components/workspace/QuizTitle";
@@ -301,7 +302,14 @@ export function QuizRunner({
                         </p>
                       </div>
                       {a?.feedback && (
-                        <p className="text-slate-600">{a.feedback}</p>
+                        <div>
+                          <p className="text-slate-600">{a.feedback}</p>
+                          <AiFlag
+                            source="quiz-mark"
+                            output={`Question: ${q.question}\nAnswer: ${a.text ?? ""}\nMark: ${a.correct ? "correct" : a.partial ? "partial" : "wrong"}\nFeedback: ${a.feedback}`}
+                            className="mt-1.5"
+                          />
+                        </div>
                       )}
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
@@ -335,6 +343,10 @@ export function QuizRunner({
                           <p key={i}>{para}</p>
                         ))}
                         <ResourceCitation cited={a.explanationCited} />
+                        <AiFlag
+                          source="quiz-explain"
+                          output={`Question: ${q.question}\nExplanation: ${a.explanation}`}
+                        />
                       </div>
                     ) : (
                       <button

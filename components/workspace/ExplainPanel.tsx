@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { explainChat, type ChatMsg, type ExplainMode } from "@/lib/ai";
 import type { Citation, ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
+import { AiFlag } from "@/components/workspace/AiFlag";
 import { AlertIcon, BankIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
 
 /**
@@ -244,6 +245,7 @@ export function ExplainPanel({
                 {m.content}
                 {/* Said outright, under the answer it shaped (§3.4). */}
                 <ResourceCitation cited={cited[i + hidden]} className="mt-2.5" label="Grasp read" />
+                <AiFlag source="explain" output={m.content} className="mt-2" />
               </div>
             ) : (
               <div key={i} className="ml-8 rounded-2xl bg-brand-600 px-4 py-2 text-sm text-white">

@@ -202,7 +202,6 @@ export function QuizzesTab({
             : ""
         } will be cleared. The questions stay the same.`}
         confirmLabel="Retake"
-        cancelLabel="Keep my marks"
         onConfirm={() => {
           if (pendingRetake) retake(pendingRetake);
           setPendingRetake(null);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
+import { claimQuiz } from "@/lib/usage";
 
 /** Keeps one press from running up a large call. Mirrors the cap in the UI. */
 const MAX_PER_KIND = 10;
@@ -60,6 +61,11 @@ export async function POST(req: NextRequest) {
     .filter(Boolean)
     .join(", ");
 
+  // §6 — taken before the model call so the cap holds, and handed back if no
+  // quiz comes out of it.
+  const spend = await claimQuiz(guard.user.id);
+  if (!spend.ok) return spend.response;
+
   const result = await chatCompletion({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
@@ -97,7 +103,10 @@ export async function POST(req: NextRequest) {
     ],
     temperature: 0.6,
   });
-  if (!result.ok) return result.response;
+  if (!result.ok) {
+    await spend.release();
+    return result.response;
+  }
 
   try {
     const parsed = JSON.parse(result.content || "{}");
@@ -114,8 +123,10 @@ export async function POST(req: NextRequest) {
         q.answerIndex < q.options.length
       );
     });
+    if (!clean.length) await spend.release();
     return NextResponse.json({ questions: clean, used: pickUsed(parsed.used, briefs) });
   } catch {
+    await spend.release();
     console.error("[grasp] quiz JSON did not parse:", result.content.slice(0, 300));
     return NextResponse.json(
       { error: "Grasp could not build a quiz from that. Try again." },

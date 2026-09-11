@@ -17,6 +17,7 @@ import { useNow } from "@/lib/subjectsStore";
 import { updatedLabel } from "@/lib/schedule";
 import type { ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
+import { AiFlag } from "@/components/workspace/AiFlag";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
 
 export function RecordTab({
@@ -108,7 +109,10 @@ export function RecordTab({
         <MicIcon className="h-4 w-4" />
         {rec.starting ? "Starting…" : "Start recording"}
       </button>
-      <p className="mt-3 text-[11px] text-slate-400">Free plan: 1 × 5-min recording / week</p>
+      <p className="mt-3 max-w-md text-xs leading-5 text-slate-500">
+        Check your school allows recording before you start. Free plan: one 5-minute recording a
+        week.
+      </p>
     </div>
   );
 
@@ -225,6 +229,9 @@ export function RecordTab({
                 dangerouslySetInnerHTML={{ __html: rec.notesHtml }}
               />
               <ResourceCitation cited={rec.cited} className="mt-4 bg-white" />
+              {rec.phase === "naming" && (
+                <AiFlag source="live-notes" output={rec.notesHtml} className="mt-4" />
+              )}
             </>
           ) : (
             <p className="text-sm text-slate-400">

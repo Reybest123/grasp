@@ -99,15 +99,32 @@ export async function extractResource(params: {
 
 // §3.1 Record — one segment of lecture audio through Whisper. A failed segment
 // is not fatal: the tab keeps recording and only those few seconds are lost.
+// `limit` is the exception — the plan's cap was reached, and recording on would
+// only send audio the server is going to refuse.
 export async function transcribeSegment(
   blob: Blob,
-  ext: string
-): Promise<{ text: string; error: string | null }> {
+  ext: string,
+  recordingId: string
+): Promise<{ text: string; error: string | null; limit: boolean }> {
   const form = new FormData();
   form.append("audio", blob, `segment.${ext}`);
-  const data = await postForm<{ text: string }>("/api/transcribe", form);
-  if (data.error) return { text: "", error: data.error };
-  return { text: typeof data.text === "string" ? data.text : "", error: null };
+  form.append("recording", recordingId);
+  const data = await postForm<{ text: string; limit?: boolean }>("/api/transcribe", form);
+  if (data.error) return { text: "", error: data.error, limit: data.limit === true };
+  return { text: typeof data.text === "string" ? data.text : "", error: null, limit: false };
+}
+
+export type Allowance = { used: number; limit: number; resetsAt: string | null };
+export type Usage = { quizzes: Allowance; recordings: Allowance };
+
+/** This week's allowances (§6), or null if they could not be read. */
+export async function fetchUsage(): Promise<Usage | null> {
+  try {
+    const res = await fetch("/api/usage");
+    return res.ok ? ((await res.json()) as Usage) : null;
+  } catch {
+    return null;
+  }
 }
 
 // §3.1 Record — the transcript so far, written up as notes. Called again as the

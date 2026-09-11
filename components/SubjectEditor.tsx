@@ -322,7 +322,6 @@ export function SubjectEditor({
           subject.notes.length === 1 ? "" : "s"
         }, resources and quiz topics. This cannot be undone.`}
         confirmLabel="Yes, delete it"
-        cancelLabel="No, keep it"
         onConfirm={() => {
           setConfirmDelete(false);
           onDelete();

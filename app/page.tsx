@@ -75,7 +75,7 @@ const PLANS: {
     perks: [
       "Unlimited subjects & notes",
       "Highlight-to-explain",
-      "1 × 5-min lecture recording / week",
+      "One 5-minute lecture recording a week",
       "1–3 quiz generations / week",
       "Resource Bank uploads",
     ],
