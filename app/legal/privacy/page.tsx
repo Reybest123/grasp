@@ -62,7 +62,7 @@ export default function Privacy() {
       </LegalSection>
 
       <LegalSection title="Who else handles your information">
-        <p>Grasp relies on three services to run:</p>
+        <p>Grasp relies on two services to run:</p>
         <ul>
           <li>
             <b>OpenAI</b> provides the AI features. When you use one, the material it needs is sent
@@ -72,11 +72,9 @@ export default function Privacy() {
             30 days to monitor for abuse before being deleted.
           </li>
           <li>
-            <b>Neon</b> hosts the database your account and study material are stored in.
-          </li>
-          <li>
-            <b>Vercel</b> hosts the website. Like any web host, it handles technical details of each
-            request, such as your IP address, to deliver the site and keep it secure.
+            <b>Railway</b> hosts the website and the database your account and study material are
+            stored in. Like any web host, it handles technical details of each request, such as
+            your IP address, to deliver the site and keep it secure.
           </li>
         </ul>
       </LegalSection>

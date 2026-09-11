@@ -13,7 +13,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { neon } from "@neondatabase/serverless";
+import pg from "pg";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -38,7 +38,8 @@ async function loadEnv() {
 }
 
 /**
- * The HTTP driver sends one statement per request, so the file is split.
+ * The file is split so each statement can be reported, and a failure names the
+ * one that broke.
  *
  * Safe here only because the schema is plain DDL: no functions, no dollar
  * quoting, no semicolons inside string literals. Comment lines are dropped
@@ -64,7 +65,24 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const sql = neon(process.env.DATABASE_URL);
+if (process.env.DATABASE_URL.includes(".railway.internal")) {
+  console.error(
+    "DATABASE_URL points at Railway's private network (*.railway.internal), which\n" +
+      "only other Railway services can reach. For this script, use the Postgres\n" +
+      "service's DATABASE_PUBLIC_URL instead."
+  );
+  process.exit(1);
+}
+
+const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+try {
+  await client.connect();
+} catch (err) {
+  console.error("Could not connect to the database:");
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+}
+
 const schema = await readFile(join(here, "schema.sql"), "utf8");
 const parts = statements(schema);
 
@@ -74,18 +92,19 @@ for (const [i, statement] of parts.entries()) {
   // The first line is enough to identify what is being created.
   const label = statement.split(/\r?\n/)[0].slice(0, 70);
   try {
-    await sql.query(statement);
+    await client.query(statement);
     console.log(`  ${String(i + 1).padStart(2)}. ${label}`);
   } catch (err) {
     console.error(`\nFailed on statement ${i + 1}:\n${statement}\n`);
     console.error(err instanceof Error ? err.message : err);
+    await client.end();
     process.exit(1);
   }
 }
 
-const tables = await sql`
-  select table_name from information_schema.tables
-  where table_schema = 'public' order by table_name
-`;
+const { rows: tables } = await client.query(
+  "select table_name from information_schema.tables where table_schema = 'public' order by table_name"
+);
+await client.end();
 
 console.log(`\nDone. Tables: ${tables.map((t) => t.table_name).join(", ")}`);

@@ -36,17 +36,17 @@ is kept.
 ## Tech
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript** + **Tailwind CSS**
-- **Postgres on Neon**, through `@neondatabase/serverless` (HTTP, not a TCP socket)
+- **Postgres on Railway**, through `pg` (one pooled client in `lib/db.ts`)
 - **OpenAI**: GPT-4o for timetable and document reading, GPT-4o-mini for notes, explanations and
   quizzes, Whisper for transcription. Called with plain `fetch` from `lib/openai.ts`; there is no
   OpenAI SDK dependency.
-- Hosted on **Vercel**
+- Hosted on **Railway**
 
 ---
 
 ## Run it locally
 
-You need Node 20+, a Neon database and an OpenAI API key.
+You need Node 20+, a Postgres database and an OpenAI API key.
 
 1. Install dependencies:
 
@@ -58,11 +58,12 @@ You need Node 20+, a Neon database and an OpenAI API key.
 
    ```bash
    OPENAI_API_KEY=sk-...
-   DATABASE_URL=postgresql://user:password@host.neon.tech/dbname?sslmode=require
+   DATABASE_URL=postgresql://user:password@host:port/dbname
    ```
 
-   `DATABASE_URL` must be a Neon connection string; a plain local Postgres will not answer the HTTP
-   driver.
+   Any Postgres works, local included. To use the Railway database from your machine, take the
+   Postgres service's `DATABASE_PUBLIC_URL`; the `*.railway.internal` address only resolves inside
+   Railway.
 
 3. Create the tables (safe to re-run, and needed again whenever `db/schema.sql` grows):
 
@@ -93,12 +94,12 @@ replace a variable that is already set.
 
 ## Deploying
 
-Pushing to `main` deploys to Vercel. The Neon database is attached through Vercel's Storage tab, so
-the deployment gets `DATABASE_URL` automatically; `OPENAI_API_KEY` is set in the project's
-environment variables.
+Pushing to `main` deploys to Railway, where the app and its Postgres run as two services in one
+project. The app service needs two variables: `DATABASE_URL` (the Postgres service's private
+`*.railway.internal` URL) and `OPENAI_API_KEY`.
 
-When `db/schema.sql` changes, run `npm run db:setup` against the **production** `DATABASE_URL`
-before the new code needs it. If a deployed page says "Grasp's database has not been set up yet",
+When `db/schema.sql` changes, run `npm run db:setup` against the production database (its
+`DATABASE_PUBLIC_URL`, from your machine) before the new code needs it. If a deployed page says "Grasp's database has not been set up yet",
 this is what was missed.
 
 ---

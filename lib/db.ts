@@ -1,41 +1,47 @@
 // Postgres, server-side only (CLAUDE.md §5).
 //
-// Neon's driver rather than `pg`: it talks to the database over HTTP/fetch
-// instead of holding a TCP connection, which is what you want on a serverless
-// host where every request may be a cold start and a pooled socket has nowhere
-// to live. It is also the only npm dependency in the project besides
-// next/react — everything else here is a raw fetch.
+// `pg` over a TCP pool: Grasp runs as one long-lived Node server on Railway, so
+// a pool of open connections has somewhere to live and is reused across
+// requests.
 //
 // This module must never be imported from a client component. `DATABASE_URL`
 // is read here and nowhere else, the same discipline `lib/openai.ts` applies to
 // the API key.
 
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { Pool } from "pg";
+
+// Held on globalThis so dev-mode hot reloads reuse one pool instead of opening
+// a fresh set of connections on every edit until Postgres refuses more.
+const holder = globalThis as unknown as { graspPool?: Pool };
 
 /**
- * The client is built on first use, not at module load.
- *
- * `neon()` throws immediately when the connection string is missing, and these
- * modules are imported while Next collects page data at build time — so
- * constructing it eagerly made the whole build fail on any machine without a
- * DATABASE_URL, and would have taken a deploy down at import time rather than
- * failing one request politely through `query()` below.
+ * Built on first use, not at module load: these modules are imported while
+ * Next collects page data at build time, where there may be no DATABASE_URL,
+ * and a missing one should fail a request through `query()` below rather than
+ * the build.
  */
-let client: NeonQueryFunction<false, false> | null = null;
-
-function connection(): NeonQueryFunction<false, false> {
-  if (!client) client = neon(process.env.DATABASE_URL ?? "");
-  return client;
+function pool(): Pool {
+  if (!holder.graspPool) {
+    holder.graspPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
+    // An idle connection dropped by the server emits here; unhandled, it would
+    // crash the whole process.
+    holder.graspPool.on("error", (err) => console.error("[grasp] idle database connection failed:", err));
+  }
+  return holder.graspPool;
 }
 
 /**
- * Tagged-template query. Values interpolated into it are sent as bound
- * parameters, never as SQL text, so ``sql`select ... where email = ${email}` ``
- * is parameterised and not a concatenation. Never build a query by joining
- * strings — that is the one way to reintroduce injection here.
+ * Tagged-template query returning the rows. Values interpolated into it are
+ * sent as bound parameters ($1, $2, ...), never as SQL text, so
+ * ``sql`select ... where email = ${email}` `` is parameterised and not a
+ * concatenation. Never build a query by joining strings — that is the one way
+ * to reintroduce injection here.
  */
-export const sql: NeonQueryFunction<false, false> = ((strings: TemplateStringsArray, ...values: unknown[]) =>
-  connection()(strings, ...values)) as NeonQueryFunction<false, false>;
+export async function sql(strings: TemplateStringsArray, ...values: unknown[]): Promise<Record<string, any>[]> {
+  const text = strings.reduce((out, part, i) => out + "$" + i + part);
+  const result = await pool().query(text, values);
+  return result.rows;
+}
 
 /** True when the app has a database to talk to at all. */
 export function hasDatabase(): boolean {
@@ -49,8 +55,8 @@ function isMissingSchema(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const code = (err as { code?: unknown }).code;
   if (code === UNDEFINED_TABLE) return true;
-  // The HTTP driver does not always surface the SQLSTATE, so fall back to the
-  // message. Matching on text is fragile, which is why the code is tried first.
+  // Fallback in case an error arrives without its SQLSTATE. Matching on text is
+  // fragile, which is why the code is tried first.
   const message = (err as { message?: unknown }).message;
   return typeof message === "string" && /relation .* does not exist/i.test(message);
 }
@@ -68,9 +74,9 @@ function isMissingSchema(err: unknown): boolean {
  * database hits the third and the other two are no help in finding it. "Could
  * not reach its database" was previously returned for a *reached* database that
  * simply had no tables in it, which sent a real debugging session looking at
- * connection strings and Vercel environment variables for an hour when the
- * answer was that `npm run db:setup` had been run against a different Neon
- * project. The wording is worth keeping honest: a message that describes the
+ * connection strings and hosting environment variables for an hour when the
+ * answer was that `npm run db:setup` had been run against a different database
+ * than the deployment used. The wording is worth keeping honest: a message that describes the
  * wrong failure is worse than a vague one.
  */
 export async function query<T>(run: () => Promise<T>): Promise<
