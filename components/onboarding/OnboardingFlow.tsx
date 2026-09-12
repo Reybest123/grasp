@@ -12,7 +12,7 @@
 // (components/onboarding/SamplePreview.tsx) passes one that moves the preview
 // on, so nothing is written there.
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
@@ -21,9 +21,6 @@ import { AlertIcon, ArrowRightIcon, BackIcon, CheckIcon } from "@/components/ico
 
 /** The questions come first, one per step; the plans are the step after them. */
 const PLANS_STEP = QUESTIONS.length;
-
-/** Long enough to see the tick land on a single-answer question before it moves on. */
-const ADVANCE_MS = 200;
 
 const PRIMARY =
   "flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-600";
@@ -49,15 +46,10 @@ export function OnboardingFlow({
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  // A double click on an option would otherwise queue two moves and skip the
-  // next question without it ever being seen.
-  const advancing = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const question = step < PLANS_STEP ? QUESTIONS[step] : null;
 
   function goTo(next: number) {
-    if (advancing.current) clearTimeout(advancing.current);
-    advancing.current = null;
     setStep(next);
     if (next === PLANS_STEP) onReachPlans?.();
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -76,10 +68,10 @@ export function OnboardingFlow({
       });
       return;
     }
+    // Picking replaces the answer but does not move on: every question waits for
+    // Continue, the same as the pick-several one, so a misclick can be put right
+    // before it counts.
     setPicked((p) => ({ ...p, [q.id]: [option] }));
-    // One answer is the whole question, so it moves on by itself.
-    if (advancing.current) return;
-    advancing.current = setTimeout(() => goTo(step + 1), ADVANCE_MS);
   }
 
   async function start(plan: Plan) {

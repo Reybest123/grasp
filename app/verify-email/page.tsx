@@ -24,7 +24,9 @@ export default async function VerifyEmailPage({
   return (
     <VerifyEmail
       email={user.email}
-      status={status === "expired" || status === "error" ? status : undefined}
+      status={
+        status === "expired" || status === "error" || status === "unsent" ? status : undefined
+      }
     />
   );
 }

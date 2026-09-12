@@ -12,7 +12,7 @@
 // for, so it carries the three promises the landing page makes; it is hidden
 // below lg, where a form on its own is the whole job.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo, LogoMark } from "@/components/Logo";
@@ -43,7 +43,6 @@ export function AuthForm({
 }) {
   const router = useRouter();
   const signup = mode === "signup";
-  const preview = !!onPreviewSubmit;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -51,18 +50,6 @@ export function AuthForm({
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  // Signup stays open to a signed-in device, so say whose session a new account
-  // would replace rather than switching accounts silently.
-  const [signedInAs, setSignedInAs] = useState<string | null>(null);
-
-  useEffect(() => {
-    // The preview replaces nobody's session, so there is nothing to warn about.
-    if (!signup || preview) return;
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setSignedInAs(data?.user?.email ?? null))
-      .catch(() => {});
-  }, [signup, preview]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,7 +92,15 @@ export function AuthForm({
       // A fresh account has to confirm its email before the timetable step; a
       // returning student goes where they were headed, and the app's layout
       // sends them to confirm first if they never did.
-      router.push(signup ? "/verify-email" : next || "/home");
+      // A mail that fails to send does not fail signup, but the next page has to
+      // say so, or the student sits waiting on an email that is never coming.
+      router.push(
+        signup
+          ? data.emailSent === false
+            ? "/verify-email?status=unsent"
+            : "/verify-email"
+          : next || "/home"
+      );
       // Deliberately not clearing `busy`: the button stays disabled through the
       // navigation rather than flicking back to "Log in" as the page changes.
     } catch {
@@ -152,16 +147,6 @@ export function AuthForm({
               >
                 <CheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
                 Your email is confirmed. Log in to carry on.
-              </p>
-            )}
-
-            {signedInAs && (
-              <p className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
-                You are logged in as <span className="font-semibold text-ink">{signedInAs}</span>.
-                Creating a new account will log you out of it.{" "}
-                <Link href="/home" className="font-semibold text-brand-700 underline-offset-4 hover:underline">
-                  Go to your notebooks
-                </Link>
               </p>
             )}
 

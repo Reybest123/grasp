@@ -29,7 +29,7 @@ const PROTECTED = [
 /**
  * Signed in, logging in again is pointless, so /login goes to the app. /signup
  * deliberately stays reachable: someone on a shared or family device has to be
- * able to make their own account, and the form says whose session it replaces.
+ * able to make their own account. Signing up ends the previous session.
  */
 const AUTH_PAGES = ["/login"];
 

@@ -13,7 +13,7 @@ export type Question = {
   id: keyof OnboardingAnswers;
   title: string;
   hint?: string;
-  /** several options can be picked; otherwise one, which moves straight on */
+  /** several options can be picked; otherwise one. Either way the student presses Continue. */
   multi: boolean;
   options: string[];
 };

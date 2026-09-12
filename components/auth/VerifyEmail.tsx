@@ -12,6 +12,7 @@ import { AlertIcon, CheckIcon, MailIcon } from "@/components/icons";
 const STATUS_MESSAGE = {
   expired: "That link has expired or was already replaced. Send a new one below.",
   error: "Grasp could not check that link just now. Try it again, or send a new one.",
+  unsent: "Grasp could not send your confirmation email just now. Send it again below.",
 };
 
 export function VerifyEmail({
@@ -20,7 +21,7 @@ export function VerifyEmail({
   preview,
 }: {
   email: string;
-  status?: "expired" | "error";
+  status?: "expired" | "error" | "unsent";
   /** /sample only: nothing is sent, and Log out goes back to the signup step */
   preview?: { onLogOut: () => void };
 }) {
