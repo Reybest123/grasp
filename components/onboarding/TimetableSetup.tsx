@@ -7,7 +7,7 @@
 // stored — it is read once on the way through and dropped (§5).
 //
 // Only the content: TimetableDialog puts it in the popup that opens over the
-// workspace once onboarding is finished. The workspace passes `save`, which
+// dashboard once onboarding is finished. The dashboard passes `save`, which
 // writes the subjects; /sample passes `preview` and no `save`, so nothing is
 // written there.
 
@@ -15,11 +15,13 @@ import { useRef, useState } from "react";
 import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
 import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
+import { FoundSubjectEditor } from "@/components/onboarding/FoundSubjectEditor";
 import {
   AlertIcon,
   ArrowRightIcon,
   CheckIcon,
   CloseIcon,
+  EditIcon,
   FileIcon,
   ImageIcon,
   UploadIcon,
@@ -47,7 +49,7 @@ export function TimetableSetup({
   save,
   preview = false,
   initialSubjects,
-  onRead,
+  onSubjects,
   onFinish,
   onSkip,
 }: {
@@ -56,7 +58,8 @@ export function TimetableSetup({
   preview?: boolean;
   /** opens straight on the finished list, as the preview does when a step is skipped */
   initialSubjects?: ExtractedSubject[];
-  onRead?: (subjects: ExtractedSubject[]) => void;
+  /** the list after a read, and again after every edit to it */
+  onSubjects?: (subjects: ExtractedSubject[]) => void;
   /** the done step's button */
   onFinish: () => void;
   /** offered while nothing has been uploaded */
@@ -67,7 +70,20 @@ export function TimetableSetup({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [subjects, setSubjects] = useState<ExtractedSubject[]>(initialSubjects ?? []);
+  const [editing, setEditing] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Saves queue behind one another, so two quick edits cannot land out of order
+  // and leave the older list as the one stored.
+  const saving = useRef<Promise<unknown>>(Promise.resolve());
+
+  function keep(next: ExtractedSubject[]): Promise<unknown> {
+    setSubjects(next);
+    if (save) {
+      saving.current = saving.current.catch(() => undefined).then(() => save(next));
+    }
+    onSubjects?.(next);
+    return saving.current;
+  }
 
   function take(picked: File | undefined) {
     if (!picked) return;
@@ -109,16 +125,23 @@ export function TimetableSetup({
     }
 
     // Written the moment the read succeeds, so "created a notebook for each"
-    // below is a statement of fact, and the notebooks are already in the
-    // workspace behind the popup.
-    setSubjects(result.subjects);
-    if (save) await save(result.subjects);
+    // below is a statement of fact.
+    await keep(result.subjects);
     setStage("done");
-    onRead?.(result.subjects);
+  }
+
+  function update(index: number, next: ExtractedSubject) {
+    setEditing(null);
+    void keep(subjects.map((s, i) => (i === index ? next : s)));
+  }
+
+  function remove(index: number) {
+    setEditing(null);
+    void keep(subjects.filter((_, i) => i !== index));
   }
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-auto flex-col">
       {stage === "upload" && (
         <div>
           {error && (
@@ -226,46 +249,78 @@ export function TimetableSetup({
       )}
 
       {stage === "done" && (
-        <div>
-          <div className="flex items-center justify-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-center">
+        <div className="flex min-h-0 flex-auto flex-col">
+          <div className="flex shrink-0 items-center justify-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-center">
             <CheckIcon className="h-5 w-5 shrink-0 text-emerald-700" />
             <p className="font-semibold text-emerald-800">
-              Found {subjects.length} {subjects.length === 1 ? "subject" : "subjects"} and created a
-              notebook for each
+              {subjects.length === 0
+                ? "Every subject was removed"
+                : `Found ${subjects.length} ${
+                    subjects.length === 1 ? "subject" : "subjects"
+                  } and created a notebook for each`}
             </p>
           </div>
 
-          <ul className="mt-5 divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            {subjects.map((s, i) => (
-              <li key={s.name} className="flex items-center gap-4 px-4 py-3.5">
-                <span
-                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${
-                    getColor(autoColorKey(i)).gradient
-                  } text-base font-bold text-white`}
-                >
-                  {s.name.charAt(0)}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-ink">{s.name}</p>
-                  <p className="truncate text-sm text-slate-500">
-                    {[s.teacher, weeklyLabel(s.classes)].filter(Boolean).join(" · ") ||
-                      "No class times on the timetable"}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {/* The list scrolls inside its own box, so a long timetable keeps the
+              banner and the button in view and the scrollbar inside the popup. */}
+          <div className="mt-5 flex min-h-[7.5rem] flex-auto flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {subjects.length === 0 ? (
+              <p className="m-auto px-6 py-8 text-center text-sm text-slate-500">
+                You can add your subjects yourself from your notebooks.
+              </p>
+            ) : (
+              <ul className="scroll-thin min-h-0 flex-auto divide-y divide-slate-200 overflow-y-auto">
+                {subjects.map((s, i) => {
+                  const gradient = getColor(autoColorKey(i)).gradient;
+                  return (
+                    <li key={i}>
+                      {editing === i ? (
+                        <FoundSubjectEditor
+                          subject={s}
+                          gradient={gradient}
+                          onSave={(next) => update(i, next)}
+                          onCancel={() => setEditing(null)}
+                          onRemove={() => remove(i)}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-4 px-4 py-3.5">
+                          <span
+                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${gradient} text-base font-bold text-white`}
+                          >
+                            {s.name.charAt(0)}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-bold text-ink">{s.name}</p>
+                            <p className="truncate text-sm text-slate-500">
+                              {[s.teacher, weeklyLabel(s.classes)].filter(Boolean).join(" · ") ||
+                                "No class times on the timetable"}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditing(i)}
+                            aria-label={`Edit ${s.name}`}
+                            title="Edit"
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"
+                          >
+                            <EditIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
 
           <button
             type="button"
             onClick={onFinish}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
+            className="mt-6 flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
           >
             Go to my notebooks <ArrowRightIcon className="h-5 w-5" />
           </button>
-          <p className="mt-3 text-center text-xs text-slate-500">
-            Extraction wrong? You can rename any subject, fix its class times, or delete it.
-          </p>
         </div>
       )}
     </div>

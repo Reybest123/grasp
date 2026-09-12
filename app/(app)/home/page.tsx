@@ -9,11 +9,15 @@
 // crushing three tiles, a chart and a list into a phone screen helps nobody.
 //
 // Deliberately not a second notebooks list — the subjects live in /workspace.
+//
+// Also where onboarding ends: /onboarding sends a new student here with
+// `?setup=timetable`, and the timetable upload opens as a popup over the page.
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSubjects, useNow } from "@/lib/subjectsStore";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSubjects, useNow, type NewSubject } from "@/lib/subjectsStore";
+import { TimetableDialog } from "@/components/onboarding/TimetableDialog";
 import { useRecording } from "@/lib/recordingStore";
 import { useProfile, firstName } from "@/lib/profileStore";
 import { upcomingExamsAcross, DAY_SHORT } from "@/lib/schedule";
@@ -59,7 +63,7 @@ const marksLabel = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1
 
 export default function HomePage() {
   const router = useRouter();
-  const { subjects, ready, updateSubject } = useSubjects();
+  const { subjects, ready, updateSubject, replaceSubjects } = useSubjects();
   const { profile, ready: profileReady } = useProfile();
   const { guard } = useRecording();
   const now = useNow();
@@ -122,7 +126,31 @@ export default function HomePage() {
         onClose={() => setAdding(false)}
         onAdd={addAssessment}
       />
+
+      {/* Its own Suspense boundary, since reading the URL's query can suspend. */}
+      <Suspense fallback={null}>
+        <TimetablePrompt save={replaceSubjects} />
+      </Suspense>
     </section>
+  );
+}
+
+/**
+ * Skipping, or finishing the read, goes on to the notebooks. Closing it leaves
+ * the student here. Either way the flag is dropped, so a refresh does not
+ * reopen it.
+ */
+function TimetablePrompt({ save }: { save: (subjects: NewSubject[]) => Promise<void> }) {
+  const router = useRouter();
+  const params = useSearchParams();
+  return (
+    <TimetableDialog
+      open={params.get("setup") === "timetable"}
+      save={save}
+      onClose={() => router.replace("/home", { scroll: false })}
+      onSkip={() => router.replace("/workspace")}
+      onFinish={() => router.replace("/workspace")}
+    />
   );
 }
 

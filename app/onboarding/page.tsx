@@ -4,8 +4,8 @@
 // components/onboarding/OnboardingFlow.tsx, shared with the /sample preview;
 // this page is what makes finishing it write to the account.
 //
-// Finishing sends the student to /workspace with `?setup=timetable`, which is
-// what opens the timetable popup there. Nothing else on the way needs the
+// Finishing sends the student to /home with `?setup=timetable`, which is what
+// opens the timetable popup over the dashboard. Nothing else on the way needs the
 // subject store any more: the timetable is read inside the app shell.
 
 import { useRouter } from "next/navigation";
@@ -28,7 +28,7 @@ export default function Onboarding() {
     } catch {
       return "Grasp could not reach the server. Check your connection.";
     }
-    router.push("/workspace?setup=timetable");
+    router.push("/home?setup=timetable");
     return null;
   }
 

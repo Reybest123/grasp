@@ -17,7 +17,7 @@ conventions and a detailed changelog of how everything is built live in [`CLAUDE
 | --- | --- |
 | Accounts (sign up with the password typed twice, email confirmation, log in, change password, delete account) | `/signup`, `/login`, `/settings` |
 | Onboarding: three quick questions, then the plans, starting a free trial of Pro | `/onboarding` |
-| Timetable screenshot or PDF read by GPT-4o into subject notebooks, in a popup over the workspace | `/workspace?setup=timetable` (preview the whole flow from signup onwards, without an account, at `/sample`) |
+| Timetable screenshot or PDF read by GPT-4o into subject notebooks, in a popup over the dashboard, each one editable before you go on | `/home?setup=timetable` (preview the whole flow from signup onwards, without an account, at `/sample`) |
 | Dashboard: understanding score, weekly activity, quiz allowance, upcoming assessments | `/home` |
 | Notebooks grid with next class and exam countdowns | `/workspace` |
 | Rich-text notes: lists, checklists, tables, equations, undo/redo, AI enhance and AI generate | subject > Notes |

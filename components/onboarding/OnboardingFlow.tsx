@@ -3,16 +3,20 @@
 // §2 Onboarding — three quick questions, then the plans.
 //
 // It runs once, straight after the email is confirmed. Starting the Pro trial
-// finishes it, and the student lands on /workspace, where the timetable upload
-// opens as a popup over their notebooks (components/onboarding/TimetableDialog).
+// finishes it, and the student lands on /home, where the timetable upload
+// opens as a popup over the dashboard (components/onboarding/TimetableDialog).
 // The timetable used to be the whole of this page, full screen, which hid the
-// very workspace it was building.
+// app it was building.
+//
+// Fixed to the viewport like the dashboard: the header and progress bar stay
+// put and the page never scrolls. The step below them only scrolls inside
+// itself on a screen too short to hold it.
 //
 // Shared by two pages. /onboarding passes an `onFinish` that saves; /sample
 // (components/onboarding/SamplePreview.tsx) passes one that moves the preview
 // on, so nothing is written there.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
@@ -46,13 +50,14 @@ export function OnboardingFlow({
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const question = step < PLANS_STEP ? QUESTIONS[step] : null;
 
   function goTo(next: number) {
     setStep(next);
     if (next === PLANS_STEP) onReachPlans?.();
-    window.scrollTo({ top: 0, behavior: "instant" });
+    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }
 
   function choose(q: Question, option: string) {
@@ -90,45 +95,48 @@ export function OnboardingFlow({
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-50">
-      <div aria-hidden="true" className="ruled fade-out-b absolute inset-0 opacity-60" />
+    <main className="relative flex h-dvh flex-col overflow-hidden bg-slate-50">
+      <div
+        aria-hidden="true"
+        className="ruled fade-out-b pointer-events-none absolute inset-0 opacity-60"
+      />
 
-      <div className="relative">
-        <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-5">
-          <Logo />
-          <button
-            type="button"
-            onClick={onLogOut}
-            className="text-sm font-semibold text-slate-500 transition hover:text-ink"
-          >
-            Log out
-          </button>
-        </header>
+      <header className="relative mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-4 px-6 py-4">
+        <Logo />
+        <button
+          type="button"
+          onClick={onLogOut}
+          className="text-sm font-semibold text-slate-500 transition hover:text-ink"
+        >
+          Log out
+        </button>
+      </header>
 
-        <div className="mx-auto flex max-w-2xl items-center gap-4 px-6">
-          <div className="flex flex-1 gap-1.5" aria-hidden="true">
-            {Array.from({ length: PLANS_STEP + 1 }, (_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                  i <= step ? "bg-brand-500" : "bg-slate-200"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            {question ? `Question ${step + 1} of ${QUESTIONS.length}` : "Your plan"}
-          </span>
+      <div className="relative mx-auto flex w-full max-w-2xl shrink-0 items-center gap-4 px-6">
+        <div className="flex flex-1 gap-1.5" aria-hidden="true">
+          {Array.from({ length: PLANS_STEP + 1 }, (_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                i <= step ? "bg-brand-500" : "bg-slate-200"
+              }`}
+            />
+          ))}
         </div>
+        <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+          {question ? `Question ${step + 1} of ${QUESTIONS.length}` : "Your plan"}
+        </span>
+      </div>
 
+      <div ref={scrollRef} className="scroll-thin relative min-h-0 flex-1 overflow-y-auto">
         {question ? (
-          <section key={question.id} className="mx-auto max-w-2xl px-6 pb-20 pt-10">
+          <section key={question.id} className="mx-auto max-w-2xl px-6 py-8">
             <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
               {question.title}
             </h1>
             {question.hint && <p className="mt-2 text-slate-600">{question.hint}</p>}
 
-            <div role="group" aria-label={question.title} className="mt-8 grid gap-3 sm:grid-cols-2">
+            <div role="group" aria-label={question.title} className="mt-7 grid gap-3 sm:grid-cols-2">
               {question.options.map((option) => {
                 const on = picked[question.id].includes(option);
                 return (
@@ -156,7 +164,7 @@ export function OnboardingFlow({
               })}
             </div>
 
-            <div className="mt-10 flex items-center justify-between gap-3">
+            <div className="mt-8 flex items-center justify-between gap-3">
               {step > 0 ? (
                 <button
                   type="button"
@@ -179,12 +187,10 @@ export function OnboardingFlow({
             </div>
           </section>
         ) : (
-          <section className="mx-auto max-w-4xl px-6 pb-20 pt-10">
+          <section className="mx-auto max-w-4xl px-6 py-6">
             <div className="text-center">
-              <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-                Choose your plan
-              </h1>
-              <p className="mx-auto mt-3 max-w-md text-slate-600">
+              <h1 className="text-3xl font-extrabold tracking-tight text-ink">Choose your plan</h1>
+              <p className="mx-auto mt-2 max-w-md text-slate-600">
                 Start with {TRIAL_DAYS} days of Pro, free. No card needed.
               </p>
             </div>
@@ -192,16 +198,16 @@ export function OnboardingFlow({
             {error && (
               <div
                 role="alert"
-                className="mx-auto mt-8 flex max-w-3xl items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                className="mx-auto mt-5 flex max-w-4xl items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
               >
                 <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>{error}</p>
               </div>
             )}
 
-            <div className="mx-auto mt-12 grid max-w-3xl gap-6 sm:grid-cols-2">
+            <div className="mx-auto mt-7 grid max-w-4xl gap-5 sm:grid-cols-2">
               {PLANS.map((plan) => (
-                <PlanCard key={plan} plan={plan}>
+                <PlanCard key={plan} plan={plan} compact>
                   {PLAN_AVAILABLE[plan] ? (
                     <button
                       type="button"
@@ -234,17 +240,17 @@ export function OnboardingFlow({
               ))}
             </div>
 
-            <p className="mt-8 text-center text-xs text-slate-500">
-              Paid plans are not live yet, so nothing is charged when the trial ends.
-            </p>
-            <div className="mt-6 text-center">
+            <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-x-4 gap-y-1">
               <button
                 type="button"
                 onClick={() => goTo(PLANS_STEP - 1)}
-                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-ink"
+                className="-ml-3 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-ink"
               >
                 <BackIcon className="h-4 w-4" /> Back to the questions
               </button>
+              <p className="text-xs text-slate-500">
+                Paid plans are not live yet, so nothing is charged when the trial ends.
+              </p>
             </div>
           </section>
         )}

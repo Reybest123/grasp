@@ -67,13 +67,14 @@ export function VerifyEmail({
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-slate-50">
-      <header className="px-6 py-5">
+    // Fixed to the viewport, the same as the signup form before it.
+    <main className="flex h-dvh flex-col overflow-hidden bg-slate-50">
+      <header className="shrink-0 px-6 py-4">
         <Logo />
       </header>
 
-      <section className="flex flex-1 items-center justify-center px-6 pb-16">
-        <div className="w-full max-w-md">
+      <section className="scroll-thin min-h-0 flex-1 overflow-y-auto px-6">
+        <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-6">
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
             <MailIcon className="h-6 w-6" />
           </span>

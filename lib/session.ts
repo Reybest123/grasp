@@ -217,5 +217,5 @@ export async function guardOnboardingPage(): Promise<void> {
   const user = await currentUser();
   if (!user) return;
   if (!user.verified) redirect("/verify-email");
-  if (user.plan) redirect("/workspace");
+  if (user.plan) redirect("/home");
 }

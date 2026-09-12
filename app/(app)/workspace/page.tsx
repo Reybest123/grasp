@@ -3,18 +3,16 @@
 // The notebooks grid — one card per subject, plus the tile that creates one.
 // Opening a card is a real navigation to /workspace/<id>.
 
-import { Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useSubjects, useNow, type NewSubject } from "@/lib/subjectsStore";
+import { useRouter } from "next/navigation";
+import { useSubjects, useNow } from "@/lib/subjectsStore";
 import { useRecording } from "@/lib/recordingStore";
 import { useChrome } from "@/components/app/AppShell";
 import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
 import { Skeleton } from "@/components/Skeleton";
-import { TimetableDialog } from "@/components/onboarding/TimetableDialog";
 
 export default function WorkspacePage() {
   const router = useRouter();
-  const { subjects, ready, addSubject, replaceSubjects } = useSubjects();
+  const { subjects, ready, addSubject } = useSubjects();
   const { editSubject } = useChrome();
   const { guard } = useRecording();
   const now = useNow();
@@ -66,29 +64,7 @@ export default function WorkspacePage() {
           </>
         )}
       </div>
-
-      {/* Its own Suspense boundary, since reading the URL's query can suspend. */}
-      <Suspense fallback={null}>
-        <TimetablePrompt save={replaceSubjects} />
-      </Suspense>
     </section>
-  );
-}
-
-/**
- * The last step of onboarding: /onboarding sends a new student here with
- * `?setup=timetable`, and the timetable upload opens as a popup over the grid.
- * Closing it drops the flag, so it does not come back on a refresh.
- */
-function TimetablePrompt({ save }: { save: (subjects: NewSubject[]) => Promise<void> }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  return (
-    <TimetableDialog
-      open={params.get("setup") === "timetable"}
-      save={save}
-      onClose={() => router.replace("/workspace", { scroll: false })}
-    />
   );
 }
 

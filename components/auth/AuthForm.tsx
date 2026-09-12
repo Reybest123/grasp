@@ -110,11 +110,13 @@ export function AuthForm({
   }
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+    // Fixed to the viewport, like the dashboard: the page never scrolls. The
+    // form column only scrolls inside itself on a screen too short to hold it.
+    <main className="grid h-dvh grid-rows-[minmax(0,1fr)] overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <BrandPanel signup={signup} />
 
-      <div className="flex flex-col bg-slate-50">
-        <header className="flex items-center justify-between px-6 py-5 lg:justify-end">
+      <div className="flex min-h-0 flex-col bg-slate-50">
+        <header className="flex shrink-0 items-center justify-between px-6 py-3 lg:justify-end">
           <span className="lg:hidden">
             <Logo />
           </span>
@@ -129,8 +131,8 @@ export function AuthForm({
           </p>
         </header>
 
-        <section className="flex flex-1 items-center justify-center px-6 pb-16">
-          <div className="w-full max-w-sm">
+        <section className="scroll-thin min-h-0 flex-1 overflow-y-auto px-6">
+          <div className="mx-auto flex min-h-full w-full max-w-sm flex-col justify-center py-4">
             <h1 className="text-3xl font-extrabold tracking-tight text-ink">
               {signup ? "Create your account" : "Welcome back"}
             </h1>
@@ -143,18 +145,18 @@ export function AuthForm({
             {verified && !signup && (
               <p
                 role="status"
-                className="mt-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+                className="mt-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
               >
                 <CheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
                 Your email is confirmed. Log in to carry on.
               </p>
             )}
 
-            <form onSubmit={submit} className="mt-8">
+            <form onSubmit={submit} className="mt-5">
               {error && (
                 <div
                   role="alert"
-                  className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                 >
                   <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
                   <p>{error}</p>
@@ -207,7 +209,7 @@ export function AuthForm({
               <button
                 type="submit"
                 disabled={busy}
-                className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-2.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? (
                   <>
@@ -223,7 +225,7 @@ export function AuthForm({
             </form>
 
             {signup && (
-              <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
+              <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">
                 By creating an account you confirm you are 13 or older and agree to our{" "}
                 <Link href="/legal/terms" className="underline underline-offset-2 hover:text-slate-600">
                   Terms
@@ -315,8 +317,8 @@ function Field({
   autoComplete?: string;
 }) {
   return (
-    <label className="mt-4 block first:mt-0">
-      <span className="mb-1.5 block text-sm font-semibold text-ink">{label}</span>
+    <label className="mt-2.5 block first:mt-0">
+      <span className="mb-1 block text-sm font-semibold text-ink">{label}</span>
       <input
         type={type}
         value={value}
@@ -324,7 +326,7 @@ function Field({
         placeholder={placeholder}
         autoFocus={autoFocus}
         autoComplete={autoComplete}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-base text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
       />
     </label>
   );

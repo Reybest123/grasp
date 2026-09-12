@@ -30,6 +30,6 @@ export async function GET(req: NextRequest) {
   if (!user || user.id !== confirmedId) return to("/login?verified=1");
 
   // A new account goes on to onboarding; one that has already finished it (a
-  // second click, say) goes to its notebooks.
-  return to(user.plan ? "/workspace" : "/onboarding");
+  // second click, say) goes to its dashboard.
+  return to(user.plan ? "/home" : "/onboarding");
 }
