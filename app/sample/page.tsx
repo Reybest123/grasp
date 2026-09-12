@@ -1,12 +1,12 @@
-// /sample — the screen a brand-new student lands on the moment they press
-// Create account, without creating an account to get there. Signup has one
-// step after the form, the timetable upload, so this is that step in preview
-// mode: nothing is written, and the reader only runs for someone signed in.
+// /sample — what a brand-new student sees from the signup form through to their
+// notebooks being built, without creating an account to get there. Nothing is
+// written, and the timetable reader only runs for someone signed in. The steps
+// live in components/onboarding/SamplePreview.tsx.
 //
 // Open to anyone (proxy.ts does not list it), so it is kept out of search.
 
 import type { Metadata } from "next";
-import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { SamplePreview } from "@/components/onboarding/SamplePreview";
 
 export const metadata: Metadata = {
   title: "Onboarding preview",
@@ -14,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function SamplePage() {
-  return <OnboardingFlow preview />;
+  return <SamplePreview />;
 }

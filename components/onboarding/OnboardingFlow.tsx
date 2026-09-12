@@ -7,8 +7,10 @@
 // stored — it is read once on the way through and dropped (§5).
 //
 // Shared by two pages. /onboarding passes `save`, which writes the subjects to
-// the account. /sample passes `preview` and no `save`, so the exact screen a new
-// student sees can be looked at without creating an account or overwriting one.
+// the account. /sample (components/onboarding/SamplePreview.tsx) passes
+// `preview` and no `save`, so the exact screen a new student sees can be looked
+// at without creating an account or overwriting one; the preview's own bar says
+// so, which is why this screen carries no banner of its own.
 
 import { useRef, useState } from "react";
 import Link from "next/link";
@@ -46,19 +48,27 @@ function readDataUrl(file: File): Promise<string> {
 }
 
 export function OnboardingFlow({
-  preview = false,
+  preview,
   save,
+  initialSubjects,
 }: {
-  preview?: boolean;
+  /** /sample only: hands each way out of this screen back to the preview's steps */
+  preview?: {
+    onRead: (subjects: ExtractedSubject[]) => void;
+    onSkip: () => void;
+    onRestart: () => void;
+  };
   /** writes what was read to the account; absent in the preview */
   save?: (subjects: ExtractedSubject[]) => Promise<unknown>;
+  /** opens straight on the finished list, as the preview does when a step is skipped */
+  initialSubjects?: ExtractedSubject[];
 }) {
   const router = useRouter();
-  const [stage, setStage] = useState<Stage>("upload");
+  const [stage, setStage] = useState<Stage>(initialSubjects ? "done" : "upload");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
-  const [subjects, setSubjects] = useState<ExtractedSubject[]>([]);
+  const [subjects, setSubjects] = useState<ExtractedSubject[]>(initialSubjects ?? []);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function take(picked: File | undefined) {
@@ -105,13 +115,7 @@ export function OnboardingFlow({
     setSubjects(result.subjects);
     if (save) await save(result.subjects);
     setStage("done");
-  }
-
-  function restart() {
-    setStage("upload");
-    setFile(null);
-    setSubjects([]);
-    setError("");
+    preview?.onRead(result.subjects);
   }
 
   return (
@@ -119,13 +123,6 @@ export function OnboardingFlow({
       <div aria-hidden="true" className="ruled fade-out-b absolute inset-0 opacity-60" />
 
       <div className="relative">
-        {preview && (
-          <div className="border-b border-amber-200 bg-amber-50 px-6 py-2.5 text-center text-sm text-amber-900">
-            <span className="font-semibold">Preview.</span> This is what a new student sees right
-            after pressing Create account. Nothing here is saved.
-          </div>
-        )}
-
         <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
           <Logo />
           {/* One step, but naming it tells a brand-new student how much of this
@@ -275,7 +272,7 @@ export function OnboardingFlow({
 
               {preview ? (
                 <button
-                  onClick={restart}
+                  onClick={preview.onRestart}
                   className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
                 >
                   Start the preview again
@@ -297,12 +294,24 @@ export function OnboardingFlow({
 
           {stage !== "done" && (
             <p className="mt-10 text-center text-sm text-slate-500">
-              <Link
-                href="/home"
-                className="font-semibold text-brand-700 underline-offset-4 hover:underline"
-              >
-                Skip — just show me a sample notebook
-              </Link>
+              {/* In the preview there is no /home to go to, so the link moves
+                  the preview on instead of leaving it. */}
+              {preview ? (
+                <button
+                  type="button"
+                  onClick={preview.onSkip}
+                  className="font-semibold text-brand-700 underline-offset-4 hover:underline"
+                >
+                  Skip — just show me a sample notebook
+                </button>
+              ) : (
+                <Link
+                  href="/home"
+                  className="font-semibold text-brand-700 underline-offset-4 hover:underline"
+                >
+                  Skip — just show me a sample notebook
+                </Link>
+              )}
             </p>
           )}
         </section>

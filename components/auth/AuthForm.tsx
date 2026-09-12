@@ -29,14 +29,21 @@ export function AuthForm({
   mode,
   next,
   verified,
+  onPreviewSubmit,
 }: {
   mode: "login" | "signup";
   next?: string;
   /** arrived from a confirmation link opened on a device that was not signed in */
   verified?: boolean;
+  /**
+   * /sample only: a valid submit calls this instead of creating an account. Its
+   * presence is what puts the form in preview mode.
+   */
+  onPreviewSubmit?: (email: string) => void;
 }) {
   const router = useRouter();
   const signup = mode === "signup";
+  const preview = !!onPreviewSubmit;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -48,12 +55,13 @@ export function AuthForm({
   const [signedInAs, setSignedInAs] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!signup) return;
+    // The preview replaces nobody's session, so there is nothing to warn about.
+    if (!signup || preview) return;
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setSignedInAs(data?.user?.email ?? null))
       .catch(() => {});
-  }, [signup]);
+  }, [signup, preview]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +75,12 @@ export function AuthForm({
     if (local) return setError(local);
 
     setBusy(true);
+    if (onPreviewSubmit) {
+      // Held briefly so the pending state is visible, as it would be for real.
+      const entered = normalizeEmail(email);
+      setTimeout(() => onPreviewSubmit(entered), 700);
+      return;
+    }
     try {
       const res = await fetch(`/api/auth/${mode}`, {
         method: "POST",

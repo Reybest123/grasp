@@ -14,7 +14,16 @@ const STATUS_MESSAGE = {
   error: "Grasp could not check that link just now. Try it again, or send a new one.",
 };
 
-export function VerifyEmail({ email, status }: { email: string; status?: "expired" | "error" }) {
+export function VerifyEmail({
+  email,
+  status,
+  preview,
+}: {
+  email: string;
+  status?: "expired" | "error";
+  /** /sample only: nothing is sent, and Log out goes back to the signup step */
+  preview?: { onLogOut: () => void };
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -24,6 +33,13 @@ export function VerifyEmail({ email, status }: { email: string; status?: "expire
     setBusy(true);
     setError("");
     setSent(false);
+    if (preview) {
+      setTimeout(() => {
+        setSent(true);
+        setBusy(false);
+      }, 700);
+      return;
+    }
     try {
       const res = await fetch("/api/auth/verify/resend", { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -40,6 +56,7 @@ export function VerifyEmail({ email, status }: { email: string; status?: "expire
   }
 
   async function logOut() {
+    if (preview) return preview.onLogOut();
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {
