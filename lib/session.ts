@@ -16,13 +16,23 @@ import { redirect } from "next/navigation";
 import { createHash, randomBytes } from "node:crypto";
 import { sql } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/sessionCookie";
+import { isPlan, type Plan } from "@/lib/plan";
 
 export { SESSION_COOKIE };
 
 /** Long enough that a student is not logged out mid-term. */
 const SESSION_DAYS = 30;
 
-export type SessionUser = { id: string; email: string; name: string; verified: boolean };
+export type SessionUser = {
+  id: string;
+  email: string;
+  name: string;
+  verified: boolean;
+  /** null until onboarding is finished */
+  plan: Plan | null;
+  /** ISO; null for an account not on a free trial */
+  trialEndsAt: string | null;
+};
 
 /** The cookie holds the token; the database holds this. Email links too. */
 export function hashToken(token: string): string {
@@ -101,7 +111,7 @@ export async function currentUser(): Promise<SessionUser | null> {
 
   try {
     const rows = (await sql`
-      select u.id, u.email, u.name, u.email_verified_at, s.expires_at
+      select u.id, u.email, u.name, u.email_verified_at, u.plan, u.trial_ends_at, s.expires_at
       from sessions s
       join users u on u.id = s.user_id
       where s.token_hash = ${hashToken(token)}
@@ -110,6 +120,8 @@ export async function currentUser(): Promise<SessionUser | null> {
       email: string;
       name: string;
       email_verified_at: string | null;
+      plan: string | null;
+      trial_ends_at: string | Date | null;
       expires_at: string;
     }[];
 
@@ -121,7 +133,14 @@ export async function currentUser(): Promise<SessionUser | null> {
       return null;
     }
 
-    return { id: row.id, email: row.email, name: row.name, verified: row.email_verified_at !== null };
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      verified: row.email_verified_at !== null,
+      plan: isPlan(row.plan) ? row.plan : null,
+      trialEndsAt: row.trial_ends_at ? new Date(row.trial_ends_at).toISOString() : null,
+    };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);
     return null;
@@ -141,11 +160,14 @@ export type Guard =
  *
  * An account whose email is not confirmed is refused too, unless the route
  * opts in with `allowUnverified` — which only the routes a student needs in
- * order to get confirmed should do.
+ * order to get confirmed should do. So is one that has not finished onboarding
+ * by choosing a plan, unless the route opts in with `allowNoPlan`. An
+ * unconfirmed account cannot have a plan yet, so `allowUnverified` implies it.
  */
-export async function requireUser(
-  { allowUnverified = false }: { allowUnverified?: boolean } = {}
-): Promise<Guard> {
+export async function requireUser({
+  allowUnverified = false,
+  allowNoPlan = allowUnverified,
+}: { allowUnverified?: boolean; allowNoPlan?: boolean } = {}): Promise<Guard> {
   const user = await currentUser();
   if (!user) {
     return {
@@ -162,19 +184,38 @@ export async function requireUser(
       ),
     };
   }
+  if (!user.plan && !allowNoPlan) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: "Finish setting up your account first.", onboarding: true },
+        { status: 403 }
+      ),
+    };
+  }
   return { ok: true, user };
 }
 
 /**
- * The page-level counterpart, for server layouts. Sends an unconfirmed account
- * to /verify-email before any of the app renders, so there is no flash of an
- * app shell whose every request is about to be refused.
+ * The page-level counterparts, for server layouts. Each sends the student to
+ * the step they have not finished before anything renders, so there is no
+ * flash of a screen whose every request is about to be refused.
  *
  * A missing or expired session is left alone: proxy.ts already keeps cookieless
  * visitors out, and a lookup that fails because the database is down should
  * not bounce a student who is fine.
  */
-export async function redirectIfUnverified(): Promise<void> {
+export async function guardAppPage(): Promise<void> {
   const user = await currentUser();
-  if (user && !user.verified) redirect("/verify-email");
+  if (!user) return;
+  if (!user.verified) redirect("/verify-email");
+  if (!user.plan) redirect("/onboarding");
+}
+
+/** Onboarding runs once: after the email is confirmed, and never again once a plan is chosen. */
+export async function guardOnboardingPage(): Promise<void> {
+  const user = await currentUser();
+  if (!user) return;
+  if (!user.verified) redirect("/verify-email");
+  if (user.plan) redirect("/workspace");
 }

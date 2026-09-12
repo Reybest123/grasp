@@ -18,8 +18,9 @@ import { Sidebar } from "@/components/app/Sidebar";
 import { ProfileMenu } from "@/components/app/ProfileMenu";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubjectEditor } from "@/components/SubjectEditor";
-import { useSubjects } from "@/lib/subjectsStore";
+import { useSubjects, useNow } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
+import { DEFAULT_PLAN, planName, trialDaysLeft } from "@/lib/plan";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { MicIcon } from "@/components/icons";
 
@@ -47,7 +48,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // from the live recording view does.
   const rec = useRecording();
   const { guard } = rec;
-  const { logOut } = useProfile();
+  const { logOut, profile, ready: profileReady } = useProfile();
+  const now = useNow();
+  const trialLeft = now ? trialDaysLeft(profile.trialEndsAt, now) : null;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [focusRecord, setFocusRecord] = useState(0);
   // One confirm, raised from both the rail and the profile menu.
@@ -91,17 +94,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3 text-sm">
             <RecordingChip onOpen={openRecording} />
-            <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-3 pr-3.5 text-xs font-semibold text-slate-600 sm:inline-flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-              Free plan
-              {recordingsLeft !== null && (
-                <span className="text-slate-500">
-                  {recordingsLeft === 0
-                    ? "No recordings left this week"
-                    : `${recordingsLeft} recording${recordingsLeft === 1 ? "" : "s"} left`}
-                </span>
-              )}
-            </span>
+            {/* Waits for the account, rather than naming a plan and then
+                swapping it a frame later. A trial says how long it has left,
+                which matters more than this week's recordings while it runs. */}
+            {profileReady && (
+              <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-3 pr-3.5 text-xs font-semibold text-slate-600 sm:inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+                {planName(profile.plan ?? DEFAULT_PLAN, profile.trialEndsAt)}
+                {trialLeft !== null ? (
+                  <span className="text-slate-500">
+                    {trialLeft === 0
+                      ? "Trial ended"
+                      : `${trialLeft} day${trialLeft === 1 ? "" : "s"} left`}
+                  </span>
+                ) : (
+                  recordingsLeft !== null && (
+                    <span className="text-slate-500">
+                      {recordingsLeft === 0
+                        ? "No recordings left this week"
+                        : `${recordingsLeft} recording${recordingsLeft === 1 ? "" : "s"} left`}
+                    </span>
+                  )
+                )}
+              </span>
+            )}
             <ProfileMenu onLogOut={() => setConfirmLogOut(true)} />
           </div>
         </div>

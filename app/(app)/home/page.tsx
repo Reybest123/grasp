@@ -32,7 +32,7 @@ import {
   type BandName,
   type Understanding,
 } from "@/lib/stats";
-import { CURRENT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
+import { DEFAULT_PLAN, planName, quizLimit, trialDaysLeft } from "@/lib/plan";
 import { fetchUsage } from "@/lib/ai";
 import { AddAssessmentDialog } from "@/components/app/AddAssessmentDialog";
 import { StatRing } from "@/components/StatRing";
@@ -214,16 +214,19 @@ function HomeSkeleton() {
  * with what sits behind its number — the ring alone can only say how full.
  */
 function StatRow({ subjects, week }: { subjects: Subject[]; week: ActivityDay[] }) {
+  const { profile } = useProfile();
+  const plan = profile.plan ?? DEFAULT_PLAN;
+  const planLabel = planName(plan, profile.trialEndsAt);
   const marks = understanding(subjects);
   const days = activeDays(week);
-  // The server's count is the one the cap is enforced against — a deleted quiz
-  // still counts there. The local count only fills the gap until it answers.
-  const [serverUsed, setServerUsed] = useState<number | null>(null);
+  // The server's figures are the ones the cap is enforced against — a deleted
+  // quiz still counts there. The local ones only fill the gap until it answers.
+  const [server, setServer] = useState<{ used: number; limit: number } | null>(null);
   useEffect(() => {
-    void fetchUsage().then((u) => u && setServerUsed(u.quizzes.used));
+    void fetchUsage().then((u) => u && setServer({ used: u.quizzes.used, limit: u.quizzes.limit }));
   }, []);
-  const used = serverUsed ?? quizzesIn(week);
-  const limit = quizLimit();
+  const used = server?.used ?? quizzesIn(week);
+  const limit = server?.limit ?? quizLimit(plan);
 
   // Read the other way up from the score ring: a full allowance ring is the bad
   // outcome, so it warms towards red as it fills rather than cooling to green.
@@ -276,8 +279,15 @@ function StatRow({ subjects, week }: { subjects: Subject[]; week: ActivityDay[] 
           </span>
         )}
         label="Quiz allowance"
-        sub={`of ${limit} this week on ${PLAN_LABEL[CURRENT_PLAN]}`}
-        detail={<AllowanceDetail used={used} limit={limit} />}
+        sub={`of ${limit} this week on ${planLabel}`}
+        detail={
+          <AllowanceDetail
+            used={used}
+            limit={limit}
+            planLabel={planLabel}
+            trialEndsAt={profile.trialEndsAt}
+          />
+        }
       />
     </div>
   );
@@ -425,8 +435,23 @@ function StudyDetail({ week }: { week: ActivityDay[] }) {
   );
 }
 
-/** The week's allowance as one cell per quiz, when there are few enough to draw. */
-function AllowanceDetail({ used, limit }: { used: number; limit: number }) {
+/**
+ * The week's allowance as one cell per quiz, when there are few enough to draw,
+ * and how long a free trial has left.
+ */
+function AllowanceDetail({
+  used,
+  limit,
+  planLabel,
+  trialEndsAt,
+}: {
+  used: number;
+  limit: number;
+  planLabel: string;
+  trialEndsAt: string | null;
+}) {
+  const now = useNow();
+  const trialLeft = now ? trialDaysLeft(trialEndsAt, now) : null;
   const left = Math.max(0, limit - used);
   return (
     <>
@@ -454,6 +479,13 @@ function AllowanceDetail({ used, limit }: { used: number; limit: number }) {
         Counts quizzes generated over the last {WEEK} days, so each one frees up a week after it
         was made.
       </p>
+      {trialLeft !== null && (
+        <p className="mt-3 border-t border-slate-100 pt-3 text-xs font-semibold text-ink">
+          {trialLeft === 0
+            ? `Your ${planLabel} has ended.`
+            : `Your ${planLabel} ends in ${trialLeft} day${trialLeft === 1 ? "" : "s"}.`}
+        </p>
+      )}
     </>
   );
 }

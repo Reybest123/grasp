@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   if (typeof recording !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(recording)) {
     return NextResponse.json({ error: "That recording could not be read." }, { status: 400 });
   }
-  const spend = await claimRecordingSegment(guard.user.id, recording);
+  const spend = await claimRecordingSegment(guard.user, recording);
   if (!spend.ok) return spend.response;
 
   // Whisper infers the container from the filename, so the extension the

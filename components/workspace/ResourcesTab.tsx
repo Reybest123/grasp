@@ -13,7 +13,8 @@ import type { Subject } from "@/lib/subjects";
 import { resourceId } from "@/lib/subjects";
 import type { Resource } from "@/lib/resources";
 import { extractResource } from "@/lib/ai";
-import { CURRENT_PLAN, PLAN_LABEL, resourceLimit, upgradeHint } from "@/lib/plan";
+import { DEFAULT_PLAN, PLAN_LABEL, resourceLimit, upgradeHint } from "@/lib/plan";
+import { useProfile } from "@/lib/profileStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ResourceCard } from "@/components/workspace/ResourceCard";
 import { ResourceAdd, type ResourcePayload } from "@/components/workspace/ResourceAdd";
@@ -33,8 +34,10 @@ export function ResourcesTab({
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Resource | null>(null);
 
+  const { profile } = useProfile();
+  const plan = profile.plan ?? DEFAULT_PLAN;
   const resources = subject.resources;
-  const limit = resourceLimit();
+  const limit = resourceLimit(plan);
   const full = resources.length >= limit;
 
   async function add(payload: ResourcePayload) {
@@ -120,12 +123,12 @@ export function ResourcesTab({
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <span className="text-xs font-semibold text-slate-500">
-                {resources.length} of {limit} · {PLAN_LABEL[CURRENT_PLAN]} plan
+                {resources.length} of {limit} · {PLAN_LABEL[plan]} plan
               </span>
               <button
                 onClick={() => setView("add")}
                 disabled={full}
-                title={full ? `Your ${PLAN_LABEL[CURRENT_PLAN]} plan holds ${limit}.` : undefined}
+                title={full ? `Your ${PLAN_LABEL[plan]} plan holds ${limit}.` : undefined}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600"
               >
                 <PlusIcon className="h-4 w-4" /> Add
@@ -148,10 +151,10 @@ export function ResourcesTab({
               <div className="grid place-items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
                 <LockIcon className="h-6 w-6 text-slate-400" />
                 <p className="text-sm font-semibold text-slate-600">
-                  {PLAN_LABEL[CURRENT_PLAN]} plan holds {limit} per subject
+                  {PLAN_LABEL[plan]} plan holds {limit} per subject
                 </p>
                 <p className="text-xs text-slate-500">
-                  {upgradeHint()} Remove one to add something else.
+                  {upgradeHint(plan)} Remove one to add something else.
                 </p>
               </div>
             ) : (

@@ -159,9 +159,10 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
     [scheduleFlush]
   );
 
-  // Onboarding replaces rather than appends, and writes immediately rather than
-  // on the debounce: the student is about to navigate to /home, which reloads
-  // the list from the server, so a pending flush would race that read.
+  // The timetable popup replaces rather than appends, and writes immediately
+  // rather than on the debounce: the notebooks it builds are the student's whole
+  // workspace, and they should be saved by the time the popup closes rather than
+  // left waiting on a timer that a quick refresh would beat.
   const replaceSubjects = useCallback(async (built: NewSubject[]) => {
     const made = built.map((s, i) => {
       const created = createSubject(s.name, i);

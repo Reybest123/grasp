@@ -8,24 +8,39 @@
 import { randomUUID } from "node:crypto";
 import { query, sql } from "@/lib/db";
 import {
-  CURRENT_PLAN,
+  DEFAULT_PLAN,
   PLAN_LABEL,
-  RECORDING_MAX_SECONDS,
   RECORDING_SEGMENT_MS,
   quizLimit,
   recordingLimit,
+  recordingMaxSeconds,
+  type Plan,
 } from "@/lib/plan";
 
 export type UsageKind = "quiz" | "recording";
 
 export type Allowance = { used: number; limit: number; resetsAt: string | null };
 
+/** Whose allowance — the signed-in user from `requireUser`. */
+type Account = { id: string; plan: Plan | null };
+
 type Result<T> = { ok: true; data: T } | { ok: false; response: Response };
 
-const LIMITS: Record<UsageKind, () => number> = { quiz: quizLimit, recording: recordingLimit };
+const LIMITS: Record<UsageKind, (plan: Plan) => number> = {
+  quiz: quizLimit,
+  recording: recordingLimit,
+};
+
+/**
+ * `requireUser` already refuses an account with no plan on every route that
+ * spends an allowance, so the fallback is only there to satisfy the type.
+ */
+const planOf = (account: Account): Plan => account.plan ?? DEFAULT_PLAN;
 
 /** The stop flush can add one segment past the last full one. */
-const MAX_SEGMENTS = Math.ceil((RECORDING_MAX_SECONDS * 1000) / RECORDING_SEGMENT_MS) + 1;
+function maxSegments(plan: Plan): number {
+  return Math.ceil((recordingMaxSeconds(plan) * 1000) / RECORDING_SEGMENT_MS) + 1;
+}
 
 function failed(error: string, status: number): { ok: false; response: Response } {
   return { ok: false, response: Response.json({ error }, { status }) };
@@ -45,12 +60,12 @@ function whenFree(resetsAt: string | null): string {
   return `in ${days} day${days === 1 ? "" : "s"}`;
 }
 
-export async function allowance(userId: string, kind: UsageKind): Promise<Result<Allowance>> {
+export async function allowance(account: Account, kind: UsageKind): Promise<Result<Allowance>> {
   const result = await query(async () => {
     const rows = (await sql`
       select count(*)::int as used, min(created_at) + interval '7 days' as resets_at
       from usage
-      where user_id = ${userId} and kind = ${kind} and created_at > now() - interval '7 days'
+      where user_id = ${account.id} and kind = ${kind} and created_at > now() - interval '7 days'
     `) as { used: number; resets_at: string | Date | null }[];
     return rows[0];
   });
@@ -61,7 +76,7 @@ export async function allowance(userId: string, kind: UsageKind): Promise<Result
     ok: true,
     data: {
       used: result.data?.used ?? 0,
-      limit: LIMITS[kind](),
+      limit: LIMITS[kind](planOf(account)),
       resetsAt: resets ? new Date(resets).toISOString() : null,
     },
   };
@@ -72,15 +87,19 @@ export async function allowance(userId: string, kind: UsageKind): Promise<Result
  * are one statement, so two requests racing each other cannot both slip under
  * the cap through the gap between a separate read and write.
  */
-async function claim(userId: string, kind: UsageKind, ref: string): Promise<Result<boolean>> {
-  const limit = LIMITS[kind]();
+async function claim(
+  account: Account,
+  kind: UsageKind,
+  ref: string
+): Promise<Result<boolean>> {
+  const limit = LIMITS[kind](planOf(account));
   const result = await query(async () => {
     const rows = await sql`
       insert into usage (user_id, kind, ref)
-      select ${userId}, ${kind}, ${ref}
+      select ${account.id}, ${kind}, ${ref}
       where (
         select count(*) from usage
-        where user_id = ${userId} and kind = ${kind} and created_at > now() - interval '7 days'
+        where user_id = ${account.id} and kind = ${kind} and created_at > now() - interval '7 days'
       ) < ${limit}
       on conflict (user_id, kind, ref) do nothing
       returning id
@@ -96,25 +115,28 @@ async function claim(userId: string, kind: UsageKind, ref: string): Promise<Resu
  * fails, so a provider error does not cost the student part of their week.
  */
 export async function claimQuiz(
-  userId: string
+  account: Account
 ): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
   const ref = randomUUID();
-  const claimed = await claim(userId, "quiz", ref);
+  const claimed = await claim(account, "quiz", ref);
   if (!claimed.ok) return claimed;
 
   if (!claimed.data) {
-    const current = await allowance(userId, "quiz");
+    const current = await allowance(account, "quiz");
     const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
-    const limit = quizLimit();
+    const plan = planOf(account);
+    const limit = quizLimit(plan);
     return refused(
-      `You have made ${limit} quiz${limit === 1 ? "" : "zes"} in the last 7 days, which is as many as the ${PLAN_LABEL[CURRENT_PLAN]} plan allows. Your next one frees up ${when}.`
+      `You have made ${limit} quiz${limit === 1 ? "" : "zes"} in the last 7 days, which is as many as the ${PLAN_LABEL[plan]} plan allows. Your next one frees up ${when}.`
     );
   }
 
   return {
     ok: true,
     release: async () => {
-      await query(() => sql`delete from usage where user_id = ${userId} and kind = 'quiz' and ref = ${ref}`);
+      await query(
+        () => sql`delete from usage where user_id = ${account.id} and kind = 'quiz' and ref = ${ref}`
+      );
     },
   };
 }
@@ -125,14 +147,15 @@ export async function claimQuiz(
  * recording started by mistake and stopped in silence costs nothing.
  */
 export async function claimRecordingSegment(
-  userId: string,
+  account: Account,
   recordingId: string
 ): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
   const noop = async () => {};
+  const plan = planOf(account);
   const bumped = await query(async () => {
     const rows = (await sql`
       update usage set units = units + 1
-      where user_id = ${userId} and kind = 'recording' and ref = ${recordingId}
+      where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId}
       returning units
     `) as { units: number }[];
     return rows[0]?.units ?? null;
@@ -140,13 +163,15 @@ export async function claimRecordingSegment(
   if (!bumped.ok) return failed(bumped.error, bumped.status);
 
   if (bumped.data !== null) {
-    if (bumped.data > MAX_SEGMENTS) {
-      return refused(`A recording can run for ${RECORDING_MAX_SECONDS / 60} minutes at most.`);
+    if (bumped.data > maxSegments(plan)) {
+      return refused(
+        `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
+      );
     }
     return { ok: true, release: noop };
   }
 
-  const claimed = await claim(userId, "recording", recordingId);
+  const claimed = await claim(account, "recording", recordingId);
   if (!claimed.ok) return claimed;
   if (claimed.data) {
     // Only the segment that opened the recording hands it back: if Whisper
@@ -156,16 +181,16 @@ export async function claimRecordingSegment(
       release: async () => {
         await query(
           () =>
-            sql`delete from usage where user_id = ${userId} and kind = 'recording' and ref = ${recordingId} and units = 1`
+            sql`delete from usage where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId} and units = 1`
         );
       },
     };
   }
 
-  const current = await allowance(userId, "recording");
+  const current = await allowance(account, "recording");
   const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
-  const limit = recordingLimit();
+  const limit = recordingLimit(plan);
   return refused(
-    `You have used ${limit === 1 ? "this week's recording" : `all ${limit} of this week's recordings`} on the ${PLAN_LABEL[CURRENT_PLAN]} plan. Your next one frees up ${when}.`
+    `You have used ${limit === 1 ? "this week's recording" : `all ${limit} of this week's recordings`} on the ${PLAN_LABEL[plan]} plan. Your next one frees up ${when}.`
   );
 }

@@ -11,8 +11,8 @@ export async function GET() {
   if (!guard.ok) return guard.response;
 
   const [quizzes, recordings] = await Promise.all([
-    allowance(guard.user.id, "quiz"),
-    allowance(guard.user.id, "recording"),
+    allowance(guard.user, "quiz"),
+    allowance(guard.user, "recording"),
   ]);
   if (!quizzes.ok) return quizzes.response;
   if (!recordings.ok) return recordings.response;

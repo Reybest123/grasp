@@ -15,8 +15,9 @@ conventions and a detailed changelog of how everything is built live in [`CLAUDE
 
 | Feature | Where |
 | --- | --- |
-| Accounts (sign up, log in, change password, delete account) | `/signup`, `/login`, `/settings` |
-| Timetable screenshot or PDF read by GPT-4o into subject notebooks | `/onboarding` (preview the flow from signup onwards, without an account, at `/sample`) |
+| Accounts (sign up with the password typed twice, email confirmation, log in, change password, delete account) | `/signup`, `/login`, `/settings` |
+| Onboarding: three quick questions, then the plans, starting a free trial of Pro | `/onboarding` |
+| Timetable screenshot or PDF read by GPT-4o into subject notebooks, in a popup over the workspace | `/workspace?setup=timetable` (preview the whole flow from signup onwards, without an account, at `/sample`) |
 | Dashboard: understanding score, weekly activity, quiz allowance, upcoming assessments | `/home` |
 | Notebooks grid with next class and exam countdowns | `/workspace` |
 | Rich-text notes: lists, checklists, tables, equations, undo/redo, AI enhance and AI generate | subject > Notes |
@@ -24,7 +25,7 @@ conventions and a detailed changelog of how everything is built live in [`CLAUDE
 | Lecture recording with Whisper transcription and notes drafted live | subject > Record |
 | Quizzes from your notes: multiple choice, short and long answer, AI marking with half marks, "explain why I'm wrong" | subject > Quizzes |
 | Resource Bank: rubrics, criteria and term planners read once and cited wherever the AI uses them | subject > Resource Bank |
-| Weekly plan limits (3 quizzes, 1 five-minute recording on free), enforced server-side | `lib/usage.ts` |
+| Pro and Max plans (placeholder figures, no billing yet) with weekly quiz and recording limits enforced server-side | `lib/plan.ts`, `lib/usage.ts` |
 | Flag an AI answer as wrong | under AI output |
 | Terms of Service and Privacy Policy | `/legal/terms`, `/legal/privacy` |
 

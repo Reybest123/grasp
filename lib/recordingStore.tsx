@@ -20,19 +20,11 @@ import { transcribeSegment, liveNotes, fetchUsage } from "@/lib/ai";
 import type { Citation, ResourceBrief } from "@/lib/resources";
 import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/lib/recorder";
 import { useSubjects } from "@/lib/subjectsStore";
-import {
-  CURRENT_PLAN,
-  PLAN_LABEL,
-  RECORDING_MAX_SECONDS,
-  RECORDING_SEGMENT_MS,
-} from "@/lib/plan";
+import { useProfile } from "@/lib/profileStore";
+import { DEFAULT_PLAN, PLAN_LABEL, RECORDING_SEGMENT_MS, recordingMaxSeconds } from "@/lib/plan";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const SEGMENT_MS = RECORDING_SEGMENT_MS;
-
-// The server enforces the same ceiling; stopping here is what keeps the
-// student from running into it.
-export const MAX_SECONDS = RECORDING_MAX_SECONDS;
 
 // Redrafting on every segment is a model call every 20 seconds for no visible
 // gain — wait until enough new material has landed to change the notes.
@@ -84,6 +76,11 @@ const RecordingContext = createContext<RecordingState | null>(null);
 
 export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const { subjects, updateSubject } = useSubjects();
+  const { profile } = useProfile();
+  const plan = profile.plan ?? DEFAULT_PLAN;
+  // The server enforces the same ceiling for the plan; stopping here is what
+  // keeps the student from running into it.
+  const maxSeconds = recordingMaxSeconds(plan);
 
   const [phase, setPhase] = useState<RecordPhase>("idle");
   const [subjectId, setSubjectId] = useState<string | null>(null);
@@ -201,7 +198,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
             : null;
           setFatal({
             subjectId: subject.id,
-            message: `You have used this week's recording on the ${PLAN_LABEL[CURRENT_PLAN]} plan.${
+            message: `You have used all of this week's recordings on the ${PLAN_LABEL[plan]} plan.${
               back ? ` Your next one is available on ${back}.` : ""
             }`,
           });
@@ -247,7 +244,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setStarting(false);
       }
     },
-    [ingest]
+    [ingest, plan]
   );
 
   const stop = useCallback(async () => {
@@ -272,8 +269,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
   // The advertised cap, enforced rather than just printed.
   useEffect(() => {
-    if (phase === "recording" && seconds >= MAX_SECONDS) void stop();
-  }, [phase, seconds, stop]);
+    if (phase === "recording" && seconds >= maxSeconds) void stop();
+  }, [phase, seconds, maxSeconds, stop]);
 
   const reset = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);

@@ -1,6 +1,6 @@
 "use client";
 
-// Settings: the account's name, its password, and deleting it.
+// Settings: the account's name, its password, its plan, and deleting it.
 //
 // Laid out like the other pages in the shell — full width, a heading over a
 // rule, uppercase section labels above white cards — rather than the centred
@@ -13,6 +13,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useRecording } from "@/lib/recordingStore";
+import { useNow } from "@/lib/subjectsStore";
+import { DEFAULT_PLAN, PLAN_PERKS, PLAN_PRICE, planName, trialDaysLeft } from "@/lib/plan";
 import { passwordProblem } from "@/lib/accounts";
 import { Skeleton } from "@/components/Skeleton";
 import { AlertIcon, CheckIcon } from "@/components/icons";
@@ -38,6 +40,9 @@ export default function SettingsPage() {
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
           <ProfileSection />
           <PasswordSection />
+          <div className="lg:col-span-2">
+            <PlanSection />
+          </div>
           <div className="lg:col-span-2">
             <DeleteSection />
           </div>
@@ -241,6 +246,49 @@ function PasswordSection() {
           )}
         </div>
       </form>
+    </Section>
+  );
+}
+
+/** Which plan, when a trial ends, and what the plan includes. Nothing to change here until billing exists. */
+function PlanSection() {
+  const { profile } = useProfile();
+  const now = useNow();
+  const plan = profile.plan ?? DEFAULT_PLAN;
+  const trialLeft = now ? trialDaysLeft(profile.trialEndsAt, now) : null;
+  const ends = profile.trialEndsAt
+    ? new Date(profile.trialEndsAt).toLocaleDateString(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      })
+    : null;
+
+  return (
+    <Section title="Plan">
+      <p className="text-lg font-bold text-ink">{planName(plan, profile.trialEndsAt)}</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {!ends
+          ? `${PLAN_PRICE[plan]} a month.`
+          : trialLeft === 0
+            ? `Your free trial ended on ${ends}.`
+            : `Your free trial ends on ${ends}${
+                trialLeft !== null ? `, ${trialLeft} day${trialLeft === 1 ? "" : "s"} from now` : ""
+              }.`}
+      </p>
+
+      <ul className="mt-5 grid gap-2.5 border-t border-slate-100 pt-5 sm:grid-cols-2">
+        {PLAN_PERKS[plan].map((perk) => (
+          <li key={perk} className="flex items-start gap-2.5 text-sm text-slate-600">
+            <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+            {perk}
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-5 text-xs text-slate-500">
+        Billing is not set up yet, so nothing is charged, and Max arrives with it.
+      </p>
     </Section>
   );
 }

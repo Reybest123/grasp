@@ -48,6 +48,7 @@ export function AuthForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   // Signup stays open to a signed-in device, so say whose session a new account
@@ -70,7 +71,13 @@ export function AuthForm({
     // Checked here as well as in the route, so an obvious typo is caught
     // without a round trip. The route is the one that actually decides.
     const local = signup
-      ? nameProblem(name) ?? emailProblem(normalizeEmail(email)) ?? passwordProblem(password)
+      ? (nameProblem(name) ??
+        emailProblem(normalizeEmail(email)) ??
+        passwordProblem(password) ??
+        // Only the form checks this. The route is sent one password, and a
+        // mistyped one is exactly the mistake the second box is there to catch
+        // before the account is made with it.
+        (password !== confirm ? "The two passwords do not match." : null))
       : null;
     if (local) return setError(local);
 
@@ -200,6 +207,17 @@ export function AuthForm({
                 // than to fill the existing one, and vice versa.
                 autoComplete={signup ? "new-password" : "current-password"}
               />
+
+              {signup && (
+                <Field
+                  label="Confirm password"
+                  type="password"
+                  value={confirm}
+                  onChange={setConfirm}
+                  placeholder="Type it again"
+                  autoComplete="new-password"
+                />
+              )}
 
               <button
                 type="submit"

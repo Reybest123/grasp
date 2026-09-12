@@ -7,6 +7,8 @@ import { useState } from "react";
 import type { Note, Subject } from "@/lib/subjects";
 import type { QuizCounts } from "@/lib/ai";
 import type { ResourceBrief } from "@/lib/resources";
+import { useProfile } from "@/lib/profileStore";
+import { DEFAULT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
 import { BackIcon, BankIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
 
 const MAX_PER_KIND = 10;
@@ -104,6 +106,8 @@ export function QuizSetup({
   onGenerate: (req: QuizRequest) => void;
   onCancel: () => void;
 }) {
+  const { profile } = useProfile();
+  const plan = profile.plan ?? DEFAULT_PLAN;
   const hasNotes = notes.length > 0;
   const [topics, setTopics] = useState<string[]>([]);
   // Everything is fair game unless the student narrows it down.
@@ -338,7 +342,7 @@ export function QuizSetup({
           Generate quiz
         </button>
         <p className="mt-2 text-center text-[11px] text-slate-400">
-          Free plan: 1–3 quiz generations / week
+          {PLAN_LABEL[plan]} plan: {quizLimit(plan)} quizzes a week
         </p>
       </div>
     </div>

@@ -7,7 +7,7 @@
 // dead link.
 
 import { NextRequest, NextResponse } from "next/server";
-import { query, sql } from "@/lib/db";
+import { query } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { appOrigin, redeemVerification } from "@/lib/verification";
 
@@ -29,10 +29,7 @@ export async function GET(req: NextRequest) {
   // Opened on another device, or while signed in as someone else.
   if (!user || user.id !== confirmedId) return to("/login?verified=1");
 
-  // A new account goes on to the timetable step; one that already has
-  // notebooks (a second click, say) goes to them.
-  const subjects = await query(
-    () => sql`select 1 from subjects where user_id = ${user.id} limit 1`
-  );
-  return to(subjects.ok && subjects.data.length > 0 ? "/home" : "/onboarding");
+  // A new account goes on to onboarding; one that has already finished it (a
+  // second click, say) goes to its notebooks.
+  return to(user.plan ? "/workspace" : "/onboarding");
 }

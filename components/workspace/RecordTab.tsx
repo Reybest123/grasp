@@ -12,7 +12,9 @@
 
 import { useState } from "react";
 import type { Note } from "@/lib/subjects";
-import { useRecording, mmss, MAX_SECONDS } from "@/lib/recordingStore";
+import { useRecording, mmss } from "@/lib/recordingStore";
+import { useProfile } from "@/lib/profileStore";
+import { DEFAULT_PLAN, PLAN_LABEL, recordingLimit, recordingMaxSeconds } from "@/lib/plan";
 import { useNow } from "@/lib/subjectsStore";
 import { updatedLabel } from "@/lib/schedule";
 import type { ResourceBrief } from "@/lib/resources";
@@ -44,6 +46,9 @@ export function RecordTab({
 }) {
   const rec = useRecording();
   const now = useNow();
+  const { profile } = useProfile();
+  const plan = profile.plan ?? DEFAULT_PLAN;
+  const maxSeconds = recordingMaxSeconds(plan);
 
   const recorded = notes.filter((n) => n.recorded);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -54,7 +59,7 @@ export function RecordTab({
   const active = rec.phase !== "idle" && rec.subjectId === subjectId;
   const fatal = rec.fatal?.subjectId === subjectId ? rec.fatal.message : null;
 
-  const remaining = MAX_SECONDS - rec.seconds;
+  const remaining = maxSeconds - rec.seconds;
   const hasContent = Boolean(rec.notesHtml || rec.transcript.trim());
   // Stop moves straight to "naming", but the final pass over the whole
   // transcript is still running behind it — that gap is what the polishing
@@ -110,8 +115,8 @@ export function RecordTab({
         {rec.starting ? "Starting…" : "Start recording"}
       </button>
       <p className="mt-3 max-w-md text-xs leading-5 text-slate-500">
-        Check your school allows recording before you start. Free plan: one 5-minute recording a
-        week.
+        Check your school allows recording before you start. {PLAN_LABEL[plan]} plan:{" "}
+        {recordingLimit(plan)} recordings a week, up to {maxSeconds / 60} minutes each.
       </p>
     </div>
   );

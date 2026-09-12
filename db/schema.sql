@@ -42,6 +42,25 @@ create unique index if not exists users_email_lower_idx on users (lower(email));
 alter table users add column if not exists email_verified_at timestamptz default now();
 alter table users alter column email_verified_at drop default;
 
+-- The plan the account is on ('pro' or 'max', lib/plan.ts). Null until the
+-- student finishes onboarding by choosing one, and lib/session.ts keeps an
+-- account with no plan out of the app until it has.
+-- Grown the same way as email_verified_at: the default puts every account that
+-- already exists on Pro, so nobody made before plans existed is sent back
+-- through onboarding, and dropping it means every new account starts null.
+alter table users add column if not exists plan text default 'pro';
+alter table users alter column plan drop default;
+
+-- When the account's Pro free trial ends, or null for an account not on one.
+-- Existing accounts get a trial from the day this column appeared. Nothing is
+-- enforced when it passes yet: there is no billing to move anyone onto.
+alter table users add column if not exists trial_ends_at timestamptz default (now() + interval '7 days');
+alter table users alter column trial_ends_at drop default;
+
+-- The answers to onboarding's three questions, as {yearLevel, uses, focus}
+-- (lib/onboarding.ts). Only ever read and written whole, hence JSONB.
+alter table users add column if not exists onboarding jsonb;
+
 -- Confirmation links. Stored as the sha256 of the token in the link, for the
 -- same reason sessions are: a dumped table hands out no working links.
 create table if not exists email_verifications (

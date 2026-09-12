@@ -12,10 +12,15 @@
 // and swapping the name in afterwards.
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { isPlan, type Plan } from "@/lib/plan";
 
 export type Profile = {
   name: string;
   email: string;
+  /** null only before onboarding, which the app layout does not let into the shell */
+  plan: Plan | null;
+  /** ISO; null for an account not on a free trial */
+  trialEndsAt: string | null;
 };
 
 type Store = {
@@ -30,7 +35,7 @@ type Store = {
 
 const ProfileContext = createContext<Store | null>(null);
 
-const EMPTY: Profile = { name: "", email: "" };
+const EMPTY: Profile = { name: "", email: "", plan: null, trialEndsAt: null };
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile>(EMPTY);
@@ -45,7 +50,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         if (cancelled) return;
         if (data.user) {
-          setProfile({ name: data.user.name ?? "", email: data.user.email ?? "" });
+          setProfile({
+            name: data.user.name ?? "",
+            email: data.user.email ?? "",
+            plan: isPlan(data.user.plan) ? data.user.plan : null,
+            trialEndsAt: typeof data.user.trialEndsAt === "string" ? data.user.trialEndsAt : null,
+          });
           setSignedIn(true);
         }
       } catch {

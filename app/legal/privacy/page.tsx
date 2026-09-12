@@ -11,7 +11,7 @@ export default function Privacy() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="11 September 2026"
+      updated="12 September 2026"
       intro="This explains what Grasp collects when you use it, what happens to it, who else handles it, and how to get it deleted. Grasp is a study tool for students, so it collects only what it needs to run your notebooks, and nothing for advertising."
     >
       <LegalSection title="What Grasp stores">
@@ -19,6 +19,11 @@ export default function Privacy() {
           <li>
             <b>Your account:</b> your name, your email address, and your password. The password is
             stored as a one-way scrypt hash, never as the password itself.
+          </li>
+          <li>
+            <b>Your plan and setup answers:</b> which plan you are on, when your free trial ends, and
+            your answers to the three questions asked when you set up your account: your year level,
+            how you plan to use Grasp, and what you most want help with.
           </li>
           <li>
             <b>Email confirmation:</b> when you confirmed your email address, and a record of each
@@ -60,8 +65,9 @@ export default function Privacy() {
         <p>
           Your information is used to run Grasp for you: to show and save your notebooks, to
           generate notes, explanations and quizzes from your own material, to mark your answers,
-          to apply your plan&apos;s limits, and to look into answers you flag. It is not used to
-          advertise to you, and Grasp does not use it to train AI models.
+          to apply your plan&apos;s limits, and to look into answers you flag. Your setup answers
+          help Grasp understand what the students using it need. None of it is used to advertise
+          to you, and Grasp does not use it to train AI models.
         </p>
       </LegalSection>
 
@@ -107,8 +113,8 @@ export default function Privacy() {
         </p>
         <p>
           You can delete your whole account from Settings. That immediately removes your account
-          and everything stored with it: study material, usage records, flagged answers and
-          sessions. It cannot be undone.
+          and everything stored with it: your plan and setup answers, study material, usage
+          records, flagged answers and sessions. It cannot be undone.
         </p>
       </LegalSection>
 

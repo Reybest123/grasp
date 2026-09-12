@@ -2,25 +2,44 @@
 
 // §2 Onboarding — the saving half. The screen itself is
 // components/onboarding/OnboardingFlow.tsx, shared with the /sample preview;
-// this page is what makes it write to the account.
+// this page is what makes finishing it write to the account.
 //
-// The account already exists by the time a student gets here — signup asks for
-// the name, and proxy.ts will have sent them to /login if they are not signed
-// in — so this page only needs the subject store, to write what it extracts.
-// It is the only caller of `replaceSubjects`.
+// Finishing sends the student to /workspace with `?setup=timetable`, which is
+// what opens the timetable popup there. Nothing else on the way needs the
+// subject store any more: the timetable is read inside the app shell.
 
-import { SubjectsProvider, useSubjects } from "@/lib/subjectsStore";
+import { useRouter } from "next/navigation";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import type { OnboardingAnswers } from "@/lib/onboarding";
+import type { Plan } from "@/lib/plan";
 
 export default function Onboarding() {
-  return (
-    <SubjectsProvider>
-      <SavingFlow />
-    </SubjectsProvider>
-  );
-}
+  const router = useRouter();
 
-function SavingFlow() {
-  const { replaceSubjects } = useSubjects();
-  return <OnboardingFlow save={replaceSubjects} />;
+  async function finish(answers: OnboardingAnswers, plan: Plan): Promise<string | null> {
+    try {
+      const res = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers, plan }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return data.error ?? "Something went wrong. Try again.";
+    } catch {
+      return "Grasp could not reach the server. Check your connection.";
+    }
+    router.push("/workspace?setup=timetable");
+    return null;
+  }
+
+  async function logOut() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // The destination is the same either way.
+    }
+    router.replace("/");
+  }
+
+  return <OnboardingFlow onFinish={finish} onLogOut={logOut} />;
 }

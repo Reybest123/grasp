@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   // §6 — taken before the model call so the cap holds, and handed back if no
   // quiz comes out of it.
-  const spend = await claimQuiz(guard.user.id);
+  const spend = await claimQuiz(guard.user);
   if (!spend.ok) return spend.response;
 
   const result = await chatCompletion({

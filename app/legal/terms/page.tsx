@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/LegalPage";
 import { LegalSection } from "@/components/LegalSection";
+import { TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = { title: "Terms of Service | Grasp" };
 
@@ -9,7 +10,7 @@ export default function Terms() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="11 September 2026"
+      updated="12 September 2026"
       intro="These terms are the agreement between you and Grasp when you use the website. By creating an account or using Grasp, you agree to them. If you do not agree, do not use Grasp."
     >
       <LegalSection title="Who can use Grasp">
@@ -28,12 +29,15 @@ export default function Terms() {
 
       <LegalSection title="Plans and limits">
         <p>
-          Grasp is free to use, with weekly limits on AI features such as lecture recordings and
-          quiz generation. The current limits are shown in the app, and they may change over time.
+          Grasp has two plans, Pro and Max, each with weekly limits on AI features such as lecture
+          recordings and quiz generation. The current limits are shown in the app, and they may
+          change over time.
         </p>
         <p>
-          Paid plans are not available yet. If they are introduced, their price, billing and refund
-          terms will be set out before you can buy one.
+          A new account starts with a {TRIAL_DAYS}-day free trial of Pro. Paid plans cannot be bought
+          yet, so nothing is charged, during the trial or after it. Before they can be bought, their
+          price, billing and refund terms will be set out here, and you will not be charged without
+          agreeing to them first.
         </p>
       </LegalSection>
 

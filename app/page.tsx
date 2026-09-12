@@ -6,9 +6,10 @@ import {
   SparkleIcon,
   QuizIcon,
   ArrowRightIcon,
-  CheckIcon,
 } from "@/components/icons";
 import type { JSX } from "react";
+import { PlanCard } from "@/components/PlanCard";
+import { PLANS, TRIAL_DAYS } from "@/lib/plan";
 
 const FEATURES: { icon: JSX.Element; title: string; body: string }[] = [
   {
@@ -53,44 +54,6 @@ const STEPS: { n: string; title: string; body: string }[] = [
     n: "04",
     title: "Quiz yourself before the exam",
     body: "Generate quizzes from your own notes, weighted toward what your assessment criteria reward.",
-  },
-];
-
-const PLANS: {
-  name: string;
-  price: string;
-  period: string;
-  tagline: string;
-  featured: boolean;
-  perks: string[];
-}[] = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    tagline: "Everything you need to try Grasp for real.",
-    featured: false,
-    perks: [
-      "Unlimited subjects & notes",
-      "Highlight-to-explain",
-      "One 5-minute lecture recording a week",
-      "1–3 quiz generations / week",
-      "Resource Bank uploads",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "$6",
-    period: "/ month",
-    tagline: "For students who live in their notes.",
-    featured: true,
-    perks: [
-      "Everything in Free",
-      "Longer & more frequent recordings",
-      "Unlimited quiz generations",
-      "Priority AI (faster, stronger models)",
-      "Early access to new features",
-    ],
   },
 ];
 
@@ -183,7 +146,7 @@ export default function Home() {
               </Link>
             </div>
             <p className="mt-5 text-sm text-slate-500">
-              Free forever plan · no card needed · set up in one screenshot
+              {TRIAL_DAYS}-day free trial · no card needed · set up in one screenshot
             </p>
           </div>
 
@@ -259,38 +222,13 @@ export default function Home() {
         <SectionHead
           eyebrow="Pricing"
           title="Simple pricing for students"
-          body="Start free. Upgrade when you need more recordings and quizzes."
+          body={`Try Pro free for ${TRIAL_DAYS} days. Go Max if you record every lesson.`}
         />
-        <div className="mx-auto mt-14 grid max-w-3xl items-start gap-6 sm:grid-cols-2">
-          {PLANS.map((p) => (
-            <div
-              key={p.name}
-              className={`relative rounded-3xl border bg-white p-8 ${
-                p.featured ? "border-brand-300 shadow-lift" : "border-slate-200 shadow-ring"
-              }`}
-            >
-              {p.featured && (
-                <span className="absolute -top-3 left-8 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">
-                  Most popular
-                </span>
-              )}
-              <h3 className="font-display text-lg font-bold text-ink">{p.name}</h3>
-              <p className="mt-1 text-sm text-slate-500">{p.tagline}</p>
-              <div className="mt-6 flex items-baseline gap-1.5">
-                <span className="font-display text-5xl font-extrabold tracking-tight text-ink">
-                  {p.price}
-                </span>
-                <span className="text-sm text-slate-500">{p.period}</span>
-              </div>
-              <ul className="mt-7 space-y-3 border-t border-slate-200 pt-7">
-                {p.perks.map((perk) => (
-                  <li key={perk} className="flex items-start gap-2.5 text-sm text-slate-600">
-                    <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
-                    {perk}
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Information only, with no buttons: there is no billing to send
+            anyone to, and an account has to exist before a plan can be chosen. */}
+        <div className="mx-auto mt-14 grid max-w-3xl gap-6 sm:grid-cols-2">
+          {PLANS.map((plan) => (
+            <PlanCard key={plan} plan={plan} />
           ))}
         </div>
         <p className="mt-8 text-center text-xs text-slate-400">
@@ -319,7 +257,7 @@ export default function Home() {
               href="/signup"
               className="mt-9 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-3.5 font-semibold text-white transition hover:bg-brand-400"
             >
-              Get started free <ArrowRightIcon className="h-5 w-5" />
+              Start your free trial <ArrowRightIcon className="h-5 w-5" />
             </Link>
           </div>
         </div>
