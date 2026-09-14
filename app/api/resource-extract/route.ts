@@ -20,6 +20,7 @@ import { inflateSync } from "node:zlib";
 import { chatCompletion } from "@/lib/openai";
 import { RESOURCE_KINDS, isResourceKind, type ResourceEntry } from "@/lib/resources";
 import { pageLimitProblem, textLimitProblem } from "@/lib/resourceLimits";
+import { dataUrlType, isSupportedImage, tooLargeMessage, unsupportedFileMessage } from "@/lib/fileTypes";
 import { requireUser } from "@/lib/session";
 import { claimResourceRead } from "@/lib/usage";
 
@@ -105,8 +106,14 @@ export async function POST(req: NextRequest) {
   }
   if (hasFile && dataUrl.length > MAX_DATA_URL) {
     return NextResponse.json(
-      { error: "This file is too large to read. Please keep it under 3 MB." },
+      { error: tooLargeMessage("resource") },
       { status: 413 }
+    );
+  }
+  if (hasFile && !isPdf && !isSupportedImage(dataUrlType(dataUrl))) {
+    return NextResponse.json(
+      { error: unsupportedFileMessage({ type: dataUrlType(dataUrl) }, "resource") },
+      { status: 415 }
     );
   }
   if (hasText) {

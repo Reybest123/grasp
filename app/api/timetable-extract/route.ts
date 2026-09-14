@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { requireUser } from "@/lib/session";
+import { dataUrlType, isSupportedImage, tooLargeMessage, unsupportedFileMessage } from "@/lib/fileTypes";
 
 /** Vercel caps a serverless request body at ~4.5MB; base64 inflates by a third. */
 const MAX_DATA_URL = 4_200_000;
@@ -96,19 +97,24 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { dataUrl } = await req.json();
+  const { dataUrl } = await req.json().catch(() => ({}));
 
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
     return NextResponse.json({ error: "There was no timetable to read." }, { status: 400 });
   }
   if (dataUrl.length > MAX_DATA_URL) {
-    return NextResponse.json(
-      { error: "That file is too large to read. Keep it under 3 MB." },
-      { status: 413 }
-    );
+    return NextResponse.json({ error: tooLargeMessage("timetable") }, { status: 413 });
   }
 
   const isPdf = dataUrl.startsWith("data:application/pdf");
+  // Refused by name here rather than failing at the provider, where the
+  // student would only have been told Grasp could not reach the AI.
+  if (!isPdf && !isSupportedImage(dataUrlType(dataUrl))) {
+    return NextResponse.json(
+      { error: unsupportedFileMessage({ type: dataUrlType(dataUrl) }, "timetable") },
+      { status: 415 }
+    );
+  }
 
   // The stronger model, for the same reason the Resource Bank uses it: this
   // read happens once and the student's whole week inherits what it gets wrong.

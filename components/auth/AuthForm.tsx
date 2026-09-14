@@ -31,7 +31,7 @@ import { Logo, LogoMark } from "@/components/Logo";
 import { ErrorNote } from "@/components/ErrorNote";
 import { PasswordInput } from "@/components/PasswordInput";
 import { AlertIcon, ArrowRightIcon, CheckIcon } from "@/components/icons";
-import { emailProblem, nameProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
+import { emailProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
 
 const PROMISES = [
   "One screenshot of your timetable builds every notebook",
@@ -80,7 +80,9 @@ export function AuthForm({
   function problemFor(field: FieldKey, v: Values): string | null {
     switch (field) {
       case "name":
-        return nameProblem(v.name);
+        // Optional. It can be added later in Settings, and the dashboard greets
+        // a student without one as plain "Welcome back".
+        return null;
       case "email":
         return emailProblem(normalizeEmail(v.email));
       case "password":
@@ -260,6 +262,7 @@ export function AuthForm({
                 <Field
                   {...field("name")}
                   label="Your name"
+                  optional
                   placeholder="e.g. Sam"
                   autoFocus
                   autoComplete="given-name"
@@ -399,6 +402,7 @@ function Field({
   placeholder,
   autoFocus,
   autoComplete,
+  optional = false,
 }: {
   id: string;
   label: string;
@@ -411,6 +415,8 @@ function Field({
   placeholder?: string;
   autoFocus?: boolean;
   autoComplete?: string;
+  /** says "optional" beside the label; the field is never checked */
+  optional?: boolean;
 }) {
   const invalid = error !== undefined;
   const messageId = error ? `${id}-error` : undefined;
@@ -422,8 +428,9 @@ function Field({
 
   return (
     <div className="mt-2.5 first:mt-0">
-      <label htmlFor={id} className="mb-1 block text-sm font-semibold text-ink">
+      <label htmlFor={id} className="mb-1 flex items-baseline justify-between text-sm font-semibold text-ink">
         {label}
+        {optional && <span className="text-xs font-normal text-slate-500">optional</span>}
       </label>
       {type === "password" ? (
         <PasswordInput

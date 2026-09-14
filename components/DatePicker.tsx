@@ -1,24 +1,32 @@
 "use client";
 
-// Grasp's own date picker, in place of the browser's <input type="date">.
+// Grasp's date field: type the date as dd/mm/yyyy, or press the calendar button
+// on its right and pick one.
 //
-// The native control opens the browser's calendar, which looks different in
-// every browser and nothing like the rest of Grasp. It also let a student type
-// a six-digit year, which is how a countdown once read "in 36333005 days". This
-// one only ever produces a real calendar day.
+// It replaced the browser's <input type="date">, whose calendar looked nothing
+// like Grasp and which accepted a six-digit year (how a countdown once read "in
+// 36333005 days"). A calendar-only version came next and was changed back at the
+// user's request: typing a date you already know is quicker than clicking
+// through months, so the box is the main way in and the calendar is there if
+// wanted.
 //
-// The calendar is portalled to <body> and placed against the button. Both
-// places it is used sit inside a transformed parent (the dialog's pop-in, the
-// editor sheet's slide), and a transformed ancestor becomes the containing
-// block for `position: fixed`, which would throw the calendar off.
+// `value` is only ever a complete, real date ("YYYY-MM-DD") or "". Part-way
+// through typing, the field reports "" so a form's Add button stays disabled,
+// while the box keeps what was typed. A date that does not parse is outlined and
+// explained when the student leaves the box.
 //
-// Keyboard: arrows move a day or a week, Page Up/Down a month, Enter picks,
-// Escape closes. Escape is stopped here, so it does not also close the dialog
-// or sheet the picker sits in.
+// The calendar is portalled to <body> and placed against the field. Both places
+// it is used sit inside a transformed parent (the dialog's pop-in, the editor
+// sheet's slide), and a transformed ancestor becomes the containing block for
+// `position: fixed`, which would throw the calendar off.
+//
+// Keyboard: Alt+Down opens the calendar; in it, arrows move a day or a week,
+// Page Up/Down a month, Enter picks, Escape closes. Escape is stopped here, so
+// it does not also close the dialog or sheet the field sits in.
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { AlertIcon, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const MONTHS = [
@@ -53,6 +61,39 @@ function parseIso(iso: string): Date | null {
   return d.getMonth() === Number(m[2]) - 1 ? d : null;
 }
 
+const toDmy = (d: Date | null) => (d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : "");
+
+function parseDmy(text: string): { date: Date | null; problem: string | null } {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text.trim());
+  if (!m) return { date: null, problem: "Please enter the date in the format dd/mm/yyyy." };
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const year = Number(m[3]);
+  if (year < 1900 || year > 2100) {
+    return { date: null, problem: "Please enter a year between 1900 and 2100." };
+  }
+  const d = new Date(year, month - 1, day);
+  if (d.getMonth() !== month - 1 || d.getDate() !== day) {
+    return { date: null, problem: "This date does not exist. Please check the day and month." };
+  }
+  return { date: d, problem: null };
+}
+
+/**
+ * Keeps only digits and slashes (a dot, dash or space becomes a slash), and
+ * adds the slash after the day and after the month as they are typed — but
+ * never while deleting, or the slash could not be backspaced over.
+ */
+function tidy(raw: string, previous: string): string {
+  let next = raw
+    .replace(/[.\-\s]/g, "/")
+    .replace(/[^\d/]/g, "")
+    .replace(/\/{2,}/g, "/")
+    .slice(0, 10);
+  if (next.length > previous.length && /^(\d{2}|\d{1,2}\/\d{2})$/.test(next)) next += "/";
+  return next;
+}
+
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -70,36 +111,85 @@ function startOfToday(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
+/** The caller's input style, with its border and focus colours swapped for red. */
+function invalidStyle(className: string): string {
+  return className
+    .replace(/\bborder-slate-\d+\b/g, "border-red-400")
+    .replace(/\bfocus:border-brand-\d+\b/g, "focus:border-red-500")
+    .replace(/\bfocus:ring-brand-\d+\b/g, "focus:ring-red-100");
+}
+
 export function DatePicker({
   value,
   onChange,
   className = "",
-  placeholder = "Pick a date",
+  wrapperClassName = "",
   label = "Date",
 }: {
   /** "YYYY-MM-DD", or "" for no date yet */
   value: string;
   onChange: (iso: string) => void;
-  /** the button's classes, usually the surrounding form's input style */
+  /** the text box's classes, usually the surrounding form's input style */
   className?: string;
-  placeholder?: string;
+  /** the field's width and placement in its row */
+  wrapperClassName?: string;
   /** what the date is, for screen readers */
   label?: string;
 }) {
-  const selected = parseIso(value);
+  const errorId = useId();
+  const [text, setText] = useState(() => toDmy(parseIso(value)));
+  const [problem, setProblem] = useState<string | null>(null);
+  // The last value this field reported. A value arriving from outside (a form
+  // resetting) is told apart from the field's own "" mid-typing, which must not
+  // wipe what the student has typed so far.
+  const reported = useRef(value);
+
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"days" | "months">("days");
   // The day keyboard focus sits on. The grid always shows its month.
   const [cursor, setCursor] = useState<Date>(startOfToday);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const fieldRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
-  // Focus follows the cursor after a keyboard move or on opening, but not
-  // after a click on a month arrow, which should keep focus on the arrow.
+  // Focus follows the cursor after a keyboard move or on opening, but not after
+  // a click on a month arrow, which should keep focus on the arrow.
   const focusGrid = useRef(false);
 
+  const selected = parseIso(value);
+
+  useEffect(() => {
+    if (value === reported.current) return;
+    reported.current = value;
+    setText(toDmy(parseIso(value)));
+    setProblem(null);
+  }, [value]);
+
+  function report(iso: string) {
+    reported.current = iso;
+    if (iso !== value) onChange(iso);
+  }
+
+  function type(raw: string) {
+    const next = tidy(raw, text);
+    setText(next);
+    const { date } = parseDmy(next);
+    report(date ? toIso(date) : "");
+    // A flagged date clears the moment it is put right.
+    if (date) setProblem(null);
+  }
+
+  function leave() {
+    // Focus moving into the calendar is not the student leaving the field.
+    if (open) return;
+    if (!text.trim()) return setProblem(null);
+    const { date, problem: why } = parseDmy(text);
+    if (date) setText(toDmy(date));
+    setProblem(why);
+  }
+
   function show() {
-    setCursor(selected ?? startOfToday());
+    setCursor(selected ?? parseDmy(text).date ?? startOfToday());
     setMode("days");
     setPos(null);
     focusGrid.current = true;
@@ -108,31 +198,32 @@ export function DatePicker({
 
   function close(returnFocus: boolean) {
     setOpen(false);
-    if (returnFocus) triggerRef.current?.focus();
+    if (returnFocus) inputRef.current?.focus();
   }
 
   function pick(d: Date) {
-    onChange(toIso(d));
+    setText(toDmy(d));
+    setProblem(null);
+    report(toIso(d));
     close(true);
   }
 
   const viewYear = cursor.getFullYear();
   const viewMonth = cursor.getMonth();
 
-  // Below the button, or above it when there is no room below. Runs before
-  // paint, and the calendar is already in the DOM (off-screen) by then, so its
-  // real height is known on the first pass.
+  // Below the field, above it when there is no room below, or on a window too
+  // short for either, as low as it can sit while still fully on screen. Runs
+  // before paint, and the calendar is already in the DOM (off-screen) by then,
+  // so its real height is known on the first pass.
   useLayoutEffect(() => {
     if (!open) return;
     function place() {
-      const trigger = triggerRef.current;
-      if (!trigger) return;
-      const r = trigger.getBoundingClientRect();
+      const field = fieldRef.current;
+      if (!field) return;
+      const r = field.getBoundingClientRect();
       const h = popRef.current?.offsetHeight ?? 0;
       let top = r.bottom + GAP;
       if (top + h > window.innerHeight - EDGE) {
-        // No room below: above, or, on a window too short for either, as low
-        // as it can sit while still fully on screen, even over the button.
         const above = r.top - GAP - h;
         top = above >= EDGE ? above : Math.max(EDGE, window.innerHeight - EDGE - h);
       }
@@ -152,7 +243,7 @@ export function DatePicker({
     if (!open) return;
     function onDown(e: PointerEvent) {
       const t = e.target as Node;
-      if (popRef.current?.contains(t) || triggerRef.current?.contains(t)) return;
+      if (popRef.current?.contains(t) || fieldRef.current?.contains(t)) return;
       setOpen(false);
     }
     document.addEventListener("pointerdown", onDown);
@@ -166,7 +257,7 @@ export function DatePicker({
       ?.focus({ preventScroll: true });
   }, [open, mode, cursor]);
 
-  function onKeyDown(e: React.KeyboardEvent) {
+  function onCalendarKey(e: React.KeyboardEvent) {
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -202,42 +293,57 @@ export function DatePicker({
   const cells = Array.from({ length: 42 }, (_, i) => new Date(viewYear, viewMonth, 1 - offset + i));
 
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => (open ? close(false) : show())}
-        onKeyDown={(e) => {
-          if (e.key === "Escape" && open) {
-            e.preventDefault();
-            e.stopPropagation();
-            close(false);
-          } else if (e.key === "ArrowDown" && !open) {
-            e.preventDefault();
-            show();
-          }
-        }}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={
-          selected
-            ? `${label}: ${selected.toLocaleDateString(undefined, {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}`
-            : label
-        }
-        className={`inline-flex items-center gap-2 text-left ${className}`}
-      >
-        <CalendarIcon className="h-4 w-4 shrink-0 text-slate-400" />
-        <span className={`min-w-0 flex-1 truncate ${selected ? "" : "text-slate-400"}`}>
-          {selected
-            ? selected.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
-            : placeholder}
+    <span className={`block ${wrapperClassName}`}>
+      <span ref={fieldRef} className="relative block">
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="dd/mm/yyyy"
+          maxLength={10}
+          value={text}
+          onChange={(e) => type(e.target.value)}
+          onBlur={leave}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" && e.altKey) {
+              e.preventDefault();
+              show();
+            } else if (e.key === "Escape" && open) {
+              e.preventDefault();
+              e.stopPropagation();
+              close(false);
+            }
+          }}
+          aria-label={`${label}, in the format dd/mm/yyyy`}
+          aria-invalid={problem ? true : undefined}
+          aria-describedby={problem ? errorId : undefined}
+          className={`w-full pr-10 tabular-nums ${problem ? invalidStyle(className) : className}`}
+        />
+        <button
+          type="button"
+          // Keeps focus in the box, so opening the calendar does not count as
+          // leaving it and flag a date that is only half typed.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => (open ? close(false) : show())}
+          aria-label="Choose from a calendar"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title="Choose from a calendar"
+          className={`absolute right-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition hover:bg-slate-100 hover:text-ink ${
+            open ? "bg-slate-100 text-ink" : "text-slate-400"
+          }`}
+        >
+          <CalendarIcon className="h-4 w-4" />
+        </button>
+      </span>
+
+      {problem && (
+        <span id={errorId} className="mt-1.5 flex items-start gap-1.5 text-xs text-red-700">
+          <AlertIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+          <span>{problem}</span>
         </span>
-      </button>
+      )}
 
       {open &&
         createPortal(
@@ -245,7 +351,7 @@ export function DatePicker({
             ref={popRef}
             role="dialog"
             aria-label={`Choose ${label.toLowerCase()}`}
-            onKeyDown={onKeyDown}
+            onKeyDown={onCalendarKey}
             style={{
               position: "fixed",
               width: WIDTH,
@@ -376,7 +482,7 @@ export function DatePicker({
           </div>,
           document.body
         )}
-    </>
+    </span>
   );
 }
 

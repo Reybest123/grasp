@@ -19,6 +19,13 @@ import { FoundSubjectEditor } from "@/components/onboarding/FoundSubjectEditor";
 import { ErrorNote } from "@/components/ErrorNote";
 import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 import {
+  MAX_UPLOAD_BYTES,
+  TIMETABLE_ACCEPT,
+  timetableFileSupported,
+  tooLargeMessage,
+  unsupportedFileMessage,
+} from "@/lib/fileTypes";
+import {
   ArrowRightIcon,
   CheckIcon,
   CloseIcon,
@@ -28,9 +35,8 @@ import {
   UploadIcon,
 } from "@/components/icons";
 
-/** Vercel caps a serverless request body at ~4.5MB and base64 inflates by a third. */
-const MAX_BYTES = 3 * 1024 * 1024;
-const ACCEPT = "image/*,application/pdf";
+const MAX_BYTES = MAX_UPLOAD_BYTES;
+const ACCEPT = TIMETABLE_ACCEPT;
 
 /** What `requireUser` answers with — the preview rewords it, since there it is expected. */
 const NOT_SIGNED_IN = SIGNED_OUT_MESSAGE;
@@ -88,14 +94,14 @@ export function TimetableSetup({
 
   function take(picked: File | undefined) {
     if (!picked) return;
-    if (picked.size > MAX_BYTES) {
-      setError("That file is over 3 MB. A screenshot of the timetable works better than a photo.");
+    // Only formats the model reads get through (lib/fileTypes.ts), named when
+    // refused, before the size is checked.
+    if (!timetableFileSupported(picked)) {
+      setError(unsupportedFileMessage(picked, "timetable"));
       return;
     }
-    // Anything else — a .docx, a spreadsheet, a zip — cannot be read here, and
-    // a screenshot of it can.
-    if (!picked.type.startsWith("image/") && picked.type !== "application/pdf") {
-      setError("Grasp reads images and PDFs. Take a screenshot of your timetable instead.");
+    if (picked.size > MAX_BYTES) {
+      setError(tooLargeMessage("timetable"));
       return;
     }
     setError("");
@@ -209,7 +215,7 @@ export function TimetableSetup({
               </span>
               <p className="mt-4 text-lg font-bold text-ink">Drop your timetable screenshot here</p>
               <p className="mt-1.5 text-sm text-slate-500">
-                PNG, JPG or PDF · school portal, app, photo — any layout
+                PNG, JPG, WEBP, GIF or PDF, up to 3 MB · any layout
               </p>
               <span className="mt-6 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition group-hover:bg-brand-700">
                 Choose a file

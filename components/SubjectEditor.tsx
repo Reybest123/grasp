@@ -245,12 +245,15 @@ export function SubjectEditor({
 
             <div className="mt-3 space-y-2">
               {exams.map((e) => (
-                <div key={e.id} className="flex items-center gap-2">
+                // items-start, so a date flagged as invalid can grow its own
+                // column downwards without pulling the row's other boxes.
+                <div key={e.id} className="flex items-start gap-2">
                   <DatePicker
                     value={e.date}
                     onChange={(date) => patchExam(e.id, { date })}
                     label="Exam date"
-                    className={`${inputCls} w-[168px] shrink-0`}
+                    className={inputCls}
+                    wrapperClassName="w-[150px] shrink-0"
                   />
                   <input
                     value={e.title ?? ""}

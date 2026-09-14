@@ -9,6 +9,13 @@
 import { useRef, useState } from "react";
 import { RESOURCE_KINDS, type ResourceKind } from "@/lib/resources";
 import {
+  RESOURCE_ACCEPT,
+  isTextFile,
+  resourceFileSupported,
+  tooLargeMessage,
+  unsupportedFileMessage,
+} from "@/lib/fileTypes";
+import {
   RESOURCE_MAX_BYTES,
   RESOURCE_MAX_PDF_PAGES,
   RESOURCE_MAX_WORDS,
@@ -21,7 +28,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 
 const MAX_BYTES = RESOURCE_MAX_BYTES;
 
-const ACCEPT = "image/*,application/pdf,.txt,.md,.csv";
+const ACCEPT = RESOURCE_ACCEPT;
 
 export type ResourcePayload = {
   name: string;
@@ -32,7 +39,7 @@ export type ResourcePayload = {
 };
 
 function isPlainText(file: File): boolean {
-  return file.type.startsWith("text/") || /\.(txt|md|csv)$/i.test(file.name);
+  return isTextFile(file);
 }
 
 function readFile(file: File, asText: boolean): Promise<string> {
@@ -69,18 +76,14 @@ export function ResourceAdd({
 
   function take(picked: File | undefined) {
     if (!picked) return;
-    if (picked.size > MAX_BYTES) {
-      setLocalError("That file is over 3 MB. A screenshot of the pages you need works better.");
+    // The type first: an unsupported file is refused by name before its size
+    // matters. Only formats the model reads get through (lib/fileTypes.ts).
+    if (!resourceFileSupported(picked)) {
+      setLocalError(unsupportedFileMessage(picked, "resource"));
       return;
     }
-    // Anything else — .docx, .pages, a zip — cannot be read here, and a
-    // screenshot of it can.
-    const readable =
-      picked.type.startsWith("image/") || picked.type === "application/pdf" || isPlainText(picked);
-    if (!readable) {
-      setLocalError(
-        "Grasp can read images, PDFs and plain text. For a Word document, save it as a PDF or screenshot it."
-      );
+    if (picked.size > MAX_BYTES) {
+      setLocalError(tooLargeMessage("resource"));
       return;
     }
     setLocalError("");
@@ -221,8 +224,8 @@ export function ResourceAdd({
                 <UploadIcon className="h-6 w-6" />
                 <span className="text-sm font-semibold">Drop a file here, or click to choose</span>
                 <span className="text-xs text-slate-400">
-                  A screenshot or photo, a {RESOURCE_MAX_PDF_PAGES}-page PDF, or a text file of up
-                  to {RESOURCE_MAX_WORDS} words
+                  A PNG, JPG, WEBP or GIF image, a {RESOURCE_MAX_PDF_PAGES}-page PDF, or a TXT, MD
+                  or CSV file of up to {RESOURCE_MAX_WORDS.toLocaleString("en")} words. 3 MB at most.
                 </span>
               </button>
             )}
@@ -231,7 +234,11 @@ export function ResourceAdd({
           <div className="mt-4">
             <textarea
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                // The over-the-limit error goes as soon as the text is back under.
+                if (localError && textFits(e.target.value)) setLocalError("");
+              }}
               placeholder="Paste the marking criteria, the rubric bands, the term plan — whatever the document says."
               aria-invalid={over || undefined}
               aria-describedby="resource-word-count"
@@ -247,7 +254,7 @@ export function ResourceAdd({
                 over ? "font-semibold text-red-700" : "text-slate-500"
               }`}
             >
-              {words.toLocaleString()} / {RESOURCE_MAX_WORDS} words
+              {words.toLocaleString("en")} / {RESOURCE_MAX_WORDS.toLocaleString("en")} words
             </p>
           </div>
         )}
@@ -286,7 +293,9 @@ export function ResourceAdd({
 
         <button
           onClick={submit}
-          disabled={source === "file" ? !file : !text.trim() || over}
+          // Deliberately not disabled when the text is over the word limit:
+          // pressing it says why it cannot be read, which a dead button does not.
+          disabled={source === "file" ? !file : !text.trim()}
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60 disabled:hover:bg-brand-600"
         >
           <UploadIcon className="h-4 w-4" />

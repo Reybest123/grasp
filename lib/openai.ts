@@ -14,8 +14,37 @@ export type ChatResult =
   | { ok: true; content: string }
   | { ok: false; response: NextResponse };
 
+/**
+ * The provider refusing an uploaded file itself — a format it cannot read, a
+ * damaged or password-protected PDF. That is not an outage, and telling the
+ * student "could not reach the AI" sent them to retry a file that will never
+ * work.
+ */
+const UNREADABLE_FILE =
+  "Grasp could not open this file. It may be damaged, password-protected or saved in a format that is not supported. Please try a PNG or JPG screenshot instead.";
+
 function fail(status: number): { ok: false; response: NextResponse } {
   return { ok: false, response: NextResponse.json({ error: UNAVAILABLE }, { status }) };
+}
+
+/**
+ * Read off the provider's error `code`, `param` and message, never passed on:
+ * only our own sentence reaches the browser, since a provider message can echo
+ * the key back. Text-only routes never send a file, so they never match.
+ */
+function isUnreadableFile(status: number, body: string): boolean {
+  if (status !== 400) return false;
+  try {
+    const error = JSON.parse(body)?.error ?? {};
+    return (
+      /image|file|pdf/i.test(`${error.code ?? ""} ${error.param ?? ""}`) ||
+      /unsupported image|image format|invalid image|could not process|\bpdf\b|\bfile\b/i.test(
+        String(error.message ?? "")
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 export async function chatCompletion(body: Record<string, unknown>): Promise<ChatResult> {
@@ -38,7 +67,11 @@ export async function chatCompletion(body: Record<string, unknown>): Promise<Cha
   }
 
   if (!res.ok) {
-    console.error(`[grasp] OpenAI ${res.status}:`, await res.text());
+    const body = await res.text();
+    console.error(`[grasp] OpenAI ${res.status}:`, body);
+    if (isUnreadableFile(res.status, body)) {
+      return { ok: false, response: NextResponse.json({ error: UNREADABLE_FILE }, { status: 415 }) };
+    }
     return fail(502);
   }
 

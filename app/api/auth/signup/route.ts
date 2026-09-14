@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { hashPassword, passwordProblem } from "@/lib/password";
 import { createSession, destroySession } from "@/lib/session";
-import { normalizeEmail, emailProblem, nameProblem } from "@/lib/accounts";
+import { normalizeEmail, emailProblem } from "@/lib/accounts";
 import { sendVerification } from "@/lib/verification";
 
 export async function POST(req: NextRequest) {
@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
 
   // Each refusal names its field, so the form can show the message under the
   // box it is about rather than at the top of the form.
+  // The name is optional, so it is never refused.
   const refusal =
-    (nameProblem(name) && { error: nameProblem(name), field: "name" }) ||
     (emailProblem(email) && { error: emailProblem(email), field: "email" }) ||
     (passwordProblem(password) && { error: passwordProblem(password), field: "password" });
   if (refusal) return NextResponse.json(refusal, { status: 400 });

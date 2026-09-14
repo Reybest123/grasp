@@ -132,7 +132,13 @@ export function AddAssessmentDialog({
 
             <div>
               <span className="mb-1.5 block text-sm font-semibold text-ink">Date</span>
-              <DatePicker value={date} onChange={setDate} label="Assessment date" className={`${inputCls} w-full`} />
+              <DatePicker
+                value={date}
+                onChange={setDate}
+                label="Assessment date"
+                className={inputCls}
+                wrapperClassName="w-full"
+              />
             </div>
 
             <label className="block">
