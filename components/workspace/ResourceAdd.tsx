@@ -8,11 +8,18 @@
 
 import { useRef, useState } from "react";
 import { RESOURCE_KINDS, type ResourceKind } from "@/lib/resources";
+import {
+  RESOURCE_MAX_BYTES,
+  RESOURCE_MAX_PDF_PAGES,
+  RESOURCE_MAX_WORDS,
+  countWords,
+  textFits,
+  textLimitProblem,
+} from "@/lib/resourceLimits";
 import { BackIcon, CloseIcon, FileIcon, UploadIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
 
-/** Vercel caps a serverless request body at ~4.5MB and base64 inflates by a third. */
-const MAX_BYTES = 3 * 1024 * 1024;
+const MAX_BYTES = RESOURCE_MAX_BYTES;
 
 const ACCEPT = "image/*,application/pdf,.txt,.md,.csv";
 
@@ -84,7 +91,9 @@ export function ResourceAdd({
   async function submit() {
     setLocalError("");
     if (source === "text") {
-      if (!text.trim()) return setLocalError("Paste what the document says first.");
+      if (!text.trim()) return setLocalError("Please paste the document's text first.");
+      const tooLong = textLimitProblem(text);
+      if (tooLong) return setLocalError(tooLong);
       return onAdd({
         name: name.trim() || `${subjectName} document`,
         kind: kind === "auto" ? undefined : kind,
@@ -95,6 +104,12 @@ export function ResourceAdd({
     try {
       const asText = isPlainText(file);
       const contents = await readFile(file, asText);
+      // A text file is held to the same word cap as pasted text. A PDF's page
+      // count can only be read on the server, which checks it there.
+      if (asText) {
+        const tooLong = textLimitProblem(contents);
+        if (tooLong) return setLocalError(tooLong);
+      }
       onAdd({
         name: name.trim() || file.name,
         kind: kind === "auto" ? undefined : kind,
@@ -120,6 +135,8 @@ export function ResourceAdd({
   }
 
   const shown = localError || error;
+  const words = countWords(text);
+  const over = !textFits(text);
 
   return (
     <div>
@@ -204,18 +221,35 @@ export function ResourceAdd({
                 <UploadIcon className="h-6 w-6" />
                 <span className="text-sm font-semibold">Drop a file here, or click to choose</span>
                 <span className="text-xs text-slate-400">
-                  Screenshot, photo, PDF or plain text — up to 3 MB
+                  A screenshot or photo, a {RESOURCE_MAX_PDF_PAGES}-page PDF, or a text file of up
+                  to {RESOURCE_MAX_WORDS} words
                 </span>
               </button>
             )}
           </div>
         ) : (
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Paste the marking criteria, the rubric bands, the term plan — whatever the document says."
-            className="mt-4 h-44 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-brand-500"
-          />
+          <div className="mt-4">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Paste the marking criteria, the rubric bands, the term plan — whatever the document says."
+              aria-invalid={over || undefined}
+              aria-describedby="resource-word-count"
+              className={`h-44 w-full rounded-xl border p-3 text-sm outline-none transition ${
+                over
+                  ? "border-red-400 focus:border-red-500"
+                  : "border-slate-300 focus:border-brand-500"
+              }`}
+            />
+            <p
+              id="resource-word-count"
+              className={`mt-1.5 text-right text-xs tabular-nums ${
+                over ? "font-semibold text-red-700" : "text-slate-500"
+              }`}
+            >
+              {words.toLocaleString()} / {RESOURCE_MAX_WORDS} words
+            </p>
+          </div>
         )}
 
         <section className="mt-7">
@@ -252,7 +286,7 @@ export function ResourceAdd({
 
         <button
           onClick={submit}
-          disabled={source === "file" ? !file : !text.trim()}
+          disabled={source === "file" ? !file : !text.trim() || over}
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60 disabled:hover:bg-brand-600"
         >
           <UploadIcon className="h-4 w-4" />

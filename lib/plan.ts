@@ -50,6 +50,14 @@ export function isPlan(value: unknown): value is Plan {
  */
 export const RESOURCE_LIMIT: Record<Plan, number> = { pro: 5, max: 10 };
 
+/**
+ * Documents read into any Resource Bank in a rolling week, enforced by
+ * `/api/resource-extract`. The per-subject cap above does not bound spending on
+ * its own, since a document can be deleted and another added in its place;
+ * this does. Each read is capped to cost under a cent (lib/resourceLimits.ts).
+ */
+export const RESOURCE_READ_LIMIT: Record<Plan, number> = { pro: 15, max: 40 };
+
 /** Quizzes generated in a rolling week, enforced by `/api/quiz` through lib/usage.ts. */
 export const QUIZ_LIMIT: Record<Plan, number> = { pro: 20, max: 60 };
 
@@ -73,6 +81,10 @@ export const RECORDING_SEGMENT_MS = 20_000;
 
 export function resourceLimit(plan: Plan): number {
   return RESOURCE_LIMIT[plan];
+}
+
+export function resourceReadLimit(plan: Plan): number {
+  return RESOURCE_READ_LIMIT[plan];
 }
 
 export function quizLimit(plan: Plan): number {

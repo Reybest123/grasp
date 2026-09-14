@@ -2,7 +2,7 @@
 
 import type { Subject } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
-import { upcomingExams, nextClassLabel } from "@/lib/schedule";
+import { examStatuses, nextClassLabel } from "@/lib/schedule";
 import { ClockIcon, ExamIcon, EditIcon, PlusIcon } from "@/components/icons";
 
 export function SubjectCard({
@@ -20,7 +20,7 @@ export function SubjectCard({
   const color = getColor(subject.colorKey);
   const nextClass = now ? nextClassLabel(subject.classes, now) : null;
   // Only the soonest exam gets a chip; the rest are summarised as a count.
-  const exams = now ? upcomingExams(subject.exams, now) : [];
+  const exams = now ? examStatuses(subject.exams, now) : [];
   const exam = exams[0];
   const moreExams = Math.max(0, exams.length - 1);
 
@@ -52,7 +52,11 @@ export function SubjectCard({
             <p className="flex flex-wrap items-center gap-1.5">
               <span
                 className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  exam.soon ? "bg-amber-50 text-amber-700" : color.tint
+                  exam.overdue
+                    ? "bg-red-50 text-red-700"
+                    : exam.soon
+                      ? "bg-amber-50 text-amber-700"
+                      : color.tint
                 }`}
               >
                 <ExamIcon className="h-3.5 w-3.5 shrink-0" />

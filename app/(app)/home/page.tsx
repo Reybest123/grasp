@@ -20,7 +20,7 @@ import { useSubjects, useNow, type NewSubject } from "@/lib/subjectsStore";
 import { TimetableDialog } from "@/components/onboarding/TimetableDialog";
 import { useRecording } from "@/lib/recordingStore";
 import { useProfile, firstName } from "@/lib/profileStore";
-import { upcomingExamsAcross, DAY_SHORT } from "@/lib/schedule";
+import { examStatusesAcross, DAY_SHORT, type Exam } from "@/lib/schedule";
 import {
   activeDays,
   bandOf,
@@ -39,6 +39,7 @@ import {
 import { DEFAULT_PLAN, planName, quizLimit, trialDaysLeft } from "@/lib/plan";
 import { fetchUsage } from "@/lib/ai";
 import { AddAssessmentDialog } from "@/components/app/AddAssessmentDialog";
+import { AssessmentMenu } from "@/components/app/AssessmentMenu";
 import { StatRing } from "@/components/StatRing";
 import { Skeleton } from "@/components/Skeleton";
 import { LoadFailed } from "@/components/app/LoadFailed";
@@ -68,7 +69,10 @@ export default function HomePage() {
   const { profile, ready: profileReady } = useProfile();
   const { guard } = useRecording();
   const now = useNow();
-  const [adding, setAdding] = useState(false);
+  // null while closed; `editing` is null when adding a new assessment.
+  const [dialog, setDialog] = useState<{ editing: { subjectId: string; exam: Exam } | null } | null>(
+    null
+  );
 
   const name = firstName(profile.name);
   const hasSubjects = subjects.length > 0;
@@ -77,10 +81,32 @@ export default function HomePage() {
   // on the server and disagrees with the browser a frame later.
   const week = now ? weekActivity(subjects, now, WEEK) : null;
 
-  function addAssessment(subjectId: string, date: string, title: string) {
+  function saveAssessment(subjectId: string, date: string, title: string) {
+    const editing = dialog?.editing ?? null;
+    const target = subjects.find((s) => s.id === subjectId);
+    if (!target) return;
+    const fields = { date, title: title || undefined };
+
+    if (!editing) {
+      updateSubject(subjectId, { exams: [...target.exams, makeExam(date, fields.title)] });
+    } else if (editing.subjectId === subjectId) {
+      updateSubject(subjectId, {
+        exams: target.exams.map((e) => (e.id === editing.exam.id ? { ...e, ...fields } : e)),
+      });
+    } else {
+      // Moved to another subject: out of the old one and onto the new one,
+      // keeping its id.
+      const from = subjects.find((s) => s.id === editing.subjectId);
+      if (from) updateSubject(from.id, { exams: from.exams.filter((e) => e.id !== editing.exam.id) });
+      updateSubject(subjectId, { exams: [...target.exams, { ...editing.exam, ...fields }] });
+    }
+  }
+
+  /** Delete and Mark as resolved both land here: either way it leaves the list. */
+  function removeAssessment(subjectId: string, examId: string) {
     const subject = subjects.find((s) => s.id === subjectId);
     if (!subject) return;
-    updateSubject(subjectId, { exams: [...subject.exams, makeExam(date, title || undefined)] });
+    updateSubject(subjectId, { exams: subject.exams.filter((e) => e.id !== examId) });
   }
 
   const open = (id: string) => guard(() => router.push(`/workspace/${id}`));
@@ -116,18 +142,21 @@ export default function HomePage() {
             <Assessments
               subjects={subjects}
               now={now}
-              onAdd={() => setAdding(true)}
+              onAdd={() => setDialog({ editing: null })}
               onOpen={open}
+              onEdit={(subjectId, exam) => setDialog({ editing: { subjectId, exam } })}
+              onRemove={removeAssessment}
             />
           </div>
         </>
       )}
 
       <AddAssessmentDialog
-        open={adding}
+        open={dialog !== null}
+        editing={dialog?.editing ?? null}
         subjects={subjects}
-        onClose={() => setAdding(false)}
-        onAdd={addAssessment}
+        onClose={() => setDialog(null)}
+        onSave={saveAssessment}
       />
 
       {/* Its own Suspense boundary, since reading the URL's query can suspend. */}
@@ -697,28 +726,35 @@ function WeekChart({ week }: { week: ActivityDay[] }) {
   );
 }
 
-/** Upcoming assessments across every subject, soonest first. */
+/**
+ * Every assessment across every subject: overdue ones first, then soonest. An
+ * overdue one stays until the student marks it resolved or deletes it.
+ */
 function Assessments({
   subjects,
   now,
   onAdd,
   onOpen,
+  onEdit,
+  onRemove,
 }: {
   subjects: Subject[];
   now: Date | null;
   onAdd: () => void;
   onOpen: (id: string) => void;
+  onEdit: (subjectId: string, exam: Exam) => void;
+  onRemove: (subjectId: string, examId: string) => void;
 }) {
-  const upcoming = now ? upcomingExamsAcross(subjects, now) : [];
+  const listed = now ? examStatusesAcross(subjects, now) : [];
 
   return (
     <aside className="flex min-h-0 flex-col">
       <h2 className="shrink-0 text-sm font-bold uppercase tracking-wide text-slate-500">
-        Upcoming assessments
+        Assessments
       </h2>
 
       <div className="mt-3 flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-        {upcoming.length === 0 ? (
+        {listed.length === 0 ? (
           <div className="my-auto px-3 py-6 text-center">
             <p className="text-sm font-semibold text-ink">No assessments added</p>
             <p className="mt-1 text-xs text-slate-500">Add one and Grasp counts down to it.</p>
@@ -733,37 +769,54 @@ function Assessments({
           <>
             {/* Scrolls inside the card, so a long list never makes the page scroll. */}
             <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-              {upcoming.map(({ subject, status }) => (
-                <li key={status.exam.id}>
-                  <button
-                    onClick={() => onOpen(subject.id)}
-                    className="flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-slate-50"
+              {listed.map(({ subject, status }) => {
+                const name = status.exam.title?.trim() || "Exam";
+                return (
+                  <li
+                    key={status.exam.id}
+                    className="flex items-center gap-0.5 rounded-xl pr-1 transition hover:bg-slate-50"
                   >
-                    <ExamIcon
-                      className={`mt-0.5 h-4 w-4 shrink-0 ${
-                        status.soon ? "text-amber-600" : "text-slate-400"
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-ink">
-                        {status.exam.title?.trim() || "Exam"}
-                      </span>
-                      <span className="block truncate text-xs text-slate-500">{subject.name}</span>
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        status.soon ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
-                      }`}
+                    <button
+                      onClick={() => onOpen(subject.id)}
+                      className="flex min-w-0 flex-1 items-start gap-2.5 rounded-xl px-2.5 py-2.5 text-left"
                     >
-                      {status.days === 0
-                        ? "today"
-                        : status.days === 1
-                          ? "tomorrow"
-                          : `${status.days}d`}
-                    </span>
-                  </button>
-                </li>
-              ))}
+                      <ExamIcon
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${
+                          status.overdue
+                            ? "text-red-600"
+                            : status.soon
+                              ? "text-amber-600"
+                              : "text-slate-400"
+                        }`}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-ink">{name}</span>
+                        <span className="block truncate text-xs text-slate-500">
+                          {subject.name} · {status.date}
+                        </span>
+                      </span>
+                      <span
+                        title={status.when}
+                        className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          status.overdue
+                            ? "bg-red-50 text-red-700"
+                            : status.soon
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {status.short}
+                      </span>
+                    </button>
+                    <AssessmentMenu
+                      name={name}
+                      onEdit={() => onEdit(subject.id, status.exam)}
+                      onResolve={() => onRemove(subject.id, status.exam.id)}
+                      onDelete={() => onRemove(subject.id, status.exam.id)}
+                    />
+                  </li>
+                );
+              })}
             </ul>
             <button
               onClick={onAdd}

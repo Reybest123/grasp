@@ -1,29 +1,35 @@
 "use client";
 
-// Add an assessment from the home dashboard.
+// Add an assessment from the home dashboard, or edit one already there.
 //
 // The same exam rows live in the subject editor, but reaching them from here
 // would mean picking a subject, opening its panel and scrolling past colour
 // swatches and class times to get to the one field the student came for. So it
 // is a dialog with the subject as a field of its own — the assessment is the
-// thing being added, and which subject it belongs to is just part of it.
+// thing being added, and which subject it belongs to is just part of it. That
+// also means an edit can move an assessment to a different subject.
 
 import { useEffect, useState } from "react";
 import type { Subject } from "@/lib/subjects";
+import type { Exam } from "@/lib/schedule";
 import { getColor } from "@/lib/subjectColors";
+import { DatePicker } from "@/components/DatePicker";
 import { CloseIcon, ExamIcon } from "@/components/icons";
 
 export function AddAssessmentDialog({
   open,
   subjects,
+  editing = null,
   onClose,
-  onAdd,
+  onSave,
 }: {
   open: boolean;
   subjects: Subject[];
+  /** the assessment being edited; null to add a new one */
+  editing?: { subjectId: string; exam: Exam } | null;
   onClose: () => void;
-  /** appends the exam onto the chosen subject */
-  onAdd: (subjectId: string, date: string, title: string) => void;
+  /** adds the assessment, or saves the edit onto whichever subject is chosen */
+  onSave: (subjectId: string, date: string, title: string) => void;
 }) {
   const [subjectId, setSubjectId] = useState("");
   const [date, setDate] = useState("");
@@ -32,10 +38,10 @@ export function AddAssessmentDialog({
   // Reset each time it opens, so a cancelled attempt doesn't prefill the next.
   useEffect(() => {
     if (!open) return;
-    setSubjectId(subjects[0]?.id ?? "");
-    setDate("");
-    setTitle("");
-  }, [open, subjects]);
+    setSubjectId(editing?.subjectId ?? subjects[0]?.id ?? "");
+    setDate(editing?.exam.date ?? "");
+    setTitle(editing?.exam.title ?? "");
+  }, [open, editing, subjects]);
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +59,7 @@ export function AddAssessmentDialog({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!valid) return;
-    onAdd(subjectId, date, title.trim());
+    onSave(subjectId, date, title.trim());
     onClose();
   }
 
@@ -63,15 +69,12 @@ export function AddAssessmentDialog({
     <>
       <div onClick={onClose} aria-hidden className="fixed inset-0 z-[60] bg-black/40" />
       <div className="fixed inset-0 z-[60] grid place-items-center p-4">
-        {/* noValidate: a half-typed date otherwise raises the browser's own
-            "Please enter a valid value" bubble instead of simply keeping the
-            Add button disabled. */}
         <form
           onSubmit={submit}
           noValidate
           role="dialog"
           aria-modal="true"
-          aria-label="Add an assessment"
+          aria-label={editing ? "Edit assessment" : "Add an assessment"}
           className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl [animation:popIn_150ms_ease-out]"
         >
           <div className="flex items-start justify-between gap-4">
@@ -80,8 +83,14 @@ export function AddAssessmentDialog({
                 <ExamIcon className="h-5 w-5" />
               </span>
               <div>
-                <h2 className="font-bold text-ink">Add an assessment</h2>
-                <p className="text-sm text-slate-500">Grasp counts down to it and factors it into quizzes.</p>
+                <h2 className="font-bold text-ink">
+                  {editing ? "Edit assessment" : "Add an assessment"}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {editing
+                    ? "Change its date, its name or the subject it belongs to."
+                    : "Grasp counts down to it and factors it into quizzes."}
+                </p>
               </div>
             </div>
             <button
@@ -121,15 +130,10 @@ export function AddAssessmentDialog({
               </div>
             </label>
 
-            <label className="block">
+            <div>
               <span className="mb-1.5 block text-sm font-semibold text-ink">Date</span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={`${inputCls} w-full`}
-              />
-            </label>
+              <DatePicker value={date} onChange={setDate} label="Assessment date" className={`${inputCls} w-full`} />
+            </div>
 
             <label className="block">
               <span className="mb-1.5 flex items-center justify-between text-sm font-semibold text-ink">
@@ -158,7 +162,7 @@ export function AddAssessmentDialog({
               disabled={!valid}
               className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Add assessment
+              {editing ? "Save changes" : "Add assessment"}
             </button>
           </div>
         </form>

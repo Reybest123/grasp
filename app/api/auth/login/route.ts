@@ -11,16 +11,21 @@ import { normalizeEmail } from "@/lib/accounts";
  * field. Saying "no account with that email" would turn this form into a way
  * for a stranger to test whether someone has a Grasp account.
  */
-const REJECTED = "That email and password do not match an account.";
+const REJECTED = "The email address or password is incorrect.";
+
+/**
+ * `field` tells the form which box to show the message under. It is always the
+ * password box, which says nothing about whether the email exists; the form
+ * outlines both boxes, since either one could be the wrong one.
+ */
+const rejected = () => NextResponse.json({ error: REJECTED, field: "password" }, { status: 401 });
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const email = normalizeEmail(body.email);
   const password = typeof body.password === "string" ? body.password : "";
 
-  if (!email || !password) {
-    return NextResponse.json({ error: REJECTED }, { status: 401 });
-  }
+  if (!email || !password) return rejected();
 
   const result = await query(async () => {
     const rows = (await sql`
@@ -41,9 +46,7 @@ export async function POST(req: NextRequest) {
   const stored = user?.password_hash ?? "scrypt$32768$8$1$00$00";
   const valid = await verifyPassword(password, stored);
 
-  if (!user || !valid) {
-    return NextResponse.json({ error: REJECTED }, { status: 401 });
-  }
+  if (!user || !valid) return rejected();
 
   await createSession(user.id);
   return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } });

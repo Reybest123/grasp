@@ -194,7 +194,11 @@ export function SubjectWorkspace({
           {exam && (
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                exam.soon ? "bg-amber-100 text-amber-800" : color.tint
+                exam.overdue
+                  ? "bg-red-50 text-red-700"
+                  : exam.soon
+                    ? "bg-amber-100 text-amber-800"
+                    : color.tint
               }`}
             >
               <ExamIcon className="h-4 w-4" /> {exam.label}

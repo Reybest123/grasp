@@ -3,7 +3,7 @@
 // The login and signup forms, which are the same form with one extra field.
 //
 // Kept as one component rather than two pages' worth of near-identical markup:
-// the card, the error strip, the disabled/pending states and the footer link
+// the card, the error handling, the disabled/pending states and the footer link
 // all behave identically, and the only real difference is whether a name is
 // asked for and which route it posts to.
 //
@@ -12,18 +12,25 @@
 // for, so it carries the three promises the landing page makes; it is hidden
 // below lg, where a form on its own is the whole job.
 //
+// Errors belong to the box they are about. A box with a problem is outlined in
+// red and the message sits directly under it, so the student can see which one
+// to fix. A box is checked when the student leaves it (only once they have
+// typed in it, so tabbing past an empty box does not scold them), every box is
+// checked on submit, and a box already showing an error re-checks as they type
+// so the message clears the moment it is fixed. Only a failure that is not
+// about any one box (no connection, a server fault) uses the strip at the top.
+//
 // `noValidate` on the form is deliberate. Without it the browser checks the
-// email field itself and shows its own bubble ("Please include an '@' in the
+// email box itself and shows its own bubble ("Please include an '@' in the
 // email address") before submit ever runs, which looks nothing like Grasp.
-// Every check happens in `submit` instead and is shown in the Grasp error strip.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo, LogoMark } from "@/components/Logo";
 import { ErrorNote } from "@/components/ErrorNote";
 import { PasswordInput } from "@/components/PasswordInput";
-import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { AlertIcon, ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { emailProblem, nameProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
 
 const PROMISES = [
@@ -31,6 +38,17 @@ const PROMISES = [
   "Highlight any line to have it explained where you are reading",
   "Quizzes written from your own notes, not a generic bank",
 ];
+
+type FieldKey = "name" | "email" | "password" | "confirm";
+type Values = Record<FieldKey, string>;
+/**
+ * A key present means the box is outlined in red. Its message shows under the
+ * box when it is not empty; an empty one outlines without a message, which is
+ * how a rejected login marks the email box as well as the password box.
+ */
+type Errors = Partial<Record<FieldKey, string>>;
+
+const fieldId = (field: FieldKey) => `auth-${field}`;
 
 export function AuthForm({
   mode,
@@ -50,41 +68,95 @@ export function AuthForm({
 }) {
   const router = useRouter();
   const signup = mode === "signup";
+  const fields: FieldKey[] = signup ? ["name", "email", "password", "confirm"] : ["email", "password"];
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
+  const [values, setValues] = useState<Values>({ name: "", email: "", password: "", confirm: "" });
+  const [errors, setErrors] = useState<Errors>({});
+  const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Boxes the student has typed in. Leaving an untouched box checks nothing.
+  const typed = useRef<Set<FieldKey>>(new Set());
+
+  function problemFor(field: FieldKey, v: Values): string | null {
+    switch (field) {
+      case "name":
+        return nameProblem(v.name);
+      case "email":
+        return emailProblem(normalizeEmail(v.email));
+      case "password":
+        // Login only checks that there is something to send. It does not apply
+        // the signup length rule: an account made before a rule changed must
+        // still be able to log in.
+        return signup ? passwordProblem(v.password) : v.password ? null : "Please enter your password.";
+      case "confirm":
+        // Only the form checks this. The route is sent one password, and a
+        // mistyped one is exactly the mistake the second box is there to catch.
+        if (!v.confirm) return "Please re-enter your password to confirm it.";
+        return v.confirm !== v.password ? "The passwords do not match." : null;
+    }
+  }
+
+  /** Re-checks the given boxes against `v` and writes the result into `cur`. */
+  function recheck(cur: Errors, v: Values, which: FieldKey[]): Errors {
+    const out = { ...cur };
+    for (const field of which) {
+      const problem = problemFor(field, v);
+      if (problem) out[field] = problem;
+      else delete out[field];
+    }
+    return out;
+  }
+
+  function change(field: FieldKey, value: string) {
+    const v = { ...values, [field]: value };
+    setValues(v);
+    typed.current.add(field);
+    setErrors((cur) => {
+      // Only boxes already showing something are re-checked while typing, so
+      // a message never appears mid-word, but one that is fixed goes at once.
+      const showing = (f: FieldKey) => f in cur;
+      const which: FieldKey[] = [];
+      if (showing(field)) which.push(field);
+      // The confirm box depends on the password box.
+      if (signup && field === "password" && showing("confirm")) which.push("confirm");
+      // A rejected login outlined both boxes; changing either one clears both.
+      if (!signup && (field === "email" || field === "password")) {
+        for (const f of ["email", "password"] as const) if (showing(f) && !which.includes(f)) which.push(f);
+      }
+      return which.length ? recheck(cur, v, which) : cur;
+    });
+  }
+
+  function leave(field: FieldKey) {
+    if (!typed.current.has(field)) return;
+    const which: FieldKey[] = [field];
+    if (signup && field === "password" && typed.current.has("confirm")) which.push("confirm");
+    setErrors((cur) => recheck(cur, values, which));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setFormError("");
 
     // Checked here as well as in the route, so an obvious typo is caught
     // without a round trip. The route is the one that actually decides.
-    const local = signup
-      ? (nameProblem(name) ??
-        emailProblem(normalizeEmail(email)) ??
-        passwordProblem(password) ??
-        // Only the form checks this. The route is sent one password, and a
-        // mistyped one is exactly the mistake the second box is there to catch
-        // before the account is made with it.
-        (password !== confirm ? "The two passwords do not match." : null))
-      : // Login only checks that there is something to send. It does not apply
-        // the signup length rule: an account made before a rule changed must
-        // still be able to log in.
-        (emailProblem(normalizeEmail(email)) ?? (!password ? "Enter your password." : null));
-    if (local) return setError(local);
+    const found = recheck({}, values, fields);
+    for (const f of fields) typed.current.add(f);
+    setErrors(found);
+    const first = fields.find((f) => f in found);
+    if (first) {
+      document.getElementById(fieldId(first))?.focus();
+      return;
+    }
 
     setBusy(true);
     if (onPreviewSubmit) {
       // Held briefly so the pending state is visible, as it would be for real.
-      const entered = normalizeEmail(email);
+      const entered = normalizeEmail(values.email);
       setTimeout(() => onPreviewSubmit(entered), 700);
       return;
     }
+    const { name, email, password } = values;
     try {
       const res = await fetch(`/api/auth/${mode}`, {
         method: "POST",
@@ -94,7 +166,18 @@ export function AuthForm({
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Try again.");
+        const message: string = data.error ?? "Something went wrong. Please try again.";
+        if (fields.includes(data.field)) {
+          const field = data.field as FieldKey;
+          setErrors({
+            [field]: message,
+            // Either box could be the wrong one on a rejected login.
+            ...(!signup && field === "password" ? { email: "" } : {}),
+          });
+          document.getElementById(fieldId(field))?.focus();
+        } else {
+          setFormError(message);
+        }
         setBusy(false);
         return;
       }
@@ -114,10 +197,18 @@ export function AuthForm({
       // Deliberately not clearing `busy`: the button stays disabled through the
       // navigation rather than flicking back to "Log in" as the page changes.
     } catch {
-      setError("Grasp could not reach the server. Check your connection.");
+      setFormError("Grasp could not reach the server. Please check your connection and try again.");
       setBusy(false);
     }
   }
+
+  const field = (key: FieldKey) => ({
+    id: fieldId(key),
+    value: values[key],
+    onChange: (v: string) => change(key, v),
+    onBlur: () => leave(key),
+    error: errors[key],
+  });
 
   return (
     // Fixed to the viewport, like the dashboard: the page never scrolls. The
@@ -163,13 +254,12 @@ export function AuthForm({
             )}
 
             <form onSubmit={submit} noValidate className="mt-5">
-              {error && <ErrorNote message={error} className="mb-4" />}
+              {formError && <ErrorNote message={formError} className="mb-4" />}
 
               {signup && (
                 <Field
+                  {...field("name")}
                   label="Your name"
-                  value={name}
-                  onChange={setName}
                   placeholder="e.g. Sam"
                   autoFocus
                   autoComplete="given-name"
@@ -177,20 +267,18 @@ export function AuthForm({
               )}
 
               <Field
+                {...field("email")}
                 label="Email"
                 type="email"
-                value={email}
-                onChange={setEmail}
                 placeholder="you@school.edu"
                 autoFocus={!signup}
                 autoComplete="email"
               />
 
               <Field
+                {...field("password")}
                 label="Password"
                 type="password"
-                value={password}
-                onChange={setPassword}
                 placeholder={signup ? "At least 8 characters" : ""}
                 // Tells a password manager to offer to save a new one rather
                 // than to fill the existing one, and vice versa.
@@ -199,10 +287,9 @@ export function AuthForm({
 
               {signup && (
                 <Field
+                  {...field("confirm")}
                   label="Confirm password"
                   type="password"
-                  value={confirm}
-                  onChange={setConfirm}
                   placeholder="Type it again"
                   autoComplete="new-password"
                 />
@@ -301,49 +388,77 @@ function BrandPanel({ signup }: { signup: boolean }) {
   );
 }
 
-const FIELD_INPUT =
-  "w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-base text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
-
 function Field({
+  id,
   label,
   value,
   onChange,
+  onBlur,
+  error,
   type = "text",
   placeholder,
   autoFocus,
   autoComplete,
 }: {
+  id: string;
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur: () => void;
+  /** undefined: fine. "": outlined without a message. Anything else: outlined, message below. */
+  error?: string;
   type?: string;
   placeholder?: string;
   autoFocus?: boolean;
   autoComplete?: string;
 }) {
+  const invalid = error !== undefined;
+  const messageId = error ? `${id}-error` : undefined;
+  const className = `w-full rounded-xl border bg-white px-4 py-2 text-base text-ink outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+    invalid
+      ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+      : "border-slate-300 focus:border-brand-500 focus:ring-brand-100"
+  }`;
+
   return (
-    <label className="mt-2.5 block first:mt-0">
-      <span className="mb-1 block text-sm font-semibold text-ink">{label}</span>
+    <div className="mt-2.5 first:mt-0">
+      <label htmlFor={id} className="mb-1 block text-sm font-semibold text-ink">
+        {label}
+      </label>
       {type === "password" ? (
         <PasswordInput
+          id={id}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           placeholder={placeholder}
           autoFocus={autoFocus}
           autoComplete={autoComplete}
-          className={FIELD_INPUT}
+          invalid={invalid}
+          describedBy={messageId}
+          className={className}
         />
       ) : (
         <input
+          id={id}
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
           autoFocus={autoFocus}
           autoComplete={autoComplete}
-          className={FIELD_INPUT}
+          aria-invalid={invalid || undefined}
+          aria-describedby={messageId}
+          className={className}
         />
       )}
-    </label>
+      {error && (
+        <p id={messageId} className="mt-1.5 flex items-start gap-1.5 text-sm text-red-700">
+          <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </p>
+      )}
+    </div>
   );
 }

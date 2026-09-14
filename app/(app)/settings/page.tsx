@@ -185,9 +185,9 @@ function PasswordSection() {
 
     // Checked here so a typo is caught without a round trip; the route decides.
     const problem = !current
-      ? "Enter your current password."
+      ? "Please enter your current password."
       : (passwordProblem(next) ??
-        (next !== confirm ? "The two new passwords do not match." : null));
+        (next !== confirm ? "The new passwords do not match." : null));
     if (problem) return setError(problem);
 
     setBusy(true);
@@ -318,7 +318,7 @@ function DeleteSection() {
   async function remove(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!password) return setError("Enter your password to confirm.");
+    if (!password) return setError("Please enter your password to confirm.");
 
     setBusy(true);
     try {

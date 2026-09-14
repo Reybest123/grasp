@@ -30,13 +30,15 @@ export function normalizeEmail(value: unknown): string {
  * lets everything else through.
  */
 export function emailProblem(email: string): string | null {
-  if (!email) return "Enter your email address.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "That does not look like an email address.";
+  if (!email) return "Please enter your email address.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return "This email address is in an invalid format. Use the format name@example.com.";
+  }
   return null;
 }
 
 export function nameProblem(name: string): string | null {
-  if (!name.trim()) return "Enter your name.";
+  if (!name.trim()) return "Please enter your name.";
   return null;
 }
 
@@ -49,7 +51,7 @@ export function nameProblem(name: string): string | null {
  * NIST. Length is what actually costs an attacker.
  */
 export function passwordProblem(password: string): string | null {
-  if (password.length < 8) return "Use at least 8 characters.";
-  if (password.length > 200) return "That password is too long.";
+  if (password.length < 8) return "Your password must be at least 8 characters long.";
+  if (password.length > 200) return "Your password must be 200 characters or fewer.";
   return null;
 }

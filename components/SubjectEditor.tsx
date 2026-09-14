@@ -11,6 +11,7 @@ import { SUBJECT_COLORS, getColor } from "@/lib/subjectColors";
 import { DAY_SHORT, type ClassSlot, type Exam } from "@/lib/schedule";
 import { CloseIcon, PlusIcon, TrashIcon, CheckIcon, ExamIcon, ClockIcon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DatePicker } from "@/components/DatePicker";
 
 export function SubjectEditor({
   subject,
@@ -245,11 +246,11 @@ export function SubjectEditor({
             <div className="mt-3 space-y-2">
               {exams.map((e) => (
                 <div key={e.id} className="flex items-center gap-2">
-                  <input
-                    type="date"
+                  <DatePicker
                     value={e.date}
-                    onChange={(ev) => patchExam(e.id, { date: ev.target.value })}
-                    className={`${inputCls} w-[150px] shrink-0`}
+                    onChange={(date) => patchExam(e.id, { date })}
+                    label="Exam date"
+                    className={`${inputCls} w-[168px] shrink-0`}
                   />
                   <input
                     value={e.title ?? ""}

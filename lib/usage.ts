@@ -14,10 +14,11 @@ import {
   quizLimit,
   recordingLimit,
   recordingMaxSeconds,
+  resourceReadLimit,
   type Plan,
 } from "@/lib/plan";
 
-export type UsageKind = "quiz" | "recording";
+export type UsageKind = "quiz" | "recording" | "resource";
 
 export type Allowance = { used: number; limit: number; resetsAt: string | null };
 
@@ -29,6 +30,7 @@ type Result<T> = { ok: true; data: T } | { ok: false; response: Response };
 const LIMITS: Record<UsageKind, (plan: Plan) => number> = {
   quiz: quizLimit,
   recording: recordingLimit,
+  resource: resourceReadLimit,
 };
 
 /**
@@ -136,6 +138,38 @@ export async function claimQuiz(
     release: async () => {
       await query(
         () => sql`delete from usage where user_id = ${account.id} and kind = 'quiz' and ref = ${ref}`
+      );
+    },
+  };
+}
+
+/**
+ * Reserves one Resource Bank read. `release` is for a provider failure, where
+ * nothing was read; a read that ran and found nothing usable keeps its unit,
+ * because the call was still paid for.
+ */
+export async function claimResourceRead(
+  account: Account
+): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
+  const ref = randomUUID();
+  const claimed = await claim(account, "resource", ref);
+  if (!claimed.ok) return claimed;
+
+  if (!claimed.data) {
+    const current = await allowance(account, "resource");
+    const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
+    const plan = planOf(account);
+    const limit = resourceReadLimit(plan);
+    return refused(
+      `You have added ${limit} Resource Bank document${limit === 1 ? "" : "s"} in the last 7 days, which is as many as the ${PLAN_LABEL[plan]} plan allows. Your next one frees up ${when}.`
+    );
+  }
+
+  return {
+    ok: true,
+    release: async () => {
+      await query(
+        () => sql`delete from usage where user_id = ${account.id} and kind = 'resource' and ref = ${ref}`
       );
     },
   };

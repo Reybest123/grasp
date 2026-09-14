@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { hashPassword, passwordProblem } from "@/lib/password";
 import { createSession, destroySession } from "@/lib/session";
-import { normalizeEmail, emailProblem } from "@/lib/accounts";
+import { normalizeEmail, emailProblem, nameProblem } from "@/lib/accounts";
 import { sendVerification } from "@/lib/verification";
 
 export async function POST(req: NextRequest) {
@@ -19,8 +19,13 @@ export async function POST(req: NextRequest) {
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
   const password = typeof body.password === "string" ? body.password : "";
 
-  const problem = emailProblem(email) ?? passwordProblem(password);
-  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+  // Each refusal names its field, so the form can show the message under the
+  // box it is about rather than at the top of the form.
+  const refusal =
+    (nameProblem(name) && { error: nameProblem(name), field: "name" }) ||
+    (emailProblem(email) && { error: emailProblem(email), field: "email" }) ||
+    (passwordProblem(password) && { error: passwordProblem(password), field: "password" });
+  if (refusal) return NextResponse.json(refusal, { status: 400 });
 
   const hash = await hashPassword(password);
 
@@ -46,7 +51,10 @@ export async function POST(req: NextRequest) {
     // say why it will not create the account, and "that email is taken" is
     // already implied by the fact that signup failed.
     return NextResponse.json(
-      { error: "There is already an account with that email. Log in instead." },
+      {
+        error: "An account with this email address already exists. Please log in instead.",
+        field: "email",
+      },
       { status: 409 }
     );
   }
