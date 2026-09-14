@@ -21,7 +21,8 @@ import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
 import { PLANS, PLAN_AVAILABLE, PLAN_LABEL, TRIAL_DAYS, type Plan } from "@/lib/plan";
-import { AlertIcon, ArrowRightIcon, BackIcon, CheckIcon } from "@/components/icons";
+import { ArrowRightIcon, BackIcon, CheckIcon } from "@/components/icons";
+import { ErrorNote } from "@/components/ErrorNote";
 
 /** The questions come first, one per step; the plans are the step after them. */
 const PLANS_STEP = QUESTIONS.length;
@@ -195,15 +196,7 @@ export function OnboardingFlow({
               </p>
             </div>
 
-            {error && (
-              <div
-                role="alert"
-                className="mx-auto mt-5 flex max-w-4xl items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-              >
-                <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>{error}</p>
-              </div>
-            )}
+            {error && <ErrorNote message={error} className="mx-auto mt-5 max-w-4xl" />}
 
             <div className="mx-auto mt-7 grid max-w-4xl gap-5 sm:grid-cols-2">
               {PLANS.map((plan) => (

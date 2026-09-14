@@ -42,7 +42,13 @@ export async function chatCompletion(body: Record<string, unknown>): Promise<Cha
     return fail(502);
   }
 
-  const data = await res.json();
+  // A malformed body would otherwise throw out of the route as a bare 500,
+  // which reaches the browser as an HTML crash page rather than this message.
+  const data = await res.json().catch(() => null);
+  if (!data) {
+    console.error("[grasp] OpenAI returned a body that was not JSON");
+    return fail(502);
+  }
   return { ok: true, content: data.choices?.[0]?.message?.content ?? "" };
 }
 

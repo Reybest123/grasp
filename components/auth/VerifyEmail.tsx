@@ -7,7 +7,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
-import { AlertIcon, CheckIcon, MailIcon } from "@/components/icons";
+import { ErrorNote } from "@/components/ErrorNote";
+import { CheckIcon, MailIcon } from "@/components/icons";
 
 const STATUS_MESSAGE = {
   expired: "That link has expired or was already replaced. Send a new one below.",
@@ -85,15 +86,7 @@ export function VerifyEmail({
             confirm your address, then you can set up your notebooks.
           </p>
 
-          {error && (
-            <div
-              role="alert"
-              className="mt-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
-              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
+          {error && <ErrorNote message={error} className="mt-6" />}
 
           {sent && (
             <div

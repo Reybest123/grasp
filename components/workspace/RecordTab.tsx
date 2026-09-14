@@ -20,6 +20,7 @@ import { updatedLabel } from "@/lib/schedule";
 import type { ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
+import { ErrorNote } from "@/components/ErrorNote";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
 
 export function RecordTab({
@@ -90,12 +91,7 @@ export function RecordTab({
         it&apos;s saved straight into your notes — the audio is never stored.
       </p>
 
-      {fatal && (
-        <p className="mt-5 flex max-w-md items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-left text-sm text-red-700">
-          <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-          {fatal}
-        </p>
-      )}
+      {fatal && <ErrorNote message={fatal} className="mt-5 w-full max-w-md" />}
 
       {resources.length > 0 && (
         <p className="mt-5 flex max-w-md items-start gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-left text-xs text-slate-500">

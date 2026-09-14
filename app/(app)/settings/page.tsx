@@ -8,6 +8,9 @@
 //
 // The email is shown but not editable: changing the address an account logs in
 // with needs a confirmation step on the new address, which is not built yet.
+//
+// Every form here is `noValidate` and checks itself, so a problem shows in the
+// Grasp error strip rather than as a browser validation bubble.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,9 +18,11 @@ import { useProfile } from "@/lib/profileStore";
 import { useRecording } from "@/lib/recordingStore";
 import { useNow } from "@/lib/subjectsStore";
 import { DEFAULT_PLAN, PLAN_PERKS, PLAN_PRICE, planName, trialDaysLeft } from "@/lib/plan";
-import { passwordProblem } from "@/lib/accounts";
+import { nameProblem, passwordProblem } from "@/lib/accounts";
 import { Skeleton } from "@/components/Skeleton";
-import { AlertIcon, CheckIcon } from "@/components/icons";
+import { ErrorNote } from "@/components/ErrorNote";
+import { PasswordInput } from "@/components/PasswordInput";
+import { CheckIcon } from "@/components/icons";
 
 const INPUT =
   "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
@@ -95,24 +100,14 @@ function Field({
   );
 }
 
-function ErrorStrip({ message }: { message: string }) {
-  return (
-    <div
-      role="alert"
-      className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-    >
-      <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-      <p>{message}</p>
-    </div>
-  );
-}
-
 function ProfileSection() {
   const { profile, setName } = useProfile();
   // The page only renders this once the account has loaded, so the stored name
   // can seed the field directly.
   const [value, setValue] = useState(profile.name);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!saved) return;
@@ -120,16 +115,27 @@ function ProfileSection() {
     return () => clearTimeout(t);
   }, [saved]);
 
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSaved(false);
+    // A blank name would leave the dashboard greeting "Welcome back, " and the
+    // header avatar with no letter in it.
+    const problem = nameProblem(value);
+    if (problem) return setError(problem);
+
+    setBusy(true);
+    const failed = await setName(value);
+    setBusy(false);
+    if (failed) setError(failed);
+    else setSaved(true);
+  }
+
   return (
     <Section title="Profile">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setName(value);
-          setSaved(true);
-        }}
-        className="flex flex-1 flex-col"
-      >
+      <form onSubmit={submit} noValidate className="flex flex-1 flex-col">
+        {error && <ErrorNote message={error} className="mb-5" />}
+
         <Field label="Your name" hint="What Grasp calls you on your home page.">
           <input
             value={value}
@@ -146,8 +152,12 @@ function ProfileSection() {
         </div>
 
         <div className="mt-auto flex items-center gap-3 pt-6">
-          <button type="submit" disabled={value.trim() === profile.name} className={PRIMARY}>
-            Save
+          <button
+            type="submit"
+            disabled={busy || value.trim() === profile.name}
+            className={PRIMARY}
+          >
+            {busy ? "Saving…" : "Save"}
           </button>
           {saved && (
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
@@ -204,32 +214,29 @@ function PasswordSection() {
 
   return (
     <Section title="Password">
-      <form onSubmit={submit} className="flex flex-1 flex-col">
-        {error && <ErrorStrip message={error} />}
+      <form onSubmit={submit} noValidate className="flex flex-1 flex-col">
+        {error && <ErrorNote message={error} className="mb-5" />}
 
         <Field label="Current password">
-          <input
-            type="password"
+          <PasswordInput
             value={current}
-            onChange={(e) => setCurrent(e.target.value)}
+            onChange={setCurrent}
             autoComplete="current-password"
             className={INPUT}
           />
         </Field>
         <Field label="New password" hint="At least 8 characters.">
-          <input
-            type="password"
+          <PasswordInput
             value={next}
-            onChange={(e) => setNext(e.target.value)}
+            onChange={setNext}
             autoComplete="new-password"
             className={INPUT}
           />
         </Field>
         <Field label="Confirm new password">
-          <input
-            type="password"
+          <PasswordInput
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={setConfirm}
             autoComplete="new-password"
             className={INPUT}
           />
@@ -361,24 +368,25 @@ function DeleteSection() {
       </div>
 
       {open && (
-        <form onSubmit={remove} className="mt-5 border-t border-slate-100 pt-5">
+        <form onSubmit={remove} noValidate className="mt-5 border-t border-slate-100 pt-5">
           {recording && (
             <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               You&apos;re still recording your {rec.subjectName} lecture. Deleting your account
               ends it.
             </p>
           )}
-          {error && <ErrorStrip message={error} />}
+          {error && <ErrorNote message={error} className="mb-5" />}
 
           <Field label="Password" hint="Enter it to confirm this is your account.">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              autoFocus
-              className={`${INPUT} sm:max-w-sm`}
-            />
+            <span className="block sm:max-w-sm">
+              <PasswordInput
+                value={password}
+                onChange={setPassword}
+                autoComplete="current-password"
+                autoFocus
+                className={INPUT}
+              />
+            </span>
           </Field>
 
           <div className="mt-5 flex flex-wrap gap-2.5">
@@ -393,7 +401,7 @@ function DeleteSection() {
               type="button"
               onClick={cancel}
               disabled={busy}
-              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Keep my account
             </button>

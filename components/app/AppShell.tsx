@@ -22,7 +22,7 @@ import { useSubjects, useNow } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
 import { DEFAULT_PLAN, planName, trialDaysLeft } from "@/lib/plan";
 import { useRecording, mmss } from "@/lib/recordingStore";
-import { MicIcon } from "@/components/icons";
+import { AlertIcon, MicIcon } from "@/components/icons";
 
 type Chrome = {
   /** open a subject straight on its Record tab */
@@ -43,7 +43,7 @@ export function useChrome(): Chrome {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { subjects, updateSubject, removeSubject } = useSubjects();
+  const { subjects, updateSubject, removeSubject, saveFailed } = useSubjects();
   // The logo navigates, so it goes through the same guard every other exit
   // from the live recording view does.
   const rec = useRecording();
@@ -93,6 +93,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Logo onClick={() => guard(() => router.push("/home"))} />
 
           <div className="flex items-center gap-3 text-sm">
+            {/* Edits are written in the background, so a failed write has no
+                screen of its own to appear on. Said here until it succeeds. */}
+            {saveFailed && (
+              <span
+                role="status"
+                title="Grasp will keep trying. Keep this tab open until this goes away."
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700"
+              >
+                <AlertIcon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Changes not saved yet. Retrying</span>
+                <span className="sm:hidden">Not saved</span>
+              </span>
+            )}
             <RecordingChip onOpen={openRecording} />
             {/* Waits for the account, rather than naming a plan and then
                 swapping it a frame later. A trial says how long it has left,

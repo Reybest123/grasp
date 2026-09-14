@@ -14,6 +14,7 @@ import { AiFlag } from "@/components/workspace/AiFlag";
 import { formatScore } from "@/components/workspace/QuizCard";
 import { QuizResults } from "@/components/workspace/QuizResults";
 import { QuizTitle } from "@/components/workspace/QuizTitle";
+import { ErrorNote } from "@/components/ErrorNote";
 import { BackIcon, CheckIcon, CloseIcon, SparkleIcon } from "@/components/icons";
 
 /** What a full-mark answer says — used for review display and for explanations. */
@@ -55,6 +56,10 @@ export function QuizRunner({
   const [error, setError] = useState("");
   // Which questions are mid-explanation, so two clicks can't race.
   const [explaining, setExplaining] = useState<string[]>([]);
+  // A failed explanation, shown under the question it was asked for. It used
+  // to go into the page-level error at the top of the quiz, which on a long
+  // review is far off-screen from the button that was pressed.
+  const [explainErrors, setExplainErrors] = useState<Record<string, string>>({});
   // The results screen. Component state, not stored on the quiz, so it only
   // ever shows for the submit that just happened — reopening a finished quiz
   // from the grid goes straight to the marked answers.
@@ -133,6 +138,7 @@ export function QuizRunner({
 
   async function explain(q: QuizQuestion) {
     setExplaining((cur) => [...cur, q.id]);
+    setExplainErrors(({ [q.id]: _cleared, ...rest }) => rest);
     const { explanation, cited, error: explainError } = await explainWrongAnswer({
       question: q.question,
       kind: q.kind,
@@ -142,7 +148,7 @@ export function QuizRunner({
       context,
       resources,
     });
-    if (explainError) setError(explainError);
+    if (explainError) setExplainErrors((cur) => ({ ...cur, [q.id]: explainError }));
     else setAnswer(q.id, { explanation, explanationCited: cited });
     setExplaining((cur) => cur.filter((id) => id !== q.id));
   }
@@ -208,12 +214,6 @@ export function QuizRunner({
 
         <ResourceCitation cited={quiz.builtWith} className="mt-4" label="Written against" />
         <ResourceCitation cited={quiz.markedWith} className="mt-2" label="Marked against" />
-
-        {error && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
 
         <ol className="mt-6 space-y-4">
           {quiz.questions.map((q, qi) => {
@@ -349,6 +349,10 @@ export function QuizRunner({
                         />
                       </div>
                     ) : (
+                      <>
+                      {explainErrors[q.id] && (
+                        <ErrorNote message={explainErrors[q.id]} className="mb-3" />
+                      )}
                       <button
                         onClick={() => explain(q)}
                         disabled={explaining.includes(q.id)}
@@ -361,6 +365,7 @@ export function QuizRunner({
                             ? "Explain what I missed"
                             : "Explain why I'm wrong"}
                       </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -384,6 +389,9 @@ export function QuizRunner({
 
         {!quiz.submitted && (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+            {/* Beside Submit, not at the top of the quiz: Submit is at the foot
+                of the page, and an error up top landed out of sight of it. */}
+            {error && <ErrorNote message={error} className="mb-4" />}
             <button
               onClick={submit}
               disabled={marking}

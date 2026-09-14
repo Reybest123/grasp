@@ -10,6 +10,7 @@ import type { ResourceBrief } from "@/lib/resources";
 import { useProfile } from "@/lib/profileStore";
 import { DEFAULT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
 import { BackIcon, BankIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
+import { ErrorNote } from "@/components/ErrorNote";
 
 const MAX_PER_KIND = 10;
 const MAX_TOTAL = 20;
@@ -166,11 +167,7 @@ export function QuizSetup({
             : "You have not written any notes for this subject yet, so this one will be general. Once you have notes, quizzes come straight from them."}
         </p>
 
-        {error && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <ErrorNote message={error} className="mt-5" />}
 
         {/* Topics — only meaningful once there is material behind them */}
         {hasNotes && subject.quizTopics.length > 0 && (

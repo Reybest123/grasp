@@ -41,6 +41,7 @@ import { fetchUsage } from "@/lib/ai";
 import { AddAssessmentDialog } from "@/components/app/AddAssessmentDialog";
 import { StatRing } from "@/components/StatRing";
 import { Skeleton } from "@/components/Skeleton";
+import { LoadFailed } from "@/components/app/LoadFailed";
 import { makeExam } from "@/lib/subjects";
 import type { Subject } from "@/lib/subjects";
 import {
@@ -63,7 +64,7 @@ const marksLabel = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1
 
 export default function HomePage() {
   const router = useRouter();
-  const { subjects, ready, updateSubject, replaceSubjects } = useSubjects();
+  const { subjects, ready, loadError, updateSubject, replaceSubjects } = useSubjects();
   const { profile, ready: profileReady } = useProfile();
   const { guard } = useRecording();
   const now = useNow();
@@ -100,6 +101,8 @@ export default function HomePage() {
 
       {!ready ? (
         <HomeSkeleton />
+      ) : loadError ? (
+        <LoadFailed className="mt-6 lg:flex-1" />
       ) : !hasSubjects ? (
         <NoSubjects />
       ) : (

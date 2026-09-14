@@ -28,6 +28,9 @@ import type { ClassSlot } from "@/lib/schedule";
 /** Long enough to swallow a run of typing, short enough to feel saved. */
 const FLUSH_MS = 900;
 
+/** How long a failed save waits before it is tried again. */
+const RETRY_MS = 10_000;
+
 /** A subject before it has an id or a colour — what onboarding extracts. */
 export type NewSubject = { name: string; teacher?: string; classes: ClassSlot[] };
 
@@ -37,6 +40,14 @@ type Store = {
   ready: boolean;
   /** true while there are edits not yet written to the server */
   saving: boolean;
+  /**
+   * Why the subjects could not be loaded, or null. Pages show this instead of
+   * an empty workspace, which would otherwise read as everything deleted.
+   */
+  loadError: string | null;
+  retryLoad: () => void;
+  /** true while an edit has failed to save and is waiting to be retried */
+  saveFailed: boolean;
   addSubject: (name: string) => Subject;
   /** onboarding (§2): the timetable becomes the whole subject list */
   replaceSubjects: (built: NewSubject[]) => Promise<void>;
@@ -50,6 +61,10 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  // Bumped by retryLoad to run the load effect again.
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   // The flush runs on a timer, long after the render that scheduled it, so it
   // cannot close over `subjects` — it would write whatever the list was when
@@ -63,23 +78,46 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let problem: string | null = null;
       try {
         const res = await fetch("/api/subjects");
-        if (res.ok) {
-          const data = await res.json();
-          if (!cancelled && Array.isArray(data.subjects)) setSubjects(data.subjects);
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && Array.isArray(data.subjects)) {
+          if (!cancelled) setSubjects(data.subjects);
+        } else if (res.status !== 401) {
+          // A 401 means signed out; proxy.ts will have redirected already, and
+          // an empty list is the right thing to render in the meantime. Any
+          // other failure is said out loud rather than shown as no subjects.
+          problem = data.error ?? "Something went wrong on Grasp's side.";
         }
-        // A 401 means signed out; proxy.ts will have redirected already, and an
-        // empty list is the right thing to render in the meantime.
       } catch {
-        // Offline. The student sees an empty workspace rather than a crash;
-        // nothing is written back, so nothing is lost by it.
+        problem = "Grasp could not reach the server. Check your connection.";
       }
-      if (!cancelled) setReady(true);
+      if (!cancelled) {
+        setLoadError(problem);
+        setReady(true);
+      }
     })();
     return () => {
       cancelled = true;
     };
+  }, [loadAttempt]);
+
+  const retryLoad = useCallback(() => {
+    setReady(false);
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }, []);
+
+  // flush is defined below and schedules its own retry, so it reaches itself
+  // through a ref rather than through its own closure.
+  const flushRef = useRef<() => void>(() => {});
+
+  /** A failed write is kept dirty and tried again shortly, rather than dropped. */
+  const retrySoon = useCallback(() => {
+    setSaveFailed(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => flushRef.current(), RETRY_MS);
   }, []);
 
   /** Writes every subject marked dirty, one request each. */
@@ -89,6 +127,7 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
     if (!ids.length) return;
 
     setSaving(true);
+    let failed = false;
     await Promise.all(
       ids.map(async (id) => {
         const subject = latest.current.find((s) => s.id === id);
@@ -96,19 +135,31 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
         // its own request, and re-creating it here would undo that.
         if (!subject) return;
         try {
-          await fetch(`/api/subjects/${encodeURIComponent(id)}`, {
+          const res = await fetch(`/api/subjects/${encodeURIComponent(id)}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ subject }),
           });
+          // A 400 or 404 will never succeed however often it is sent (a
+          // malformed subject, or an id that is not this account's), so only
+          // a server-side failure is worth trying again. It used to be treated
+          // as saved, which silently lost the edit.
+          if (!res.ok && res.status !== 400 && res.status !== 404) {
+            dirty.current.add(id);
+            failed = true;
+          }
         } catch {
           // Put it back so the next flush retries rather than dropping the edit.
           dirty.current.add(id);
+          failed = true;
         }
       })
     );
     setSaving(false);
-  }, []);
+    if (failed) retrySoon();
+    else if (!dirty.current.size) setSaveFailed(false);
+  }, [retrySoon]);
+  flushRef.current = flush;
 
   const scheduleFlush = useCallback(
     (id: string) => {
@@ -175,16 +226,20 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subjects: made }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.subjects)) setSubjects(data.subjects);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.subjects)) {
+        setSubjects(data.subjects);
+      } else if (!res.ok) {
+        for (const s of made) dirty.current.add(s.id);
+        retrySoon();
       }
     } catch {
-      // The list is on screen and the student can still edit it; the next edit
-      // to any subject flushes it.
+      // The list is on screen and the student can still edit it; it is written
+      // again shortly, and the header says it has not saved in the meantime.
       for (const s of made) dirty.current.add(s.id);
+      retrySoon();
     }
-  }, []);
+  }, [retrySoon]);
 
   const updateSubject = useCallback(
     (id: string, patch: Partial<Subject>) => {
@@ -207,7 +262,18 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SubjectsContext.Provider
-      value={{ subjects, ready, saving, addSubject, replaceSubjects, updateSubject, removeSubject }}
+      value={{
+        subjects,
+        ready,
+        saving,
+        loadError,
+        retryLoad,
+        saveFailed,
+        addSubject,
+        replaceSubjects,
+        updateSubject,
+        removeSubject,
+      }}
     >
       {children}
     </SubjectsContext.Provider>

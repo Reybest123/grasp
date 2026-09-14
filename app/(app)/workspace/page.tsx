@@ -9,10 +9,11 @@ import { useRecording } from "@/lib/recordingStore";
 import { useChrome } from "@/components/app/AppShell";
 import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
 import { Skeleton } from "@/components/Skeleton";
+import { LoadFailed } from "@/components/app/LoadFailed";
 
 export default function WorkspacePage() {
   const router = useRouter();
-  const { subjects, ready, addSubject } = useSubjects();
+  const { subjects, ready, loadError, addSubject } = useSubjects();
   const { editSubject } = useChrome();
   const { guard } = useRecording();
   const now = useNow();
@@ -39,6 +40,9 @@ export default function WorkspacePage() {
           the home dashboard, which exists now — repeating them above the grid
           made the two routes read as the same page. Each card still carries its
           own next class and exam countdown, which is where they mean something. */}
+      {ready && loadError ? (
+        <LoadFailed className="mt-8" />
+      ) : (
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {!ready ? (
           <>
@@ -64,6 +68,7 @@ export default function WorkspacePage() {
           </>
         )}
       </div>
+      )}
     </section>
   );
 }

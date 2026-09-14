@@ -33,9 +33,14 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { body, instructions, subjectName, context, resources } = await req.json();
+  const { body, instructions, subjectName, context, resources } = await req
+    .json()
+    .catch(() => ({}));
   if (!body || typeof body !== "string" || !body.trim()) {
-    return NextResponse.json({ error: "No note body provided" }, { status: 400 });
+    return NextResponse.json(
+      { error: "This note is empty, so there is nothing to enhance yet." },
+      { status: 400 }
+    );
   }
 
   // §3.4 — the student's own criteria, planners and rubrics, already read once

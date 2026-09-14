@@ -6,6 +6,13 @@
 // without a round trip.
 
 /**
+ * What `requireUser` answers a signed-out request with. Here rather than in
+ * lib/session.ts so a client component can compare against it: that module
+ * imports node:crypto and cannot reach the browser.
+ */
+export const SIGNED_OUT_MESSAGE = "Your session has ended. Log in again to carry on.";
+
+/**
  * Lowercased and trimmed. Emails are case-insensitive in practice, and the
  * `users_email_lower_idx` unique index in db/schema.sql assumes this has
  * happened — storing "Sam@x.com" and "sam@x.com" as two accounts would be a

@@ -29,7 +29,8 @@ type Store = {
   ready: boolean;
   /** false when nobody is signed in; the app shell should not render */
   signedIn: boolean;
-  setName: (name: string) => Promise<void>;
+  /** resolves to an error to show, or null once the name is saved */
+  setName: (name: string) => Promise<string | null>;
   logOut: () => Promise<void>;
 };
 
@@ -70,20 +71,28 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Optimistic: the field updates as they type and the write follows. A failed
-  // rename is not worth a dialog, and the next load corrects it.
-  const setName = useCallback(async (name: string) => {
+  // Not optimistic. It used to update the name first and ignore the request's
+  // outcome, so Settings said "Saved" for a rename that never reached the
+  // server and the old name came back on the next load. The greeting now only
+  // changes once the account has actually changed, and a failure is returned
+  // for Settings to show.
+  const setName = useCallback(async (name: string): Promise<string | null> => {
     const trimmed = name.trim();
-    setProfile((p) => ({ ...p, name: trimmed }));
     try {
-      await fetch("/api/auth/me", {
+      const res = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return data.error ?? "Grasp could not save your name just now. Try again.";
+      }
     } catch {
-      // Best effort.
+      return "Grasp could not reach the server. Check your connection.";
     }
+    setProfile((p) => ({ ...p, name: trimmed }));
+    return null;
   }, []);
 
   const logOut = useCallback(async () => {

@@ -16,8 +16,9 @@ import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
 import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
 import { FoundSubjectEditor } from "@/components/onboarding/FoundSubjectEditor";
+import { ErrorNote } from "@/components/ErrorNote";
+import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 import {
-  AlertIcon,
   ArrowRightIcon,
   CheckIcon,
   CloseIcon,
@@ -32,7 +33,7 @@ const MAX_BYTES = 3 * 1024 * 1024;
 const ACCEPT = "image/*,application/pdf";
 
 /** What `requireUser` answers with — the preview rewords it, since there it is expected. */
-const NOT_SIGNED_IN = "Not signed in.";
+const NOT_SIGNED_IN = SIGNED_OUT_MESSAGE;
 
 type Stage = "upload" | "reading" | "done";
 
@@ -144,15 +145,7 @@ export function TimetableSetup({
     <div className="flex min-h-0 flex-auto flex-col">
       {stage === "upload" && (
         <div>
-          {error && (
-            <div
-              role="alert"
-              className="mb-4 flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
-              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
+          {error && <ErrorNote message={error} className="mb-4" />}
 
           <input
             ref={inputRef}

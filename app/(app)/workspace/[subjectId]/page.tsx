@@ -11,11 +11,12 @@ import { useChrome } from "@/components/app/AppShell";
 import { SubjectWorkspace } from "@/components/workspace/SubjectWorkspace";
 import { BackIcon } from "@/components/icons";
 import { Skeleton } from "@/components/Skeleton";
+import { LoadFailed } from "@/components/app/LoadFailed";
 
 export default function SubjectPage() {
   const router = useRouter();
   const params = useParams<{ subjectId: string }>();
-  const { subjects, ready } = useSubjects();
+  const { subjects, ready, loadError } = useSubjects();
   const { editSubject, openRecording, focusRecord } = useChrome();
   const now = useNow();
 
@@ -26,6 +27,15 @@ export default function SubjectPage() {
     // deep-linked id legitimately misses on the first render. Only say it is
     // gone once the subjects have actually been read.
     if (!ready) return <SubjectSkeleton />;
+    // A failed load is not a missing subject: saying "deleted" here would be
+    // untrue and alarming.
+    if (loadError) {
+      return (
+        <section className="px-6 py-10 sm:px-8">
+          <LoadFailed />
+        </section>
+      );
+    }
     return (
       <section className="px-6 py-20 text-center sm:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Subject not found</h1>

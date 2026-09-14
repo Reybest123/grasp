@@ -9,6 +9,7 @@
 import { useRef, useState } from "react";
 import { RESOURCE_KINDS, type ResourceKind } from "@/lib/resources";
 import { BackIcon, CloseIcon, FileIcon, UploadIcon } from "@/components/icons";
+import { ErrorNote } from "@/components/ErrorNote";
 
 /** Vercel caps a serverless request body at ~4.5MB and base64 inflates by a third. */
 const MAX_BYTES = 3 * 1024 * 1024;
@@ -136,11 +137,7 @@ export function ResourceAdd({
           once, keeps what it says, and works from that afterwards — the file itself is never stored.
         </p>
 
-        {shown && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {shown}
-          </div>
-        )}
+        {shown && <ErrorNote message={shown} className="mt-5" />}
 
         <div className="mt-6 flex gap-1 rounded-xl bg-slate-100 p-1">
           {(["file", "text"] as const).map((s) => (

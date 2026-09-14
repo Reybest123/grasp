@@ -17,6 +17,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/sessionCookie";
 import { isPlan, type Plan } from "@/lib/plan";
+import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 
 export { SESSION_COOKIE };
 
@@ -172,7 +173,7 @@ export async function requireUser({
   if (!user) {
     return {
       ok: false,
-      response: Response.json({ error: "Not signed in." }, { status: 401 }),
+      response: Response.json({ error: SIGNED_OUT_MESSAGE }, { status: 401 }),
     };
   }
   if (!user.verified && !allowUnverified) {

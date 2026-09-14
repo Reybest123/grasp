@@ -302,6 +302,16 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - `RECORDING_MAX_SECONDS` (now per plan) and `RECORDING_SEGMENT_MS` moved to `lib/plan.ts` so the server can derive the segment ceiling; `recordingStore` imports them rather than a server route importing a `"use client"` module.
   - **`npm run db:setup` has to be run against production** for the new `usage` and `feedback` tables, or quiz generation and recording there fail with "database has not been set up yet".
 - **AI answers carry a quiet "AI can make mistakes. Flag as wrong" line** (`components/workspace/AiFlag.tsx`, §9.2), under explain/refine replies, the enhance/generate result bar, quiz marking feedback, quiz explanations and a finished recording's notes. Pressing it posts a copy of that output to `/api/feedback` (`feedback` table). Deliberately small and grey: findable when an answer is wrong without shouting over every one that is right.
+- **Error states all look like Grasp (2026-09-14).** No screen shows a browser or framework fallback any more.
+  - **`components/ErrorNote.tsx` is the one error strip** (red border, alert icon, one sentence, optional dismiss). Auth, verify-email, onboarding, the timetable popup, Settings, quiz setup and marking, quiz explanations, Resource Bank, Record and Explain all use it. Don't draw a new red box; use this.
+  - **Every `<form>` is `noValidate`** and checks itself. Without it the browser's own bubble ("Please include an '@' in the email address", "Please enter a valid value" on a half-typed date) shows before `onSubmit` runs. Login now checks the email and that a password was typed, in the form (it does not apply the signup length rule).
+  - **`components/PasswordInput.tsx`** adds the show/hide eye to signup, login and every Settings password field.
+  - **`app/not-found.tsx`, `app/error.tsx`, `app/global-error.tsx` and `app/(app)/error.tsx`** all render `components/ErrorScreen.tsx`. The `(app)` boundary sits below the route group's layout on purpose, so a crashing page keeps the shell and a live recording mounted. Next 16.3's boundary prop is `retry`; the files fall back to `reset`.
+  - **`postJson`/`postForm` in `lib/ai.ts` never throw.** A dropped connection or a non-JSON reply (host size limit, crash page, timeout) used to throw out of the feature, leaving a spinner running with nothing on screen; it now comes back as an `error` string (`failureFor` words 413 and 504). `chatCompletion` treats a non-JSON provider body as the usual AI-unavailable message.
+  - **A failed subjects load is not an empty account.** `subjectsStore` exposes `loadError`/`retryLoad`; `/home`, `/workspace` and `/workspace/<id>` show `components/app/LoadFailed.tsx` rather than "You have no subjects yet" or "Subject not found". A save that fails with a 5xx or a network error stays dirty, retries every 10s, and raises `saveFailed`, which the header shows as "Changes not saved yet. Retrying". It used to count any response as saved.
+  - **A rename is no longer optimistic.** `profileStore.setName` returns an error or null, Settings shows it, and a blank name is refused in the form and in `PATCH /api/auth/me`.
+  - **Errors appear where the student is looking.** A quiz marking failure shows beside Submit (the foot of the page), and a failed "Explain why I'm wrong" shows under that question, not at the top of a long quiz.
+  - Wording: a signed-out API call answers `SIGNED_OUT_MESSAGE` from `lib/accounts.ts` ("Your session has ended. Log in again to carry on.", was "Not signed in."), and developer strings like "Bad request" / "No note body provided" were rewritten.
 - **Launch-readiness accessibility fixes.** The `slate-500` token darkened to `#716a61` (5.33:1 on white, 4.98:1 on slate-50; was 4.12 / 3.85), and the rail icons moved from `slate-400` (2.47:1) to it. Text fields drawn with a `border-slate-200/300` class get a `#958e84` border from `globals.css` (3.24:1, was 1.58:1), matched on the class so borderless inputs are untouched and at a specificity that still loses to `hover:`/`focus:`. The account menu dropped `role="menu"`, which promised arrow-key navigation it never had; it is a disclosure panel of plain buttons. **Still open from that audit:** `text-slate-400` used as text (2.47:1) and white on `brand-600` buttons (4.16:1).
 - **Accounts and Postgres (§10) — real, and the localStorage era is over.** Signup, login, logout and a session cookie, with every subject, note, quiz and resource stored in Railway Postgres and scoped to a user. The only thing still in `localStorage` anywhere is `grasp.hideNoteTip`, which is a per-device UI preference and belongs there.
   - **`db/schema.sql` is the schema, `npm run db:setup` applies it.** There is no `psql` on a stock Windows box, so `db/setup.mjs` reads `DATABASE_URL` out of `.env.local` by hand (nothing loads dotenv for a bare node process), splits the file on `;` and runs the statements one by one so a failure names the one that broke. It refuses a `*.railway.internal` URL outright, since that address only resolves inside Railway; from a laptop it needs the Postgres service's `DATABASE_PUBLIC_URL`. Every statement is `if not exists`, so re-running is harmless. It is a setup script, not a migration system: the day the schema has to *change* shape rather than grow, this needs replacing.
@@ -381,6 +391,8 @@ app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
                 api/usage (weekly allowances), api/feedback (flagged AI answers),
                 api/onboarding (stores the answers, starts the trial)
 components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEditor,
+                ErrorNote (the error strip), ErrorScreen (404 and crash pages),
+                PasswordInput (password field with the show/hide eye),
                 StatRing (shared by the dashboard tiles and quiz results),
                 LegalPage + LegalSection (the legal pages' frame),
                 PlanCard (landing pricing and onboarding's plan step)
@@ -392,7 +404,8 @@ components/onboarding/ OnboardingFlow (questions + plans; /onboarding saves,
                 SamplePreview (/sample's steps + preview bar)
 components/app/ AppProviders (the provider tree the (app) layout mounts),
                 AppShell (header + useChrome context + log-out confirm),
-                Sidebar, ProfileMenu (avatar menu), AddAssessmentDialog
+                Sidebar, ProfileMenu (avatar menu), AddAssessmentDialog,
+                LoadFailed (subjects could not be loaded)
 components/workspace/
                 SubjectWorkspace (shell + tab routing + note & quiz CRUD)
                 NotesTab, NoteToolbar, EquationEditor, TablePicker, TableMenu,

@@ -11,12 +11,19 @@
 // panel is the only place a signed-out student sees what they are signing up
 // for, so it carries the three promises the landing page makes; it is hidden
 // below lg, where a form on its own is the whole job.
+//
+// `noValidate` on the form is deliberate. Without it the browser checks the
+// email field itself and shows its own bubble ("Please include an '@' in the
+// email address") before submit ever runs, which looks nothing like Grasp.
+// Every check happens in `submit` instead and is shown in the Grasp error strip.
 
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo, LogoMark } from "@/components/Logo";
-import { AlertIcon, ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { ErrorNote } from "@/components/ErrorNote";
+import { PasswordInput } from "@/components/PasswordInput";
+import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { emailProblem, nameProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
 
 const PROMISES = [
@@ -65,7 +72,10 @@ export function AuthForm({
         // mistyped one is exactly the mistake the second box is there to catch
         // before the account is made with it.
         (password !== confirm ? "The two passwords do not match." : null))
-      : null;
+      : // Login only checks that there is something to send. It does not apply
+        // the signup length rule: an account made before a rule changed must
+        // still be able to log in.
+        (emailProblem(normalizeEmail(email)) ?? (!password ? "Enter your password." : null));
     if (local) return setError(local);
 
     setBusy(true);
@@ -152,16 +162,8 @@ export function AuthForm({
               </p>
             )}
 
-            <form onSubmit={submit} className="mt-5">
-              {error && (
-                <div
-                  role="alert"
-                  className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-                >
-                  <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>{error}</p>
-                </div>
-              )}
+            <form onSubmit={submit} noValidate className="mt-5">
+              {error && <ErrorNote message={error} className="mb-4" />}
 
               {signup && (
                 <Field
@@ -299,6 +301,9 @@ function BrandPanel({ signup }: { signup: boolean }) {
   );
 }
 
+const FIELD_INPUT =
+  "w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-base text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
+
 function Field({
   label,
   value,
@@ -319,15 +324,26 @@ function Field({
   return (
     <label className="mt-2.5 block first:mt-0">
       <span className="mb-1 block text-sm font-semibold text-ink">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        autoComplete={autoComplete}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-base text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
-      />
+      {type === "password" ? (
+        <PasswordInput
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          autoComplete={autoComplete}
+          className={FIELD_INPUT}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          autoComplete={autoComplete}
+          className={FIELD_INPUT}
+        />
+      )}
     </label>
   );
 }

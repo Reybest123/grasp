@@ -24,9 +24,14 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { noteBody, highlight, context, history, mode, resources } = await req.json();
+  const { noteBody, highlight, context, history, mode, resources } = await req
+    .json()
+    .catch(() => ({}));
   if (typeof noteBody !== "string" || typeof highlight !== "string" || !Array.isArray(history)) {
-    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Grasp could not tell what to explain. Highlight the passage again." },
+      { status: 400 }
+    );
   }
 
   const modeRules = mode === "refine" ? MODES.refine : MODES.explain;

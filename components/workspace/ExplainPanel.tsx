@@ -5,7 +5,8 @@ import { explainChat, type ChatMsg, type ExplainMode } from "@/lib/ai";
 import type { Citation, ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
-import { AlertIcon, BankIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
+import { ErrorNote } from "@/components/ErrorNote";
+import { BankIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
 
 /**
  * §3.2 Highlight to Explain — a margin conversation rather than a chatbot tab.
@@ -262,12 +263,7 @@ export function ExplainPanel({
             </div>
           )}
 
-          {failure && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
-              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{failure}</span>
-            </div>
-          )}
+          {failure && <ErrorNote message={failure} />}
         </div>
 
         <div className="border-t border-slate-200 p-3">

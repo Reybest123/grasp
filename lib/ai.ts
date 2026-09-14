@@ -34,14 +34,43 @@ export type ExtractedSubject = { name: string; teacher?: string; classes: ClassS
 /** Every route answers with this alongside its own payload. */
 type Used = { used?: string[] };
 
+const OFFLINE = "Grasp could not reach the server. Check your connection and try again.";
+
+/**
+ * The wording for a reply that carried no `error` of its own. That happens when
+ * something in front of the route answered instead of it — a host's size limit,
+ * a crash page, a gateway timeout — so the body is HTML rather than JSON.
+ */
+function failureFor(status: number): string {
+  if (status === 413) return "That is too large for Grasp to take in one go. Try something smaller.";
+  if (status === 504) return "Grasp took too long to answer. Try again in a moment.";
+  return "Something went wrong on Grasp's side. Try again in a moment.";
+}
+
+/**
+ * Reads a route's reply without ever throwing. It used to call `res.json()`
+ * bare, so a non-JSON reply or a dropped connection threw straight out of the
+ * feature that asked: a spinner that never stopped, or a button left disabled,
+ * with nothing on screen to say why.
+ */
+async function readReply<T>(res: Response): Promise<T & { error?: string }> {
+  const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
+  if (res.ok && data) return data;
+  return { ...(data ?? ({} as T)), error: data?.error ?? failureFor(res.status) };
+}
+
 async function postJson<T>(path: string, payload: unknown): Promise<T & Used & { error?: string }> {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  return res.ok ? data : { ...data, error: data.error ?? "Something went wrong." };
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { error: OFFLINE } as T & Used & { error: string };
+  }
+  return readReply<T & Used>(res);
 }
 
 // Audio can't go through postJson: it stringifies to JSON. The Content-Type is
@@ -53,12 +82,9 @@ async function postForm<T>(path: string, form: FormData): Promise<T & { error?: 
   try {
     res = await fetch(path, { method: "POST", body: form });
   } catch {
-    return { error: "Grasp could not reach the AI just now. Try again in a moment." } as T & {
-      error: string;
-    };
+    return { error: OFFLINE } as T & { error: string };
   }
-  const data = await res.json().catch(() => ({}));
-  return res.ok ? data : { ...data, error: data.error ?? "Something went wrong." };
+  return readReply<T>(res);
 }
 
 /** Ids in, resources out — one line, since every call below ends with it. */

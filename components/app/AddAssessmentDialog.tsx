@@ -63,8 +63,12 @@ export function AddAssessmentDialog({
     <>
       <div onClick={onClose} aria-hidden className="fixed inset-0 z-[60] bg-black/40" />
       <div className="fixed inset-0 z-[60] grid place-items-center p-4">
+        {/* noValidate: a half-typed date otherwise raises the browser's own
+            "Please enter a valid value" bubble instead of simply keeping the
+            Add button disabled. */}
         <form
           onSubmit={submit}
+          noValidate
           role="dialog"
           aria-modal="true"
           aria-label="Add an assessment"

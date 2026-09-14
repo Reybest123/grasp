@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { currentUser, requireUser } from "@/lib/session";
+import { nameProblem } from "@/lib/accounts";
 
 export async function GET() {
   const user = await currentUser();
@@ -22,6 +23,8 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
+  const problem = nameProblem(name);
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
   const result = await query(
     () => sql`update users set name = ${name} where id = ${guard.user.id}`

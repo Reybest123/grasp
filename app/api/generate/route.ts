@@ -23,9 +23,14 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { title, instructions, subjectName, context, resources } = await req.json();
+  const { title, instructions, subjectName, context, resources } = await req
+    .json()
+    .catch(() => ({}));
   if (typeof subjectName !== "string" || !subjectName.trim()) {
-    return NextResponse.json({ error: "No subject provided" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Give this subject a name first, so Grasp knows what to write about." },
+      { status: 400 }
+    );
   }
 
   // §3.4 — a first set of notes should already be pointed at whatever the
