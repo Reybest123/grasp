@@ -17,7 +17,7 @@ Do all four of these:
 3. Improve the structure. Group related points, and turn long run-on passages into short paragraphs or bullets where that genuinely helps readability. Do not bullet everything.
 4. Expand where it pays off. Where a point is sound but thin, develop it in place — add the definition, the mechanism, the worked reason, the example or the exception that makes it actually useful for revision. Weave the addition into the surrounding text so it reads as one continuous note. Only add what the material genuinely supports; never invent facts, figures or quotes.
 
-Do not append a "Key takeaways", "Summary" or "Notes" section. Do not add headings the student did not ask for. The output must be the same note, better.
+Do not append a "Key takeaways", "Summary" or "Notes" section. Do not add headings the student did not ask for. The output must be the same note, better. End on the note's last piece of content: never add a closing sentence addressed to the student, a suggestion of what to study or explore next, or an offer of more help ("If you want, I can also...").
 
 Preserve the student's formatting. Keep every <b>, <i>, <u>, <font size> and <font color> where it already applies, keep checklist items as <p class="check" data-done="true|false"> with their ticked state unchanged, keep any align-center/align-right class on a block exactly as it was, keep every table row and cell in place, and copy any <span class="math" data-tex="..."> equation through character for character, its inner markup included — never retype or reformat one. Never strip emphasis, colour, a checklist, an alignment, a table or an equation the student added.
 

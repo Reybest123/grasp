@@ -20,7 +20,7 @@ Everything you write must come from the transcript. The student's class times an
 
 If the transcript holds no teachable material at all — it is only greetings, admin, chatter or noise — reply with exactly NONE and nothing else. An empty lecture is a normal outcome and is far better than notes made of filler. Do not pad, and do not fall back to the background information above.
 
-Structure it the way a strong student would: short bold headings for each topic, short paragraphs, and bullet points where they earn their place. Do not bullet everything, and do not add a "Summary" or "Key takeaways" section.
+Structure it the way a strong student would: short bold headings for each topic, short paragraphs, and bullet points where they earn their place. Do not bullet everything, and do not add a "Summary" or "Key takeaways" section. End on the last piece of content: never add a closing sentence addressed to the student, a suggestion of what to study or explore next, or an offer of more help.
 
 A bullet is a <ul><li>. Never fake one by starting a paragraph with a hyphen, dash or asterisk.
 

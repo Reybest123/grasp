@@ -15,6 +15,8 @@ If the title is a specific, meaningful topic (not empty and not a placeholder li
 
 Write real content: definitions, mechanisms, worked examples, the kind of detail that's actually useful for revision. Use short paragraphs and bullet points where that helps readability, but do not bullet everything. Keep it concise enough to be a starting point the student edits further, not an exhaustive essay. Never invent specific facts, dates or figures you aren't confident are correct — stay general rather than risk being wrong.
 
+End on the last piece of content. Never close with a sentence addressed to the student or about the notes: no "For further study, consider...", no suggestions of what to explore or read next, no offers of more help ("If you want, I can also..."), no concluding summary or wrap-up line. Do not add a "Summary", "Key takeaways", "Conclusion" or "Further study" section.
+
 Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="..."> for any equation (LaTeX-lite: \\frac{}{}, ^{}, _{}, \\sqrt{}, Greek letter macros like \\pi). Every row of a table must keep the same number of cells.
 
 Never use emojis.`;
