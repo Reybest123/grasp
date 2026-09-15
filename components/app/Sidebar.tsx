@@ -110,10 +110,12 @@ function RailLink({
       className="group relative grid flex-1 place-items-center"
     >
       {/* The bar runs the full height of the half, so it marks the whole
-          clickable zone rather than just the icon. */}
+          clickable zone rather than just the icon. It grows out from the middle
+          on becoming active; the Sidebar stays mounted across navigations, so
+          the change of `active` is what drives the transition. */}
       <span
-        className={`absolute inset-y-0 left-0 w-1 bg-brand-600 transition-opacity ${
-          active ? "opacity-100" : "opacity-0"
+        className={`absolute inset-y-0 left-0 w-1 origin-center bg-brand-600 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+          active ? "scale-y-100" : "scale-y-0"
         }`}
       />
       {/* Hover washes the whole half in a faint orange, on inactive items only,
