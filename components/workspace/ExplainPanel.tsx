@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { explainChat, type ChatMsg, type ExplainMode } from "@/lib/ai";
 import type { Citation, ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
 import { ErrorNote } from "@/components/ErrorNote";
-import { BankIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
+import { CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
 
 /**
  * §3.2 Highlight to Explain — a margin conversation rather than a chatbot tab.
@@ -23,11 +23,17 @@ const OPENERS: Record<ExplainMode, string> = {
   refine: "Refine this part of my note.",
 };
 
-// Sent when the mode is switched mid-thread, so the new mode acts on the talk so far.
+// Sent with nothing typed after a mid-thread switch, so the new mode acts on the talk so far.
 const SWITCHERS: Record<ExplainMode, string> = {
   explain: "Explain this to me.",
   refine: "Refine this part of my note, using what we just talked about.",
 };
+
+const INPUT_MAX_PX = 160;
+
+function shortQuote(text: string) {
+  return text.length > 160 ? text.slice(0, 160) + "…" : text;
+}
 
 export function ExplainPanel({
   open,
@@ -52,22 +58,22 @@ export function ExplainPanel({
   onApplyRevision: (revisedHtml: string) => void;
 }) {
   const [history, setHistory] = useState<ChatMsg[]>([]);
-  // Which resources each answer drew on, keyed by that message's index in
-  // `history`. Kept beside the thread rather than on the message, because the
-  // thread is posted back to the API verbatim and a message is {role, content}.
+  // Kept beside the thread, keyed by message index, because the thread is
+  // posted back to the API verbatim and a message is only {role, content}.
   const [cited, setCited] = useState<Record<number, Citation[]>>({});
+  // User messages that carry the highlighted passage above them, and the mode they were sent in.
+  const [quoted, setQuoted] = useState<Record<number, ExplainMode>>({});
+  // Assistant messages whose reply rewrote the note.
+  const [revised, setRevised] = useState<Record<number, true>>({});
+  // The next send opens a request in the current mode: true on open and after
+  // a mode switch. It carries the passage and may be sent with nothing typed.
+  const [fresh, setFresh] = useState(true);
   const [pending, setPending] = useState(false);
   const [input, setInput] = useState("");
-  const [noteUpdated, setNoteUpdated] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  // The opening message is only worth showing when the student typed it.
-  const [openingTyped, setOpeningTyped] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Nothing has been sent yet: the panel is showing the "add instructions,
-  // optionally" step rather than a conversation. Derived from history rather
-  // than tracked separately, since the two can never disagree.
   const started = history.length > 0;
 
   // The note changes under us the moment a revision lands, so read it from a
@@ -93,21 +99,17 @@ export function ExplainPanel({
         setFailure(error);
         return;
       }
-      // The answer lands at the end of the thread it was asked from.
       setCited((prev) => ({ ...prev, [next.length]: used }));
       setHistory([...next, { role: "assistant", content: reply }]);
       if (revisedNote && revisedNote !== noteRef.current) {
         onApplyRevision(revisedNote);
-        setNoteUpdated(true);
+        setRevised((prev) => ({ ...prev, [next.length]: true }));
       }
     },
     [selected, context, resources, onApplyRevision]
   );
 
-  // One thread per opened selection; sessionRef keeps re-renders from restarting
-  // it, since `ask` changes identity on every render of the parent. Opening no
-  // longer sends anything by itself — it just resets to the pre-conversation
-  // step so the student can add instructions before the first message goes out.
+  // One thread per opened selection; sessionRef keeps re-renders from restarting it.
   const sessionRef = useRef<string | null>(null);
   const modeRef = useRef<ExplainMode>(mode);
 
@@ -119,12 +121,13 @@ export function ExplainPanel({
     if (!selected || sessionRef.current === selected) return;
     sessionRef.current = selected;
     modeRef.current = mode;
-    setNoteUpdated(false);
     setHistory([]);
     setCited({});
+    setQuoted({});
+    setRevised({});
+    setFresh(true);
     setInput("");
     setFailure(null);
-    setOpeningTyped(false);
   }, [open, selected, mode]);
 
   // The editor still has focus when the panel opens, so a keystroke meant for
@@ -133,17 +136,31 @@ export function ExplainPanel({
     if (open) inputRef.current?.focus({ preventScroll: true });
   }, [open]);
 
-  // Switching mode mid-thread carries the conversation with it — hitting Refine
-  // after talking a passage through applies what was just discussed.
+  // Switching mode sends nothing: the student gets the same compose step they
+  // would have had opening the panel in that mode, and the thread carries over.
   useEffect(() => {
     if (!open || modeRef.current === mode) return;
     modeRef.current = mode;
-    if (history.length) ask([...history, { role: "user", content: SWITCHERS[mode] }], mode);
-  }, [open, mode, history, ask]);
+    setFresh(true);
+    setFailure(null);
+    inputRef.current?.focus({ preventScroll: true });
+  }, [open, mode]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
-  }, [history, pending]);
+  }, [history, pending, fresh, failure]);
+
+  // Grow the box with its text rather than scrolling inside a one-line box.
+  // scrollHeight leaves out the border, which border-box sizing counts.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const border = el.offsetHeight - el.clientHeight;
+    const full = el.scrollHeight + border;
+    el.style.height = `${Math.min(full, INPUT_MAX_PX)}px`;
+    el.style.overflowY = full > INPUT_MAX_PX ? "auto" : "hidden";
+  }, [input, open, fresh]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -153,19 +170,15 @@ export function ExplainPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  /**
-   * The first send is optional-instructions-then-go rather than a normal
-   * message: it's what kicks the conversation off, folding anything the
-   * student typed into the opening request instead of starting blank. Every
-   * send after that is a normal follow-up, which does require actual text.
-   */
   function send() {
     if (pending) return;
     const text = input.trim();
-    if (!started) {
+    if (fresh) {
+      const content = text || (started ? SWITCHERS[mode] : OPENERS[mode]);
       setInput("");
-      setOpeningTyped(!!text);
-      ask([{ role: "user", content: text || OPENERS[mode] }], mode);
+      setFresh(false);
+      setQuoted((prev) => ({ ...prev, [history.length]: mode }));
+      ask([...history, { role: "user", content }], mode);
       return;
     }
     if (!text) return;
@@ -173,9 +186,7 @@ export function ExplainPanel({
     ask([...history, { role: "user", content: text }], mode);
   }
 
-  // Hide the stock opening message; one the student typed stays in the thread.
-  const hidden = history[0]?.role === "user" && !openingTyped ? 1 : 0;
-  const shown = history.slice(hidden);
+  const modeLabel = mode === "refine" ? "Refine" : "Explain";
 
   return (
     <>
@@ -193,7 +204,7 @@ export function ExplainPanel({
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-2 font-semibold text-ink">
             <SparkleIcon className="h-4 w-4 text-brand-600" />
-            {mode === "refine" ? "Refine" : "Explain"}
+            {modeLabel}
           </div>
           <button
             onClick={onClose}
@@ -226,65 +237,60 @@ export function ExplainPanel({
           </ModeButton>
         </div>
 
-        <div ref={threadRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-          <p className="rounded-xl border-l-4 border-accent-400 bg-amber-50 px-4 py-3 text-sm italic text-slate-600">
-            “{selected.length > 160 ? selected.slice(0, 160) + "…" : selected}”
-          </p>
+        <div ref={threadRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          {/* Messages sit at the bottom, next to the box, the way a chat does. */}
+          <div className="flex min-h-full flex-col justify-end gap-4">
+            {history.map((m, i) =>
+              m.role === "assistant" ? (
+                <div key={i} className="mr-8 flex flex-col items-start">
+                  <p className="mb-1 px-1 text-xs font-semibold text-brand-700">Grasp AI</p>
+                  <div className="whitespace-pre-wrap break-words rounded-2xl rounded-bl-md bg-slate-100 px-4 py-2.5 text-sm leading-6 text-slate-700">
+                    {m.content}
+                  </div>
+                  {revised[i] && (
+                    <p className="mt-2 flex items-center gap-1.5 px-1 text-xs font-medium text-emerald-700">
+                      <EditIcon className="h-3.5 w-3.5" /> Your note was updated.
+                    </p>
+                  )}
+                  {/* Said outright, under the answer it shaped (§3.4). */}
+                  <ResourceCitation cited={cited[i]} className="mt-2 px-1" label="Grasp read" />
+                  <AiFlag source="explain" output={m.content} className="mt-1.5 px-1" />
+                </div>
+              ) : (
+                <div key={i} className="ml-8 flex flex-col items-end gap-1">
+                  {quoted[i] && (
+                    <QuoteCard text={selected} label={quoted[i] === "refine" ? "Refine" : "Explain"} />
+                  )}
+                  <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-brand-600 px-4 py-2 text-sm leading-6 text-white">
+                    {m.content}
+                  </div>
+                </div>
+              )
+            )}
 
-          {!started && !pending && (
-            <>
-              <p className="text-sm text-slate-400">
-                {mode === "refine"
-                  ? "Add anything specific below — a topic to centre it on, a tone, a length — or just press Refine to have Grasp rework it as-is."
-                  : "Add anything specific below — what you want explained, or how — or just press Explain to ask about it as-is."}
-              </p>
-              {resources.length > 0 && (
-                <p className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                  <BankIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <span>
-                    Grasp can check the {resources.length} document
-                    {resources.length === 1 ? "" : "s"} in your Resource Bank — ask whether this
-                    lines up with your criteria and it will say which one it read.
-                  </span>
-                </p>
-              )}
-            </>
-          )}
-
-          {noteUpdated && (
-            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-              <SparkleIcon className="h-4 w-4" /> Your note was updated from this conversation.
-            </div>
-          )}
-
-          {shown.map((m, i) =>
-            m.role === "assistant" ? (
-              <div key={i} className="text-[15px] leading-7 text-slate-700">
-                <p className="mb-1 text-xs font-semibold text-brand-700">Grasp AI</p>
-                {m.content}
-                {/* Said outright, under the answer it shaped (§3.4). */}
-                <ResourceCitation cited={cited[i + hidden]} className="mt-2.5" label="Grasp read" />
-                <AiFlag source="explain" output={m.content} className="mt-2" />
+            {pending && (
+              <div className="mr-8 flex flex-col items-start" role="status">
+                <span className="sr-only">Grasp is writing a reply</span>
+                <p className="mb-1 px-1 text-xs font-semibold text-brand-700">Grasp AI</p>
+                <div className="flex gap-1 rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3.5">
+                  {[0, 150, 300].map((delay) => (
+                    <span
+                      key={delay}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div key={i} className="ml-8 rounded-2xl bg-brand-600 px-4 py-2 text-sm text-white">
-                {m.content}
-              </div>
-            )
-          )}
+            )}
 
-          {pending && (
-            <div className="space-y-2.5">
-              <div className="h-3 w-4/5 animate-pulse rounded bg-slate-200" />
-              <div className="h-3 w-full animate-pulse rounded bg-slate-200" />
-              <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200" />
-            </div>
-          )}
-
-          {failure && <ErrorNote message={failure} />}
+            {failure && <ErrorNote message={failure} />}
+          </div>
         </div>
 
         <div className="border-t border-slate-200 p-3">
+          {/* The passage the next request is about, right above where it is typed. */}
+          {fresh && <QuoteCard text={selected} label={modeLabel} className="mb-2 w-full" />}
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
@@ -298,20 +304,22 @@ export function ExplainPanel({
               }}
               rows={1}
               placeholder={
-                !started
-                  ? "Optional — tell Grasp what to focus on…"
+                fresh
+                  ? mode === "refine"
+                    ? "Optional: say how it should be reworked…"
+                    : "Optional: say what you want to know…"
                   : mode === "refine"
                     ? "Say how it should be reworked…"
                     : "Ask a follow-up…"
               }
-              className="max-h-32 flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              className="flex-1 resize-none overflow-hidden rounded-xl border border-slate-300 px-3 py-2 text-sm leading-5 outline-none focus:border-brand-500"
             />
             <button
               onClick={send}
-              disabled={pending || (started && !input.trim())}
+              disabled={pending || (!fresh && !input.trim())}
               className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
             >
-              {!started ? (mode === "refine" ? "Refine" : "Explain") : "Send"}
+              {fresh ? modeLabel : "Send"}
             </button>
           </div>
           <p className="mt-1.5 px-1 text-[11px] text-slate-400">
@@ -322,6 +330,17 @@ export function ExplainPanel({
         </div>
       </aside>
     </>
+  );
+}
+
+function QuoteCard({ text, label, className = "" }: { text: string; label: string; className?: string }) {
+  return (
+    <div
+      className={`max-w-full rounded-xl border-l-4 border-accent-400 bg-amber-50 px-3 py-2 text-left ${className}`}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-0.5 break-words text-xs italic leading-5 text-slate-600">“{shortQuote(text)}”</p>
+    </div>
   );
 }
 
