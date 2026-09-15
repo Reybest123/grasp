@@ -11,14 +11,25 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
  * is what tells the model whether changes are wanted, so it is stated plainly.
  */
 const MODES = {
-  explain: `You are in EXPLAIN mode. Answer the student's questions about the highlighted passage and leave the note itself alone — return revisedNote as null. If you spot a mistake, say so in your reply instead of fixing it, and mention they can hit Refine to have it corrected. The only exception is a direct instruction from the student to change the note; then make that change and return the updated note.`,
+  explain: `You are in EXPLAIN mode. Teach it the way a good teacher sitting beside the student would: plain words, straight to the point, no filler, and no repeating back what the student already has written down.
 
-  refine: `You are in REFINE mode. Improve the highlighted passage inside the note and return the full updated note.
+Match the answer to what was asked:
+- If the student just asks you to explain it, explain the idea in 2 to 4 sentences: what it means, why it matters, and a quick concrete example if one helps.
+- If the student asks a specific question, answer that question and nothing else, in one or two sentences. Do not go on to explain the rest of the selection. For example, asked "what does HDI mean" about "Limitations of HDI: Does not account for inequality, environmental sustainability, or cultural factors", answer along the lines of "HDI is the Human Development Index, a UN measure that ranks countries by life expectancy, education and income." and stop there.
+- Follow-up questions work the same way: answer what was asked, at the length it needs.
 
-Rewrite the highlighted passage so it is clearer and better worded, fix anything factually wrong in it, and expand it where the point is sound but too thin to revise from — add the definition, mechanism, example or exception that makes it useful. Do not invent facts. Keep the student's voice and level.
+Explain never changes the note, so revisedNote is always null. If the student asks you to change, rewrite, reword or add anything to the note, do not attempt it and do not offer a workaround. Reply only: "I can't change your note in Explain. Switch to Refine to edit it." If you notice something in the note is wrong, say what is wrong in one sentence and add that Refine can fix it.`,
 
-Leave the rest of the note alone: every other passage, and all of the note's structure, comes back unchanged. In your reply, tell the student in one or two sentences what you changed and why.`,
+  refine: `You are in REFINE mode. Rewrite the selected part inside the note and return the full updated note.
+
+If the student gave instructions (a tone, a length, a focus, something to add), do what they asked and nothing more, playful requests included, as long as nothing factual becomes wrong. Only when there are no instructions, make it clearer and better worded, fix anything factually wrong, and expand it where the point is sound but too thin to revise from: add the definition, mechanism, example or exception that makes it useful. Do not invent facts. Keep the student's voice and level.
+
+Leave the rest of the note alone: every other part, and all of the note's structure, comes back unchanged. In your reply, say in one or two sentences what you changed, talking about the content itself (for example "I added what HDI leaves out and an example of each.").
+
+If the student asks a question rather than for a change, answer it briefly and return revisedNote as null.`,
 } as const;
+
+const NOTE_FORMAT = `The note is HTML. The revisedNote you return must be the FULL note as HTML using only these tags: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">. Preserve the student's existing formatting exactly: emphasis, colours, checklist items written as <p class="check" data-done="true|false"> with their ticked state, tables with every row keeping the same number of cells, and equations copied through character for character.`;
 
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
@@ -34,7 +45,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const modeRules = mode === "refine" ? MODES.refine : MODES.explain;
+  const refine = mode === "refine";
+  const modeRules = refine ? MODES.refine : MODES.explain;
 
   // §3.4 — this is the headline case for the Resource Bank: the student asks
   // "does this match the criteria?" and the answer comes from the criteria
@@ -48,21 +60,21 @@ export async function POST(req: NextRequest) {
 Use this naturally when it genuinely helps — e.g. tying revision advice to an upcoming exam or their next class. Do not force it in or mention it in every reply.`
       : "";
 
-  const system = `You are Grasp, a study assistant embedded directly in a student's notes. The student highlighted a passage and is talking to you about it. Write clearly and conversationally, and keep replies fairly short.
+  const system = `You are Grasp, a study assistant built into a student's notes. The student has selected part of their note and is talking to you about it.
 
-Never use emojis.${schedule}
+Never use emojis. Your reply is plain text, not HTML or Markdown.
+
+Never refer to the selection itself. Do not write "the highlighted passage", "the highlighted text", "this passage", "this section", "the selected text" or "your note says". Talk about the subject directly. For "Debt Relief: Reducing or eliminating debt to allow countries to invest in development", start with something like "Debt relief is when...", never "The highlighted passage refers to debt relief".${schedule}
 
 ${modeRules}
 
-The note is HTML. Any revisedNote you return must be the FULL note as HTML using only these tags: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">. Preserve the student's existing formatting exactly — emphasis, colours, checklist items written as <p class="check" data-done="true|false"> with their ticked state, tables with every row keeping the same number of cells, and equations copied through character for character. Your reply text itself is plain text, not HTML.
+${refine ? `${NOTE_FORMAT}\n\n` : ""}${block ? `${block}\n\n` : ""}Respond ONLY as JSON in this exact shape:
+{"reply": "<your message to the student>", "revisedNote": ${refine ? `"<the full updated note as HTML, or null if nothing should change>"` : "null"}, "used": ["<ids of the resources you drew on, or empty>"]}
 
-${block ? `${block}\n\n` : ""}Respond ONLY as JSON in this exact shape:
-{"reply": "<your message to the student>", "revisedNote": "<the full updated note as HTML, or null if nothing should change>", "used": ["<ids of the resources you drew on, or empty>"]}
-
-The student's full note is:
+The student's full note:
 """${noteBody}"""
 
-The highlighted passage is:
+The part the student selected:
 """${highlight}"""`;
 
   const messages = [
@@ -84,7 +96,8 @@ The highlighted passage is:
     const revised = typeof parsed.revisedNote === "string" ? stripFence(parsed.revisedNote) : "";
     return NextResponse.json({
       reply: parsed.reply ?? "",
-      revisedNote: revised || null,
+      // Explain must never write to the note, whatever the model returns.
+      revisedNote: refine ? revised || null : null,
       used: pickUsed(parsed.used, briefs),
     });
   } catch {

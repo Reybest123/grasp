@@ -16,9 +16,17 @@ import { BankIcon, CloseIcon, EditIcon, SparkleIcon } from "@/components/icons";
  * alone; Refine rewrites the passage in place. The AI's revision comes back as
  * note HTML, so `onApplyRevision` writes it in without losing formatting.
  */
+// Sent when the student presses the button without typing. Anything they do
+// type is sent as it is, so a question reads to the model as a question.
 const OPENERS: Record<ExplainMode, string> = {
-  explain: "Explain the highlighted passage from my notes.",
-  refine: "Refine the highlighted passage in my notes.",
+  explain: "Explain this to me.",
+  refine: "Refine this part of my note.",
+};
+
+// Sent when the mode is switched mid-thread, so the new mode acts on the talk so far.
+const SWITCHERS: Record<ExplainMode, string> = {
+  explain: "Explain this to me.",
+  refine: "Refine this part of my note, using what we just talked about.",
 };
 
 export function ExplainPanel({
@@ -52,7 +60,10 @@ export function ExplainPanel({
   const [input, setInput] = useState("");
   const [noteUpdated, setNoteUpdated] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // The opening message is only worth showing when the student typed it.
+  const [openingTyped, setOpeningTyped] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Nothing has been sent yet: the panel is showing the "add instructions,
   // optionally" step rather than a conversation. Derived from history rather
@@ -113,14 +124,21 @@ export function ExplainPanel({
     setCited({});
     setInput("");
     setFailure(null);
+    setOpeningTyped(false);
   }, [open, selected, mode]);
+
+  // The editor still has focus when the panel opens, so a keystroke meant for
+  // the panel would land in the note.
+  useEffect(() => {
+    if (open) inputRef.current?.focus({ preventScroll: true });
+  }, [open]);
 
   // Switching mode mid-thread carries the conversation with it — hitting Refine
   // after talking a passage through applies what was just discussed.
   useEffect(() => {
     if (!open || modeRef.current === mode) return;
     modeRef.current = mode;
-    if (history.length) ask([...history, { role: "user", content: OPENERS[mode] }], mode);
+    if (history.length) ask([...history, { role: "user", content: SWITCHERS[mode] }], mode);
   }, [open, mode, history, ask]);
 
   useEffect(() => {
@@ -146,8 +164,8 @@ export function ExplainPanel({
     const text = input.trim();
     if (!started) {
       setInput("");
-      const opening = text ? `${OPENERS[mode]} ${text}` : OPENERS[mode];
-      ask([{ role: "user", content: opening }], mode);
+      setOpeningTyped(!!text);
+      ask([{ role: "user", content: text || OPENERS[mode] }], mode);
       return;
     }
     if (!text) return;
@@ -155,8 +173,8 @@ export function ExplainPanel({
     ask([...history, { role: "user", content: text }], mode);
   }
 
-  // Hide the seed user message; show the conversation from the first answer on.
-  const hidden = history[0]?.role === "user" ? 1 : 0;
+  // Hide the stock opening message; one the student typed stays in the thread.
+  const hidden = history[0]?.role === "user" && !openingTyped ? 1 : 0;
   const shown = history.slice(hidden);
 
   return (
@@ -269,6 +287,7 @@ export function ExplainPanel({
         <div className="border-t border-slate-200 p-3">
           <div className="flex items-end gap-2">
             <textarea
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
