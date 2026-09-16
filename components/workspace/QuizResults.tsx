@@ -14,7 +14,7 @@
 import { useEffect } from "react";
 import type { Quiz } from "@/lib/subjects";
 import { formatScore } from "@/components/workspace/QuizCard";
-import { BackIcon, CheckIcon, CloseIcon, MinusIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, MinusIcon } from "@/components/icons";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { StatRing } from "@/components/StatRing";
 import { bandOf, BAND_RING, type BandName } from "@/lib/stats";
@@ -83,13 +83,6 @@ export function QuizResults({
 
   return (
     <div>
-      <button
-        onClick={onBack}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
-      >
-        <BackIcon className="h-4 w-4" /> All quizzes
-      </button>
-
       <div className="mx-auto max-w-xl animate-[popIn_180ms_ease-out] rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-soft">
         <p className="truncate text-sm font-semibold text-slate-500">{quiz.title}</p>
 

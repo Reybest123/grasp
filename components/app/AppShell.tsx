@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ChromeContext.Provider value={{ openRecording, focusRecord, editSubject }}>
       {/* Spans the full width above the sidebar rather than starting beside it,
           so the logo sits at the true top-left corner of the app. */}
-      <header className="fixed inset-x-0 top-0 z-50 h-[69px] border-b border-slate-200 bg-white/90 backdrop-blur">
+      <header className="fixed inset-x-0 top-0 z-50 h-[69px] border-b border-[#efe3d6] bg-[#f8efe6]/90 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-4 sm:px-6">
           {/* Stays a link to the marketing page everywhere else in the app;
               inside the shell "home" is the dashboard, not the landing. */}

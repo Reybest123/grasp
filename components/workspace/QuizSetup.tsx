@@ -9,7 +9,7 @@ import type { QuizCounts } from "@/lib/ai";
 import type { ResourceBrief } from "@/lib/resources";
 import { useProfile } from "@/lib/profileStore";
 import { DEFAULT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
-import { BackIcon, BankIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
+import { BankIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
 import { WaitingState } from "@/components/WaitingState";
 
@@ -97,7 +97,6 @@ export function QuizSetup({
   loading,
   error,
   onGenerate,
-  onCancel,
 }: {
   subject: Subject;
   notes: Note[];
@@ -106,7 +105,6 @@ export function QuizSetup({
   loading: boolean;
   error: string;
   onGenerate: (req: QuizRequest) => void;
-  onCancel: () => void;
 }) {
   const { profile } = useProfile();
   const plan = profile.plan ?? DEFAULT_PLAN;
@@ -153,13 +151,6 @@ export function QuizSetup({
 
   return (
     <div>
-      <button
-        onClick={onCancel}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
-      >
-        <BackIcon className="h-4 w-4" /> All quizzes
-      </button>
-
       <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-xl font-bold tracking-tight text-ink">New quiz</h2>
         <p className="mt-1 text-sm text-slate-500">

@@ -107,6 +107,13 @@ export function QuizzesTab({
     setView("grid");
   }
 
+  // The breadcrumb leaves setup without passing through here, so a failed
+  // generation's error is cleared on the way back in rather than on the way out.
+  function openSetup() {
+    setError("");
+    setView("setup");
+  }
+
   /** Same questions, blank slate. The old answers and marks do not survive. */
   function retake(quiz: Quiz) {
     updateQuiz(quiz.id, { answers: {}, submitted: false, score: undefined, markedWith: undefined });
@@ -143,10 +150,6 @@ export function QuizzesTab({
         loading={loading}
         error={error}
         onGenerate={generate}
-        onCancel={() => {
-          setError("");
-          setView("grid");
-        }}
       />
     );
   }
@@ -157,7 +160,7 @@ export function QuizzesTab({
         // No quizzes yet: the call to action is the whole area, not a lone tile
         // in the corner of an empty grid.
         <button
-          onClick={() => setView("setup")}
+          onClick={openSetup}
           className="group grid min-h-[420px] w-full place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 p-10 text-center transition hover:border-brand-400 hover:bg-brand-50/40"
         >
           <div className="max-w-md">
@@ -194,7 +197,7 @@ export function QuizzesTab({
                 onDelete={() => setPendingDelete(q)}
               />
             ))}
-            <NewQuizCard onClick={() => setView("setup")} />
+            <NewQuizCard onClick={openSetup} />
           </div>
         </>
       )}

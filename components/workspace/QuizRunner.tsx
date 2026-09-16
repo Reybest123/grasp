@@ -14,7 +14,7 @@ import { AiFlag } from "@/components/workspace/AiFlag";
 import { formatScore } from "@/components/workspace/QuizCard";
 import { QuizResults } from "@/components/workspace/QuizResults";
 import { ErrorNote } from "@/components/ErrorNote";
-import { BackIcon, CheckIcon, CloseIcon, SparkleIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, SparkleIcon } from "@/components/icons";
 
 /** What a full-mark answer says — used for review display and for explanations. */
 function correctAnswerOf(q: QuizQuestion): string {
@@ -169,13 +169,6 @@ export function QuizRunner({
 
   return (
     <div>
-      <button
-        onClick={onBack}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
-      >
-        <BackIcon className="h-4 w-4" /> All quizzes
-      </button>
-
       <div className="mx-auto max-w-3xl">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
@@ -369,7 +362,7 @@ export function QuizRunner({
         </ol>
 
         {/* Reviewing runs to the foot of the page, which is a long way from the
-            "All quizzes" link at the top. */}
+            breadcrumb at the top. */}
         {quiz.submitted && (
           <div className="mt-6 text-center">
             <button
