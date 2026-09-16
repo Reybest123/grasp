@@ -169,12 +169,7 @@ export function QuizzesTab({
         </button>
       ) : (
         <>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-bold tracking-tight text-ink">Your quizzes</h2>
-            <p className="text-sm text-slate-500">
-              {quizzes.length} saved · marked and kept so you can come back to {quizzes.length === 1 ? "it" : "them"}
-            </p>
-          </div>
+          <h2 className="text-lg font-bold tracking-tight text-ink">Your quizzes</h2>
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {quizzes.map((q) => (
               <QuizCard
