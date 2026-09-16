@@ -34,6 +34,7 @@ import {
   ImageIcon,
   UploadIcon,
 } from "@/components/icons";
+import { WaitingState } from "@/components/WaitingState";
 
 const MAX_BYTES = MAX_UPLOAD_BYTES;
 const ACCEPT = TIMETABLE_ACCEPT;
@@ -238,13 +239,10 @@ export function TimetableSetup({
       )}
 
       {stage === "reading" && (
-        <div className="grid place-items-center rounded-3xl border border-slate-200 bg-slate-50 px-6 py-14 text-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600" />
-          <p className="mt-6 text-lg font-bold text-ink">Reading your timetable…</p>
-          <p className="mt-1.5 text-sm text-slate-500">
-            Working out your subjects and when each class runs.
-          </p>
-        </div>
+        <WaitingState
+          title="Reading your timetable"
+          note="Working out your subjects and when each class runs."
+        />
       )}
 
       {stage === "done" && (

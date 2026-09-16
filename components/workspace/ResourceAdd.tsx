@@ -25,6 +25,7 @@ import {
 } from "@/lib/resourceLimits";
 import { BackIcon, CloseIcon, FileIcon, UploadIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
+import { WaitingState } from "@/components/WaitingState";
 
 const MAX_BYTES = RESOURCE_MAX_BYTES;
 
@@ -125,15 +126,11 @@ export function ResourceAdd({
 
   if (loading) {
     return (
-      <div className="grid min-h-[420px] place-items-center rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-sm">
-        <div>
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
-          <p className="mt-4 text-sm font-medium text-slate-600">Reading your document…</p>
-          <p className="mt-1 text-xs text-slate-400">
-            Grasp only does this once. After this it works from what it read, not the file.
-          </p>
-        </div>
-      </div>
+      <WaitingState
+        className="min-h-[360px]"
+        title="Reading your document"
+        note="Grasp only does this once. After this it works from what it read, and the file itself is not kept."
+      />
     );
   }
 

@@ -22,6 +22,7 @@ import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
 import { ErrorNote } from "@/components/ErrorNote";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
+import { WaitingState } from "@/components/WaitingState";
 
 export function RecordTab({
   subjectId,
@@ -183,16 +184,11 @@ export function RecordTab({
           they had, and the name box sat there asking them to name a note that
           wasn't written yet. */}
       {polishing ? (
-        <div className="mt-4 grid min-h-[240px] place-items-center rounded-2xl bg-slate-50 p-5 text-center">
-          <div>
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600" />
-            <p className="mt-4 font-semibold text-ink">Polishing your notes</p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
-              Going back over the whole lecture, including the last thing said, to write the final
-              version.
-            </p>
-          </div>
-        </div>
+        <WaitingState
+          className="mt-4 min-h-[240px]"
+          title="Polishing your notes"
+          note="Going back over the whole lecture, including the last thing said, to write the final version."
+        />
       ) : rec.noMaterial ? (
         /* The final pass came back with nothing teachable — a lecture that was
            mostly admin and greetings. Said plainly here rather than as grey

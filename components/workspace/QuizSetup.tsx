@@ -11,6 +11,7 @@ import { useProfile } from "@/lib/profileStore";
 import { DEFAULT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
 import { BackIcon, BankIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
+import { WaitingState } from "@/components/WaitingState";
 
 const MAX_PER_KIND = 10;
 const MAX_TOTAL = 20;
@@ -138,15 +139,15 @@ export function QuizSetup({
 
   if (loading) {
     return (
-      <div className="grid min-h-[420px] place-items-center rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-sm">
-        <div>
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
-          <p className="mt-4 text-sm font-medium text-slate-600">
-            Writing {total} question{total === 1 ? "" : "s"} from your notes…
-          </p>
-          <p className="mt-1 text-xs text-slate-400">This usually takes a few seconds.</p>
-        </div>
-      </div>
+      <WaitingState
+        className="min-h-[360px]"
+        title={`Writing ${total} question${total === 1 ? "" : "s"}`}
+        note={
+          noteIds.length
+            ? "Reading the notes you picked and setting questions on what they cover."
+            : "Setting questions on what this subject covers."
+        }
+      />
     );
   }
 
