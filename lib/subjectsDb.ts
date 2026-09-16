@@ -145,6 +145,7 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
       score: (q.score ?? undefined) as Quiz["score"],
       builtWith: (q.built_with ?? undefined) as Quiz["builtWith"],
       markedWith: (q.marked_with ?? undefined) as Quiz["markedWith"],
+      colorKey: q.color_key ? String(q.color_key) : undefined,
     })),
   }));
 }
@@ -226,7 +227,7 @@ export async function saveSubject(userId: string, subject: Subject): Promise<boo
       (q) => sql`
         insert into quizzes (
           id, subject_id, title, topics, instructions, note_ids,
-          questions, answers, submitted, score, built_with, marked_with
+          questions, answers, submitted, score, built_with, marked_with, color_key
         )
         values (
           ${q.id}, ${subject.id}, ${q.title}, ${JSON.stringify(q.topics ?? [])},
@@ -234,7 +235,8 @@ export async function saveSubject(userId: string, subject: Subject): Promise<boo
           ${JSON.stringify(q.questions ?? [])}, ${JSON.stringify(q.answers ?? {})},
           ${q.submitted}, ${q.score ? JSON.stringify(q.score) : null},
           ${q.builtWith ? JSON.stringify(q.builtWith) : null},
-          ${q.markedWith ? JSON.stringify(q.markedWith) : null}
+          ${q.markedWith ? JSON.stringify(q.markedWith) : null},
+          ${q.colorKey ?? null}
         )
       `
     ),

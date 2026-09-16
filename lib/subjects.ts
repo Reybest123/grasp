@@ -92,6 +92,8 @@ export type Quiz = {
   builtWith?: Citation[];
   /** resources the written answers were marked against */
   markedWith?: Citation[];
+  /** key into SUBJECT_COLORS — optional, falls back to subject colour if not set */
+  colorKey?: string;
 };
 
 export type Subject = {

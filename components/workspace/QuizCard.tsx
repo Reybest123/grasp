@@ -4,10 +4,8 @@
 // /home — colour strip, title, meta, action row — so the two grids read as the
 // same kind of object.
 
-import { useState } from "react";
 import type { Quiz } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
-import { QuizTitle } from "@/components/workspace/QuizTitle";
 import { QuizIcon, TrashIcon, EditIcon, PlusIcon, CheckIcon, RetakeIcon, BankIcon } from "@/components/icons";
 import { MoreMenu } from "@/components/MoreMenu";
 
@@ -39,21 +37,20 @@ export function QuizCard({
   now,
   onOpen,
   onRetake,
-  onRename,
+  onEdit,
   onDelete,
 }: {
   quiz: Quiz;
+  /** the subject's colour, used when the quiz has none of its own */
   colorKey: string;
   /** null until the client clock is available — keeps SSR markup stable */
   now: Date | null;
   onOpen: () => void;
   onRetake: () => void;
-  onRename: (title: string) => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
-  const color = getColor(colorKey);
-  // Bumped by the menu's Rename to put the title into its edit box.
-  const [renameSignal, setRenameSignal] = useState(0);
+  const color = getColor(quiz.colorKey ?? colorKey);
   const total = quiz.questions.length;
   const answered = quiz.questions.filter((q) => {
     const a = quiz.answers[q.id];
@@ -77,13 +74,7 @@ export function QuizCard({
             <QuizIcon className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <QuizTitle
-              value={quiz.title}
-              onRename={onRename}
-              interactive={false}
-              editSignal={renameSignal}
-              className="text-base font-bold leading-tight text-ink"
-            />
+            <h3 className="truncate text-base font-bold leading-tight text-ink">{quiz.title}</h3>
             <p className="truncate text-sm text-slate-500">{ago(quiz.created, now)}</p>
           </div>
           {/* One menu rather than a hover-only trash button beside a title that
@@ -94,9 +85,9 @@ export function QuizCard({
             label={quiz.title}
             items={[
               {
-                label: "Rename",
+                label: "Edit",
                 icon: <EditIcon className="h-4 w-4" />,
-                onSelect: () => setRenameSignal((n) => n + 1),
+                onSelect: onEdit,
               },
               {
                 label: "Delete",

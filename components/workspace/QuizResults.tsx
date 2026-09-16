@@ -14,7 +14,6 @@
 import { useEffect } from "react";
 import type { Quiz } from "@/lib/subjects";
 import { formatScore } from "@/components/workspace/QuizCard";
-import { QuizTitle } from "@/components/workspace/QuizTitle";
 import { BackIcon, CheckIcon, CloseIcon, MinusIcon } from "@/components/icons";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { StatRing } from "@/components/StatRing";
@@ -38,12 +37,10 @@ const VERDICT: Record<BandName, { verdict: string; tint: string }> = {
 
 export function QuizResults({
   quiz,
-  onRename,
   onReview,
   onBack,
 }: {
   quiz: Quiz;
-  onRename: (title: string) => void;
   onReview: () => void;
   onBack: () => void;
 }) {
@@ -94,12 +91,7 @@ export function QuizResults({
       </button>
 
       <div className="mx-auto max-w-xl animate-[popIn_180ms_ease-out] rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-soft">
-        <QuizTitle
-          value={quiz.title}
-          onRename={onRename}
-          center
-          className="text-sm font-semibold text-slate-500"
-        />
+        <p className="truncate text-sm font-semibold text-slate-500">{quiz.title}</p>
 
         <StatRing
           value={pct}

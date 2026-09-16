@@ -12,9 +12,10 @@ import { DAY_SHORT, type ClassSlot, type Exam } from "@/lib/schedule";
 import { CloseIcon, PlusIcon, TrashIcon, CheckIcon, ExamIcon, ClockIcon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DatePicker } from "@/components/DatePicker";
+import { useEnterTransition } from "@/lib/useEnterTransition";
 
 export function SubjectEditor({
-  subject,
+  subject: subjectProp,
   open,
   onClose,
   onSave,
@@ -26,6 +27,16 @@ export function SubjectEditor({
   onSave: (patch: Partial<Subject>) => void;
   onDelete: () => void;
 }) {
+  // AppShell clears the subject the moment the panel closes. Rendering straight
+  // off that prop unmounted the sheet mid-close, so it vanished instead of
+  // sliding out; the last subject is held on to until the next one arrives.
+  const [last, setLast] = useState(subjectProp);
+  if (subjectProp && subjectProp !== last) setLast(subjectProp);
+  const subject = subjectProp ?? last;
+  // It also mounts with `open` already true, which gave the slide nothing to
+  // move from; `visible` lands a frame later so it slides in too.
+  const visible = useEnterTransition(open);
+
   const [name, setName] = useState("");
   const [teacher, setTeacher] = useState("");
   const [colorKey, setColorKey] = useState("violet");
@@ -85,15 +96,16 @@ export function SubjectEditor({
       <div
         onClick={onClose}
         className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-200 ${
-          open ? "opacity-100" : "pointer-events-none opacity-0"
+          visible ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
       <aside
         role="dialog"
         aria-modal="true"
         aria-label="Edit subject"
+        inert={!open}
         className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
+          visible ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}

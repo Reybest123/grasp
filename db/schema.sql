@@ -183,6 +183,10 @@ create table if not exists quizzes (
 
 create index if not exists quizzes_subject_idx on quizzes (subject_id, created_at desc);
 
+-- A quiz's own colour. Null means it follows its subject's. Grown with alter
+-- rather than declared in the table body, which is a no-op on an existing table.
+alter table quizzes add column if not exists color_key text;
+
 -- Weekly plan allowances (§6), counted here rather than from `quizzes` or
 -- `notes`: a student can delete a quiz, and a deleted quiz must not hand its
 -- allowance back. One row per quiz generated and one per recording, whose

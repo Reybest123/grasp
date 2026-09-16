@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QuizCard, NewQuizCard, formatScore } from "@/components/workspace/QuizCard";
 import { QuizSetup, autoTitle, type QuizRequest } from "@/components/workspace/QuizSetup";
 import { QuizRunner } from "@/components/workspace/QuizRunner";
+import { QuizEditDialog } from "@/components/workspace/QuizEditDialog";
 import { QuizIcon, SparkleIcon } from "@/components/icons";
 
 export function QuizzesTab({
@@ -41,6 +42,7 @@ export function QuizzesTab({
 }) {
   const [view, setView] = useState<"grid" | "setup">("grid");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Quiz | null>(null);
@@ -179,7 +181,7 @@ export function QuizzesTab({
                 now={now}
                 onOpen={() => setOpenId(q.id)}
                 onRetake={() => setPendingRetake(q)}
-                onRename={(title) => updateQuiz(q.id, { title })}
+                onEdit={() => setEditingId(q.id)}
                 onDelete={() => setPendingDelete(q)}
               />
             ))}
@@ -187,6 +189,21 @@ export function QuizzesTab({
           </div>
         </>
       )}
+
+      <QuizEditDialog
+        quiz={quizzes.find((q) => q.id === editingId) ?? null}
+        subjectColorKey={subject.colorKey}
+        onSave={(patch) => {
+          if (editingId) updateQuiz(editingId, patch);
+          setEditingId(null);
+        }}
+        onDelete={() => {
+          const target = quizzes.find((q) => q.id === editingId);
+          setEditingId(null);
+          if (target) setPendingDelete(target);
+        }}
+        onClose={() => setEditingId(null)}
+      />
 
       <ConfirmDialog
         open={pendingRetake !== null}
