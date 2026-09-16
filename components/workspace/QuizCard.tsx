@@ -4,10 +4,12 @@
 // /home — colour strip, title, meta, action row — so the two grids read as the
 // same kind of object.
 
+import { useState } from "react";
 import type { Quiz } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
 import { QuizTitle } from "@/components/workspace/QuizTitle";
-import { QuizIcon, TrashIcon, PlusIcon, CheckIcon, RetakeIcon, BankIcon } from "@/components/icons";
+import { QuizIcon, TrashIcon, EditIcon, PlusIcon, CheckIcon, RetakeIcon, BankIcon } from "@/components/icons";
+import { MoreMenu } from "@/components/MoreMenu";
 
 /** Short relative age, e.g. "just now", "3 days ago". */
 function ago(iso: string, now: Date | null): string {
@@ -50,6 +52,8 @@ export function QuizCard({
   onDelete: () => void;
 }) {
   const color = getColor(colorKey);
+  // Bumped by the menu's Rename to put the title into its edit box.
+  const [renameSignal, setRenameSignal] = useState(0);
   const total = quiz.questions.length;
   const answered = quiz.questions.filter((q) => {
     const a = quiz.answers[q.id];
@@ -76,18 +80,32 @@ export function QuizCard({
             <QuizTitle
               value={quiz.title}
               onRename={onRename}
+              interactive={false}
+              editSignal={renameSignal}
               className="text-base font-bold leading-tight text-ink"
             />
             <p className="truncate text-sm text-slate-500">{ago(quiz.created, now)}</p>
           </div>
-          <button
-            onClick={onDelete}
-            aria-label={`Delete ${quiz.title}`}
-            title="Delete quiz"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-600 focus:opacity-100 focus-visible:outline-none group-hover:opacity-100"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
+          {/* One menu rather than a hover-only trash button beside a title that
+              was itself a hidden rename target: two invisible controls on a card
+              whose visible buttons do something else entirely. Matches the
+              assessments list on the dashboard. */}
+          <MoreMenu
+            label={quiz.title}
+            items={[
+              {
+                label: "Rename",
+                icon: <EditIcon className="h-4 w-4" />,
+                onSelect: () => setRenameSignal((n) => n + 1),
+              },
+              {
+                label: "Delete",
+                icon: <TrashIcon className="h-4 w-4" />,
+                onSelect: onDelete,
+                danger: true,
+              },
+            ]}
+          />
         </div>
 
         {/* The title is already built from the topics, so repeating them here

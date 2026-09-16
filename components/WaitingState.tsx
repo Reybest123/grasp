@@ -47,7 +47,7 @@ export function WaitingState({
           // Rotation is exactly what prefers-reduced-motion is for, but a ring
           // that is merely static reads as broken rather than as busy, so the
           // motion becomes a pulse instead of being removed.
-          className="mx-auto h-11 w-11 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600 motion-reduce:animate-[pulse_2s_ease-in-out_infinite]"
+          className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600 motion-reduce:animate-[pulse_2s_ease-in-out_infinite]"
         />
         <p className="mt-6 text-lg font-bold text-ink">{title}</p>
         {note && <p className="mx-auto mt-1.5 max-w-md text-sm text-slate-500">{note}</p>}
