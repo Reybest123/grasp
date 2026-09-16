@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/app/Sidebar";
 import { ProfileMenu } from "@/components/app/ProfileMenu";
+import { PageTransition } from "@/components/app/PageTransition";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubjectEditor } from "@/components/SubjectEditor";
 import { useSubjects, useNow } from "@/lib/subjectsStore";
@@ -143,7 +144,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           there is, so it stays visible at every width — hiding it on small
           screens would leave nothing to navigate with. */}
       <div className="pl-16 pt-[69px]">
-        <main className="min-h-[calc(100dvh-69px)]">{children}</main>
+        <main className="min-h-[calc(100dvh-69px)]">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
 
       <SubjectEditor

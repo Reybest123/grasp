@@ -170,3 +170,29 @@ select[class~="border-slate-200"] {
     scroll-behavior: auto;
   }
 }
+
+/* Route-change entrance. Opacity only, deliberately: a transform here would
+   become the containing block for the page's own fixed children — /home mounts
+   TimetableDialog immediately on ?setup=timetable — and a downward translate
+   would add scrollable overflow to a dashboard sized to exactly one viewport,
+   flashing a scrollbar on every navigation. Opacity makes a stacking context
+   and nothing else. The header and rail sit outside this, so they stay put
+   while only the page beneath them changes. */
+@keyframes pageIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.page-in {
+  animation: pageIn 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in {
+    animation: none;
+  }
+}

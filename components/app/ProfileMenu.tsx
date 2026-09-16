@@ -67,7 +67,7 @@ export function ProfileMenu({ onLogOut }: { onLogOut: () => void }) {
         // because the panel follows the button in the document.
         <div
           id="account-menu"
-          className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-lift"
+          className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-lift [animation:popIn_120ms_ease-out]"
         >
           <div className="flex items-center gap-3 px-2.5 py-2.5">
             {avatar("h-10 w-10")}

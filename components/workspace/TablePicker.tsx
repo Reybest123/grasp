@@ -39,7 +39,7 @@ export function TablePicker({
       ref={ref}
       onMouseDown={(e) => e.preventDefault()}
       onMouseLeave={() => setSize({ rows: 0, cols: 0 })}
-      className="absolute left-0 top-full z-30 mt-1.5 w-max rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+      className="absolute left-0 top-full z-30 mt-1.5 w-max rounded-xl border border-slate-200 bg-white p-3 shadow-xl [animation:popIn_120ms_ease-out]"
     >
       <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${MAX_COLS}, 1fr)` }}>
         {Array.from({ length: MAX_ROWS * MAX_COLS }, (_, i) => {

@@ -54,7 +54,7 @@ export function EnhanceMenu({
       ref={ref}
       role="dialog"
       aria-label={mode === "generate" ? "Write my notes" : "Enhance my notes"}
-      className="absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xl"
+      className="absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xl [animation:popIn_120ms_ease-out]"
     >
       <p className="text-sm font-bold text-ink">
         {mode === "generate" ? "Write my notes" : "Enhance my notes"}

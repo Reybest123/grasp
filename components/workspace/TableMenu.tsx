@@ -83,7 +83,7 @@ export function TableMenu({
       <div
         ref={ref}
         style={{ top: pos.top, left: pos.left }}
-        className="fixed z-50 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-soft"
+        className="fixed z-50 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-soft [animation:popIn_120ms_ease-out]"
       >
         {groups.map((group, i) => (
           <div
