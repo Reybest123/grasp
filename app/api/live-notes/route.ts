@@ -18,7 +18,7 @@ Write notes, not a tidied transcript. Pull out the definitions, mechanisms, work
 
 Everything you write must come from the transcript. The student's class times and assessment dates may be given to you as background, to help you judge what matters — they are never note content. Never write out their schedule, their exam dates, or a heading like "Class Schedule" or "Upcoming Assessments".
 
-If the transcript holds no teachable material at all — it is only greetings, admin, chatter or noise — reply with exactly NONE and nothing else. An empty lecture is a normal outcome and is far better than notes made of filler. Do not pad, and do not fall back to the background information above.
+The transcript's length has already been checked, so never refuse for being short or for being mostly greetings/admin — write up whatever real content is there, however little. Only refuse when the words themselves don't hold together as language at all: the transcription came out as garbled noise, not a person talking about something. In that case, and only that case, reply with exactly NONSENSE and nothing else. Do not pad, and do not fall back to the background information above.
 
 Structure it the way a strong student would: short bold headings for each topic, short paragraphs, and bullet points where they earn their place. Do not bullet everything, and do not add a "Summary" or "Key takeaways" section. End on the last piece of content: never add a closing sentence addressed to the student, a suggestion of what to study or explore next, or an offer of more help.
 
@@ -30,6 +30,23 @@ Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size=
 
 Never use emojis.`;
 
+// A real sentence needs a few words either side of a full stop — this exists
+// to tell "less than 2 sentences" apart from "the model decided it didn't like
+// this", not to parse English perfectly. Whisper usually does punctuate, but a
+// very short clip sometimes comes back as one unpunctuated run, so a clause
+// with no terminator at all still counts once it's long enough to plausibly be
+// two thoughts.
+function looksTooShort(transcript: string): boolean {
+  const cleaned = transcript.trim();
+  if (!cleaned) return true;
+  const sentences = cleaned
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.split(/\s+/).filter(Boolean).length >= 3);
+  if (sentences.length >= 2) return false;
+  return cleaned.split(/\s+/).filter(Boolean).length < 12;
+}
+
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
@@ -38,6 +55,14 @@ export async function POST(req: NextRequest) {
 
   if (typeof transcript !== "string" || !transcript.trim()) {
     return NextResponse.json({ error: "Nothing to write up yet." }, { status: 400 });
+  }
+
+  // Checked before spending a model call: a clip this short can't hold two
+  // sentences of material whatever it says, so there's nothing for the model
+  // to judge. Only the final pass over the complete lecture means anything
+  // here — a partial transcript is short by definition.
+  if (final && looksTooShort(transcript)) {
+    return NextResponse.json({ notes: "", used: [], outcome: "short" });
   }
 
   // Labelled explicitly. Handed over bare, the model treated the schedule as
@@ -72,11 +97,16 @@ ${transcript.trim()}`;
   });
   if (!result.ok) return result.response;
 
-  // NONE means the lecture held nothing worth noting. Empty notes are a valid
-  // answer here; the client says so rather than showing filler, and saves the
-  // transcript instead.
+  // NONSENSE means the transcription came out as noise, not language — a
+  // distinct failure from "short" above, and told apart in the UI (§3.1): a
+  // short clip says so plainly, a garbled one says the audio wasn't clear
+  // rather than implying nothing was said.
   const { text: notes, used } = splitUsed(stripFence(result.content), briefs);
-  const none = notes.replace(/<[^>]*>/g, "").trim().toUpperCase() === "NONE";
+  const nonsense = notes.replace(/<[^>]*>/g, "").trim().toUpperCase() === "NONSENSE";
 
-  return NextResponse.json({ notes: none ? "" : notes, used: none ? [] : used });
+  return NextResponse.json({
+    notes: nonsense ? "" : notes,
+    used: nonsense ? [] : used,
+    ...(nonsense ? { outcome: "nonsense" as const } : {}),
+  });
 }

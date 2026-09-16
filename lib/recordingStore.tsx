@@ -40,8 +40,10 @@ export type RecordingState = {
   seconds: number;
   transcript: string;
   notesHtml: string;
-  /** true once a final draft has run and produced nothing usable */
+  /** true once a final draft has run and the transcript turned out too short (§3.1) to write anything from */
   noMaterial: boolean;
+  /** true once a final draft has run and the transcript came back garbled — not too short, just unclear audio */
+  nonsense: boolean;
   /** resources the current draft drew on (§3.4), named in the Record tab */
   cited: Citation[];
   starting: boolean;
@@ -89,6 +91,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const [transcript, setTranscript] = useState("");
   const [notesHtml, setNotesHtml] = useState("");
   const [noMaterial, setNoMaterial] = useState(false);
+  const [nonsense, setNonsense] = useState(false);
   const [cited, setCited] = useState<Citation[]>([]);
   const [starting, setStarting] = useState(false);
   const [drafting, setDrafting] = useState(false);
@@ -126,7 +129,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
     lastDraftRef.current = text.length;
     setDrafting(true);
-    const { html, cited: used, error } = await liveNotes({
+    const { html, cited: used, error, outcome } = await liveNotes({
       transcript: text,
       subjectName: subjectNameRef.current,
       context: contextRef.current,
@@ -141,15 +144,23 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       notesRef.current = html;
       setNotesHtml(html);
       setNoMaterial(false);
+      setNonsense(false);
       // Each draft rewrites the notes whole, so its citations replace the last
       // set rather than piling up across a lecture.
       setCited(used);
     } else if (final) {
-      // The route returns nothing when the lecture held no teachable material —
-      // a minute of greetings and admin. Saying so is honest; padding the note
-      // out with the student's timetable, which is what the model reached for
-      // when it had nothing else, is not.
-      setNoMaterial(true);
+      // The route only comes back with nothing when the final transcript was
+      // too short to hold two sentences of material, or when it came back
+      // garbled — never for a lecture that genuinely had something to say.
+      // Told apart because they read differently to the student: one says
+      // "there wasn't enough recorded", the other "the audio wasn't clear".
+      if (outcome === "nonsense") {
+        setNonsense(true);
+        setNoMaterial(false);
+      } else {
+        setNoMaterial(true);
+        setNonsense(false);
+      }
     }
   }, []);
 
@@ -228,6 +239,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setTranscript("");
         setNotesHtml("");
         setNoMaterial(false);
+        setNonsense(false);
         setNotice(null);
         setSeconds(0);
         setPhase("recording");
@@ -287,6 +299,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     setTranscript("");
     setNotesHtml("");
     setNoMaterial(false);
+    setNonsense(false);
     setSeconds(0);
     setNotice(null);
   }, []);
@@ -439,6 +452,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         transcript,
         notesHtml,
         noMaterial,
+        nonsense,
         cited,
         starting,
         drafting,

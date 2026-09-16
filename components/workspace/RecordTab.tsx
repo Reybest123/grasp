@@ -63,6 +63,10 @@ export function RecordTab({
 
   const remaining = maxSeconds - rec.seconds;
   const hasContent = Boolean(rec.notesHtml || rec.transcript.trim());
+  // Both leave the transcript as the only thing to save, but they read
+  // differently: one says nothing was recorded, the other that the audio
+  // wasn't clear enough to write up — see lib/recordingStore.tsx.
+  const noNotes = rec.noMaterial || rec.nonsense;
   // Stop moves straight to "naming", but the final pass over the whole
   // transcript is still running behind it — that gap is what the polishing
   // state fills.
@@ -155,7 +159,9 @@ export function RecordTab({
                 ? "Polishing your notes…"
                 : rec.noMaterial
                   ? "Not enough to write up"
-                  : "Notes ready"}
+                  : rec.nonsense
+                    ? "Couldn't make out the recording"
+                    : "Notes ready"}
             </span>
           )}
         </div>
@@ -190,9 +196,10 @@ export function RecordTab({
           note="Going back over the whole lecture, including the last thing said, to write the final version."
         />
       ) : rec.noMaterial ? (
-        /* The final pass came back with nothing teachable — a lecture that was
-           mostly admin and greetings. Said plainly here rather than as grey
-           placeholder text under a heading claiming there are notes. */
+        /* The final transcript didn't hold two sentences of material — a
+           clip stopped almost as soon as it started. Said plainly here
+           rather than as grey placeholder text under a heading claiming
+           there are notes. */
         <div className="mt-4 grid min-h-[240px] place-items-center rounded-2xl bg-amber-50 p-5 text-center">
           <div>
             <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700">
@@ -202,8 +209,29 @@ export function RecordTab({
               Grasp couldn&apos;t capture enough to write notes
             </p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-amber-800">
-              There wasn&apos;t enough teaching in this recording to write up. Saving it keeps the
+              There wasn&apos;t enough recorded to write anything up. Saving it keeps the
               transcript, so nothing said is lost.
+            </p>
+          </div>
+        </div>
+      ) : rec.nonsense ? (
+        /* A different failure from noMaterial above: there was plenty
+           recorded, but the transcription came back as noise rather than
+           language — background noise, cross-talk, or a mic too far from
+           the speaker. Telling the student "not enough was said" here would
+           be the wrong diagnosis and send them looking in the wrong place. */
+        <div className="mt-4 grid min-h-[240px] place-items-center rounded-2xl bg-amber-50 p-5 text-center">
+          <div>
+            <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700">
+              <AlertIcon className="h-5 w-5" />
+            </span>
+            <p className="mt-4 font-semibold text-amber-900">
+              Grasp couldn&apos;t make out this recording
+            </p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-amber-800">
+              The audio wasn&apos;t clear enough to write up as notes — this usually means
+              background noise or the microphone was too far away. Saving it keeps the
+              transcript, so you can still see what was picked up.
             </p>
           </div>
         </div>
@@ -275,7 +303,7 @@ export function RecordTab({
       {rec.phase === "naming" && !polishing && (
         <div className="mt-5">
           <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            {rec.noMaterial ? "Name this transcript" : "Name this note"}
+            {noNotes ? "Name this transcript" : "Name this note"}
           </label>
           <input
             value={rec.name}
@@ -295,7 +323,7 @@ export function RecordTab({
               disabled={!hasContent}
               className="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
             >
-              {rec.noMaterial ? "Save transcript" : "Save to notes"}
+              {noNotes ? "Save transcript" : "Save to notes"}
             </button>
           </div>
         </div>
