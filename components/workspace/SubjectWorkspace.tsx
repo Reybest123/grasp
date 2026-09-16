@@ -10,17 +10,25 @@ import { getColor } from "@/lib/subjectColors";
 import { nextExam, weeklyLabel, subjectContext } from "@/lib/schedule";
 import { NotesTab } from "@/components/workspace/NotesTab";
 import { RecordTab } from "@/components/workspace/RecordTab";
-import { QuizzesTab } from "@/components/workspace/QuizzesTab";
+import { QuizzesTab, type QuizView } from "@/components/workspace/QuizzesTab";
 import { ResourcesTab } from "@/components/workspace/ResourcesTab";
 import {
   NoteIcon,
   QuizIcon,
   BankIcon,
   MicIcon,
-  BackIcon,
+  ArrowLeftIcon,
   EditIcon,
   ExamIcon,
 } from "@/components/icons";
+
+function Separator() {
+  return (
+    <li aria-hidden className="shrink-0 text-slate-400">
+      /
+    </li>
+  );
+}
 
 type Tab = "notes" | "record" | "quizzes" | "resources";
 
@@ -49,6 +57,8 @@ export function SubjectWorkspace({
   focusRecord?: number;
 }) {
   const [tab, setTab] = useState<Tab>("notes");
+  const [quizView, setQuizView] = useState<QuizView>("grid");
+  const [quizOpenId, setQuizOpenId] = useState<string | null>(null);
   // Notes live in the subject store, not local state, so edits and formatting
   // survive a refresh. Both the Notes tab and the Record tab write through here.
   const { updateSubject } = useSubjects();
@@ -151,6 +161,26 @@ export function SubjectWorkspace({
     [subject.id, subject.quizzes, updateSubject]
   );
 
+  const openQuiz = quizOpenId ? subject.quizzes.find((q) => q.id === quizOpenId) : undefined;
+  const quizCrumb =
+    tab !== "quizzes" ? null : openQuiz ? openQuiz.title : quizView === "setup" ? "New quiz" : null;
+
+  function closeQuiz() {
+    setQuizOpenId(null);
+    setQuizView("grid");
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }
+
+  function selectTab(key: Tab) {
+    rec.guard(() => {
+      setTab(key);
+      // Leaving the Quizzes tab used to unmount its state; a fresh visit still
+      // starts on the grid.
+      setQuizOpenId(null);
+      setQuizView("grid");
+    });
+  }
+
   const color = getColor(subject.colorKey);
   const weekly = weeklyLabel(subject.classes);
   const exam = now ? nextExam(subject.exams, now) : null;
@@ -167,14 +197,41 @@ export function SubjectWorkspace({
   return (
     <div>
       {onBack && (
-        <div className="px-6 pt-5 sm:px-8">
-          <button
-            onClick={() => rec.guard(onBack)}
-            className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
-          >
-            <BackIcon className="h-4 w-4" /> All notebooks
-          </button>
-        </div>
+        <nav aria-label="Breadcrumb" className="px-6 pt-5 sm:px-8">
+          <ol className="flex min-w-0 items-center gap-2 text-sm">
+            <li className="shrink-0">
+              <button
+                onClick={() => rec.guard(onBack)}
+                className="inline-flex items-center gap-1.5 font-medium text-slate-500 transition hover:text-ink"
+              >
+                <ArrowLeftIcon className="h-4 w-4" /> All notebooks
+              </button>
+            </li>
+            <Separator />
+            <li className="min-w-0 truncate">
+              {quizCrumb ? (
+                <button
+                  onClick={closeQuiz}
+                  className="font-medium text-slate-500 transition hover:text-ink"
+                >
+                  {subject.name}
+                </button>
+              ) : (
+                <span aria-current="page" className="font-medium text-ink">
+                  {subject.name}
+                </span>
+              )}
+            </li>
+            {quizCrumb && (
+              <>
+                <Separator />
+                <li aria-current="page" className="min-w-0 truncate font-medium text-ink">
+                  {quizCrumb}
+                </li>
+              </>
+            )}
+          </ol>
+        </nav>
       )}
 
       {/* Subject header */}
@@ -221,7 +278,7 @@ export function SubjectWorkspace({
           {TABS.map(([key, label, icon]) => (
             <button
               key={key}
-              onClick={() => rec.guard(() => setTab(key))}
+              onClick={() => selectTab(key)}
               className={`-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
                 tab === key
                   ? "border-brand-600 text-brand-700"
@@ -277,6 +334,10 @@ export function SubjectWorkspace({
             addQuiz={addQuiz}
             updateQuiz={updateQuiz}
             deleteQuiz={deleteQuiz}
+            view={quizView}
+            setView={setQuizView}
+            openId={quizOpenId}
+            setOpenId={setQuizOpenId}
           />
         )}
         {tab === "resources" && (

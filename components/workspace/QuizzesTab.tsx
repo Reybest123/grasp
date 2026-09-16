@@ -20,6 +20,8 @@ import { QuizRunner } from "@/components/workspace/QuizRunner";
 import { QuizEditDialog } from "@/components/workspace/QuizEditDialog";
 import { QuizIcon, SparkleIcon } from "@/components/icons";
 
+export type QuizView = "grid" | "setup";
+
 export function QuizzesTab({
   subject,
   notes,
@@ -29,6 +31,10 @@ export function QuizzesTab({
   addQuiz,
   updateQuiz,
   deleteQuiz,
+  view,
+  setView,
+  openId,
+  setOpenId,
 }: {
   subject: Subject;
   notes: Note[];
@@ -39,9 +45,12 @@ export function QuizzesTab({
   addQuiz: (quiz: Quiz) => void;
   updateQuiz: (id: string, patch: Partial<Quiz>) => void;
   deleteQuiz: (id: string) => void;
+  /** held by SubjectWorkspace so its breadcrumb can name and close the open quiz */
+  view: QuizView;
+  setView: (view: QuizView) => void;
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
 }) {
-  const [view, setView] = useState<"grid" | "setup">("grid");
-  const [openId, setOpenId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

@@ -51,7 +51,7 @@ export function Sidebar({ onLogOut }: { onLogOut: () => void }) {
           of top padding for the content. */}
       <nav
         aria-label="Main"
-        className="fixed bottom-0 left-0 top-[69px] z-40 flex w-16 flex-col border-r border-slate-200 bg-white"
+        className="fixed bottom-0 left-0 top-[69px] z-40 flex w-16 flex-col border-r border-[#efe3d6] bg-[#f8efe6]"
       >
         {/* The two destinations, half the rail each. */}
         <div className="flex flex-1 flex-col divide-y divide-slate-200">
@@ -119,8 +119,9 @@ function RailLink({
         }`}
       />
       {/* Hover washes the whole half in a faint orange, on inactive items only,
-          so the size of the target is visible before clicking. The resting
-          state stays white: a permanent wash read as a coloured panel. */}
+          so the size of the target is visible before clicking. The rail's
+          resting cream is set on the nav; a stronger permanent wash read as a
+          coloured panel. */}
       {!active && (
         <span className="absolute inset-0 bg-brand-50/70 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
       )}

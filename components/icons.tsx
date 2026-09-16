@@ -18,9 +18,9 @@ const base = (className?: string) => ({
 export function NoteIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
-      <path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
-      <path d="M14 4v5h5" />
-      <path d="M8 13h7M8 17h5" />
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <path d="M10 9H8M16 13H8M16 17H8" />
     </svg>
   );
 }
@@ -28,9 +28,9 @@ export function NoteIcon({ className }: IconProps) {
 export function QuizIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
-      <path d="M9.1 9a3 3 0 1 1 4 2.8c-.9.4-1.6 1.2-1.6 2.2v.3" />
-      <path d="M12 18h.01" />
-      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
     </svg>
   );
 }
@@ -38,8 +38,8 @@ export function QuizIcon({ className }: IconProps) {
 export function BankIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
-      <path d="M4 19V6a1 1 0 0 1 1-1h9l6 6v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
-      <path d="M14 5v5h5" />
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
     </svg>
   );
 }
@@ -56,9 +56,9 @@ export function SparkleIcon({ className }: IconProps) {
 export function MicIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
-      <rect x="9" y="3" width="6" height="11" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0" />
-      <path d="M12 18v3" />
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <path d="M12 19v3" />
     </svg>
   );
 }
@@ -91,6 +91,15 @@ export function BackIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
       <path d="M15 6l-6 6 6 6" />
+    </svg>
+  );
+}
+
+export function ArrowLeftIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
     </svg>
   );
 }
@@ -355,8 +364,8 @@ export function MenuIcon({ className }: IconProps) {
 export function HomeIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+      <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+      <path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     </svg>
   );
 }
@@ -364,10 +373,8 @@ export function HomeIcon({ className }: IconProps) {
 export function WorkspaceIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
-      <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
-      <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
-      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
-      <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+      <rect x="5" y="2.5" width="14" height="19" rx="2.5" />
+      <path d="M9 7.5h6" />
     </svg>
   );
 }
