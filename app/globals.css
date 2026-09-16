@@ -10,6 +10,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Reserve the scrollbar's width even on a page too short to scroll, or
+     switching between a short tab and a long one shifts everything sideways. */
+  scrollbar-gutter: stable;
   /* Anchor links land under the fixed header rather than behind it. */
   scroll-padding-top: 90px;
 }
