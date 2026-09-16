@@ -100,6 +100,8 @@ export async function extractResource(params: {
   /** left off when the student would rather Grasp worked out what it is */
   kind?: ResourceKind;
   subjectName: string;
+  /** which subject's bank this is going into, so the route can check its cap */
+  subjectId: string;
   /** an image or PDF as a data URL — this or `text` */
   dataUrl?: string;
   /** pasted text, or the contents of a plain-text file */

@@ -5,6 +5,7 @@ import { query, sql } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { createSession } from "@/lib/session";
 import { normalizeEmail } from "@/lib/accounts";
+import { authRateLimit } from "@/lib/rateLimit";
 
 /**
  * One message for every failure mode — wrong password, no such account, empty
@@ -25,7 +26,18 @@ export async function POST(req: NextRequest) {
   const email = normalizeEmail(body.email);
   const password = typeof body.password === "string" ? body.password : "";
 
-  if (!email || !password) return rejected();
+  // Before the password is verified, not after: scrypt is ~100ms of CPU by
+  // design, so letting an unbounded number of guesses reach it is both the
+  // password-guessing hole and a way to exhaust the server.
+  const gate = await authRateLimit("login", req, email);
+  if (!gate.ok) return gate.response;
+
+  // A blank field is still a failed attempt. Not recording it would leave a
+  // free way to keep the bucket empty while probing with something else.
+  if (!email || !password) {
+    await gate.record();
+    return rejected();
+  }
 
   const result = await query(async () => {
     const rows = (await sql`
@@ -35,6 +47,8 @@ export async function POST(req: NextRequest) {
   });
 
   if (!result.ok) {
+    // A database fault is Grasp's problem, not a failed attempt: counting it
+    // would lock students out of an account they typed correctly.
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
@@ -46,8 +60,14 @@ export async function POST(req: NextRequest) {
   const stored = user?.password_hash ?? "scrypt$32768$8$1$00$00";
   const valid = await verifyPassword(password, stored);
 
-  if (!user || !valid) return rejected();
+  if (!user || !valid) {
+    await gate.record();
+    return rejected();
+  }
 
+  // Cleared on success, so the tries it took to remember the password do not
+  // count against the next login.
+  await gate.clear();
   await createSession(user.id);
   return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } });
 }

@@ -171,6 +171,7 @@ function ProfileSection() {
 }
 
 function PasswordSection() {
+  const { profile } = useProfile();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -186,7 +187,7 @@ function PasswordSection() {
     // Checked here so a typo is caught without a round trip; the route decides.
     const problem = !current
       ? "Please enter your current password."
-      : (passwordProblem(next) ??
+      : (passwordProblem(next, profile.email) ??
         (next !== confirm ? "The new passwords do not match." : null));
     if (problem) return setError(problem);
 

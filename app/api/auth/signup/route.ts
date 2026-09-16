@@ -11,6 +11,7 @@ import { hashPassword, passwordProblem } from "@/lib/password";
 import { createSession, destroySession } from "@/lib/session";
 import { normalizeEmail, emailProblem } from "@/lib/accounts";
 import { sendVerification } from "@/lib/verification";
+import { authRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -19,12 +20,23 @@ export async function POST(req: NextRequest) {
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
   const password = typeof body.password === "string" ? body.password : "";
 
+  // Signup is rate limited for a different reason than login: the abuse here is
+  // creation that SUCCEEDS. Every account sends a confirmation email and opens a
+  // trial with its own weekly AI allowance, so a script making them in bulk
+  // spends real money. Repeated tries against one address are also how a
+  // stranger enumerates who has an account, since a signup form cannot hide it.
+  const gate = await authRateLimit("signup", req, email);
+  if (!gate.ok) return gate.response;
+
   // Each refusal names its field, so the form can show the message under the
   // box it is about rather than at the top of the form.
   // The name is optional, so it is never refused.
   const refusal =
     (emailProblem(email) && { error: emailProblem(email), field: "email" }) ||
-    (passwordProblem(password) && { error: passwordProblem(password), field: "password" });
+    (passwordProblem(password, email) && {
+      error: passwordProblem(password, email),
+      field: "password",
+    });
   if (refusal) return NextResponse.json(refusal, { status: 400 });
 
   const hash = await hashPassword(password);
@@ -46,6 +58,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
   if (!result.data) {
+    // Counted: hammering one address is how the taken/not-taken answer below
+    // gets turned into a list of who has a Grasp account.
+    await gate.record();
     // Deliberately explicit. Login pages hide whether an address exists to
     // avoid confirming it to a stranger, but a signup form cannot: it has to
     // say why it will not create the account, and "that email is taken" is
@@ -58,6 +73,9 @@ export async function POST(req: NextRequest) {
       { status: 409 }
     );
   }
+
+  // Counted on success, which is the case that costs money.
+  await gate.record();
 
   // Signing up while logged in to another account switches accounts, so that
   // account's session is ended properly rather than left valid behind the new one.

@@ -22,6 +22,8 @@ import { RESOURCE_KINDS, isResourceKind, type ResourceEntry } from "@/lib/resour
 import { pageLimitProblem, textLimitProblem } from "@/lib/resourceLimits";
 import { dataUrlType, isSupportedImage, tooLargeMessage, unsupportedFileMessage } from "@/lib/fileTypes";
 import { requireUser } from "@/lib/session";
+import { query, sql } from "@/lib/db";
+import { DEFAULT_PLAN, resourceLimit, upgradeHint, type Plan } from "@/lib/plan";
 import { claimResourceRead } from "@/lib/usage";
 
 /** The request body limit; base64 inflates a 3 MB file by a third. */
@@ -94,7 +96,7 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { name, kind, dataUrl, text, subjectName } = await req.json().catch(() => ({}));
+  const { name, kind, dataUrl, text, subjectName, subjectId } = await req.json().catch(() => ({}));
 
   const filename = typeof name === "string" && name.trim() ? name.trim() : "document";
   const hasFile = typeof dataUrl === "string" && dataUrl.startsWith("data:");
@@ -134,6 +136,13 @@ export async function POST(req: NextRequest) {
     const tooMany = pageLimitProblem(pages);
     if (tooMany) return NextResponse.json({ error: tooMany }, { status: 400 });
   }
+
+  // How many documents this subject's bank already holds (§3.4). Checked here
+  // and not only in the tab: the tab disables its Add button at the cap, but a
+  // disabled button is a courtesy to the student, not a limit -- anything that
+  // can post JSON ignores it, and this route is the one that spends money.
+  const full = await bankIsFull(guard.user.id, subjectId, guard.user.plan ?? DEFAULT_PLAN);
+  if (full) return full;
 
   // Claimed only once the document is known to be within the caps, so a
   // refused upload does not cost the student part of their week.
@@ -224,4 +233,52 @@ export async function POST(req: NextRequest) {
       { status: 502 }
     );
   }
+}
+
+/**
+ * Refuses the read when the subject's Resource Bank is already at the plan's
+ * cap, or when the subject is not this student's to add to.
+ *
+ * Scoped by `user_id` even though the id alone would find the row: subject ids
+ * are minted client-side and so are guessable, which is the same reason every
+ * query in lib/subjectsDb.ts carries the user.
+ *
+ * A subject the database has never heard of is allowed through rather than
+ * refused. Subjects are written by a debounced save, so a bank added to within
+ * a second of the subject being created -- or while a failed save is still
+ * retrying -- has no row to count yet, and refusing a legitimate first document
+ * is worse than letting one past a cap the weekly read allowance already bounds.
+ */
+async function bankIsFull(
+  userId: string,
+  subjectId: unknown,
+  plan: Plan
+): Promise<NextResponse | null> {
+  if (typeof subjectId !== "string" || !subjectId) return null;
+
+  const counted = await query(async () => {
+    const rows = (await sql`
+      select (select count(*) from resources where subject_id = s.id)::int as held
+      from subjects s
+      where s.id = ${subjectId} and s.user_id = ${userId}
+    `) as { held: number }[];
+    return rows[0] ?? null;
+  });
+
+  // A database fault is not a reason to refuse; the claim below needs the same
+  // database and will report it properly.
+  if (!counted.ok || !counted.data) return null;
+
+  const limit = resourceLimit(plan);
+  if (counted.data.held < limit) return null;
+
+  return NextResponse.json(
+    {
+      // upgradeHint is empty on the top plan, so the sentence is trimmed
+      // rather than left ending in a space.
+      error: `This subject's Resource Bank already holds ${limit} document${limit === 1 ? "" : "s"}, which is as many as your plan allows. ${upgradeHint(plan)}`.trim(),
+      limit: true,
+    },
+    { status: 429 }
+  );
 }

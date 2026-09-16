@@ -199,6 +199,26 @@ create table if not exists usage (
 
 create index if not exists usage_window_idx on usage (user_id, kind, created_at);
 
+-- Failed attempts against the account routes, so a password can't be guessed at
+-- machine speed (lib/rateLimit.ts). Deliberately NOT tied to `users`: most of
+-- what lands here is an attempt against an address that has no account, and a
+-- foreign key would have nowhere to point. Rows are pruned by age, not kept.
+--
+-- `bucket` is the sha256 of what is being counted -- the scope with either the
+-- email tried or the caller's IP -- rather than a column per kind, so one table
+-- and one index serve every scope. Hashed for the same reason session tokens
+-- are: counting only ever compares for equality, so there is nothing to gain
+-- from storing an address in the clear and a dumped table then reveals neither
+-- who tried to log in nor where from.
+create table if not exists auth_attempts (
+  id         bigint generated always as identity primary key,
+  bucket     text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists auth_attempts_bucket_idx on auth_attempts (bucket, created_at);
+create index if not exists auth_attempts_age_idx on auth_attempts (created_at);
+
 -- AI answers a student flagged as wrong (§9.2). A copy of the flagged output is
 -- kept so it can be looked into; it goes when the account does.
 create table if not exists feedback (

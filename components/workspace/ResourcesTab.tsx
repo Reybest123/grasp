@@ -46,6 +46,7 @@ export function ResourcesTab({
     const { kind, summary, entries, error: readError } = await extractResource({
       ...payload,
       subjectName: subject.name,
+      subjectId: subject.id,
     });
     setLoading(false);
 

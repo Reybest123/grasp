@@ -89,7 +89,13 @@ export function AuthForm({
         // Login only checks that there is something to send. It does not apply
         // the signup length rule: an account made before a rule changed must
         // still be able to log in.
-        return signup ? passwordProblem(v.password) : v.password ? null : "Please enter your password.";
+        // The email goes in so "your password contains your email address" is
+        // caught here rather than as a refusal from the route.
+        return signup
+          ? passwordProblem(v.password, v.email)
+          : v.password
+            ? null
+            : "Please enter your password.";
       case "confirm":
         // Only the form checks this. The route is sent one password, and a
         // mistyped one is exactly the mistake the second box is there to catch.

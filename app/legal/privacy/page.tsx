@@ -45,6 +45,13 @@ export default function Privacy() {
           <li>
             <b>Sessions:</b> a record of each device you are logged in on, so you stay logged in.
           </li>
+          <li>
+            <b>Failed sign-in attempts:</b> a count of recent failed attempts to log in, sign up or
+            change a password, so that nobody can guess their way into your account. Grasp stores
+            only a one-way scrambled form of the email address tried and the network address it came
+            from, which cannot be turned back into either, and these counts are deleted
+            automatically within 24 hours.
+          </li>
         </ul>
       </LegalSection>
 
@@ -114,7 +121,9 @@ export default function Privacy() {
         <p>
           You can delete your whole account from Settings. That immediately removes your account
           and everything stored with it: your plan and setup answers, study material, usage
-          records, flagged answers and sessions. It cannot be undone.
+          records, flagged answers and sessions. It cannot be undone. The scrambled sign-in attempt
+          counts described above are not tied to your account and are not deleted with it; they
+          expire on their own within 24 hours.
         </p>
       </LegalSection>
 
