@@ -78,7 +78,7 @@ function CardSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-ring"
+      className="flex min-h-[220px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-ring"
     >
       <Skeleton className="h-1.5 rounded-none" />
       <div className="p-5">

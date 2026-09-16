@@ -25,7 +25,7 @@ export function SubjectCard({
   const moreExams = Math.max(0, exams.length - 1);
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-ring transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lift">
+    <div className="group flex min-h-[220px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-ring transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lift">
       {/* Colour identity strip */}
       <div className={`h-1.5 bg-gradient-to-r ${color.gradient}`} />
 
