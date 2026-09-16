@@ -127,7 +127,7 @@ export type ExamStatus = {
   label: string;
   /** "in 3 months", "tomorrow", "overdue by 2 days" */
   when: string;
-  /** the chip's wording: "3 months", "Tomorrow", "Overdue" */
+  /** the chip's wording: "3 months", "Tomorrow", "2 days overdue" */
   short: string;
   /** "Wed 12 Nov", with the year when it is not this year */
   date: string;
@@ -188,7 +188,8 @@ export function examStatus(exam: Exam, now: Date): ExamStatus | null {
 
   if (days < 0) {
     const when = `overdue by ${spanLabel(target, today)}`;
-    return { exam, label: `${name} · ${when}`, when, short: "Overdue", date, days, soon: false, overdue: true };
+    const short = `${spanLabel(target, today, true)} overdue`;
+    return { exam, label: `${name} · ${when}`, when, short, date, days, soon: false, overdue: true };
   }
 
   const when = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${spanLabel(today, target)}`;
