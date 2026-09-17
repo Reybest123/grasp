@@ -7,25 +7,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
+import { claimMarking } from "@/lib/usage";
+import { LIMITS, joinNotes } from "@/lib/costModel";
 
 type Written = { id: string; question: string; modelAnswer: string; answer: string };
+
+const text = (value: unknown, max: number) => (typeof value === "string" ? value.trim().slice(0, max) : "");
 
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { written, notes, context, resources } = await req.json();
+  const { written, notes, context, resources } = await req.json().catch(() => ({}));
 
   if (!Array.isArray(written) || written.length === 0) {
     return NextResponse.json({ marks: [] });
   }
 
-  const noteList = Array.isArray(notes) ? notes : [];
-  const notesContext = noteList.length
-    ? `The student's notes, for judging whether an answer matches what they were taught:\n\n${noteList
-        .map((n: { title: string; body: string }) => `## ${n.title}\n${n.body}`)
-        .join("\n\n")}`
+  // Capped so one marking has a ceiling on cost (lib/costModel.ts).
+  const joined = joinNotes(notes);
+  const notesContext = joined
+    ? `The student's notes, for judging whether an answer matches what they were taught:\n\n${joined}`
     : "";
+  const schedule = text(context, LIMITS.contextChars);
 
   // §3.4 — a rubric is the difference between "that reads fine" and the mark a
   // teacher would actually give it, so marking gets the bank too.
@@ -33,18 +37,25 @@ export async function POST(req: NextRequest) {
   const block = resourceBlock(briefs, "json");
 
   const items = (written as Written[])
-    .map(
-      (w, i) =>
-        `[${i + 1}] id: ${w.id}\nQuestion: ${w.question}\nFull-mark answer: ${w.modelAnswer}\nStudent wrote: ${
-          w.answer?.trim() ? w.answer.trim() : "(left blank)"
-        }`
-    )
+    .slice(0, LIMITS.markItems)
+    .map((w, i) => {
+      const answer = text(w?.answer, LIMITS.markAnswerChars);
+      return `[${i + 1}] id: ${text(w?.id, 64)}\nQuestion: ${text(w?.question, LIMITS.markQuestionChars)}\nFull-mark answer: ${text(
+        w?.modelAnswer,
+        LIMITS.markModelAnswerChars
+      )}\nStudent wrote: ${answer || "(left blank)"}`;
+    })
     .join("\n\n");
+
+  // Retakes can be marked again, so marking has an allowance of its own.
+  const spend = await claimMarking(guard.user);
+  if (!spend.ok) return spend.response;
 
   const result = await chatCompletion({
     // Same reasoning model as generation, so a correct working is not marked down.
     model: "gpt-5-mini",
     reasoning_effort: "low",
+    max_completion_tokens: LIMITS.markOutputTokens,
     response_format: { type: "json_object" },
     messages: [
       {
@@ -60,14 +71,15 @@ export async function POST(req: NextRequest) {
       {
         role: "user",
         content: `${
-          typeof context === "string" && context.trim()
-            ? `Background on the student (never mark them on this): ${context.trim()}\n\n`
-            : ""
+          schedule ? `Background on the student (never mark them on this): ${schedule}\n\n` : ""
         }${notesContext ? `${notesContext}\n\n` : ""}Answers to mark:\n\n${items}`,
       },
     ],
   });
-  if (!result.ok) return result.response;
+  if (!result.ok) {
+    await spend.release();
+    return result.response;
+  }
 
   try {
     const parsed = JSON.parse(result.content || "{}");
@@ -77,6 +89,9 @@ export async function POST(req: NextRequest) {
         typeof m?.id === "string" &&
         (m.verdict === "correct" || m.verdict === "partial" || m.verdict === "wrong")
     );
+    // Only a provider failure hands the marking back. Once the model has run the
+    // call is paid for, and refunding an unusable reply would let a crafted
+    // request be marked for free as many times as it liked.
     return NextResponse.json({ marks: valid, used: pickUsed(parsed.used, briefs) });
   } catch {
     console.error("[grasp] marking JSON did not parse:", result.content.slice(0, 300));

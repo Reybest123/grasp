@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
+import { claimLiveDraft } from "@/lib/usage";
+import { LIMITS, transcriptCharCap } from "@/lib/costModel";
+import { DEFAULT_PLAN, recordingMaxSeconds } from "@/lib/plan";
 
 // §3.1 Record — turns the lecture transcript so far into notes, re-run as more
 // of the lecture arrives so the student watches the notes build.
@@ -51,11 +54,22 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { transcript, subjectName, context, final, resources } = await req.json();
+  const { transcript: sent, subjectName, context, final, resources, recordingId } = await req
+    .json()
+    .catch(() => ({}));
 
-  if (typeof transcript !== "string" || !transcript.trim()) {
+  if (typeof sent !== "string" || !sent.trim()) {
     return NextResponse.json({ error: "Nothing to write up yet." }, { status: 400 });
   }
+  if (typeof recordingId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(recordingId)) {
+    return NextResponse.json({ error: "That recording could not be read." }, { status: 400 });
+  }
+
+  // Never longer than the plan's recording could have produced, so a draft's
+  // input is bounded as well as how many drafts there are (lib/costModel.ts).
+  const transcript = guard.user.unlimited
+    ? sent
+    : sent.slice(0, transcriptCharCap(recordingMaxSeconds(guard.user.plan ?? DEFAULT_PLAN)));
 
   // Checked before spending a model call: a clip this short can't hold two
   // sentences of material whatever it says, so there's nothing for the model
@@ -67,9 +81,12 @@ export async function POST(req: NextRequest) {
 
   // Labelled explicitly. Handed over bare, the model treated the schedule as
   // material to write up whenever the transcript was too thin to carry a note.
+  const draft = await claimLiveDraft(guard.user, recordingId);
+  if (!draft.ok) return draft.response;
+
   const schedule =
     typeof context === "string" && context.trim()
-      ? `\n\nBackground (context only — never write this into the notes):\n${context.trim()}`
+      ? `\n\nBackground (context only — never write this into the notes):\n${context.trim().slice(0, LIMITS.contextChars)}`
       : "";
   // §3.4 — the planner and the criteria tell the model which parts of a
   // lecture are the assessed ones, which is exactly what notes should lead on.
@@ -94,6 +111,7 @@ ${transcript.trim()}`;
     ],
     // Low: this is a faithful write-up of what was said, not creative writing.
     temperature: 0.3,
+    max_completion_tokens: final ? LIMITS.liveFinalOutputTokens : LIMITS.liveDraftOutputTokens,
   });
   if (!result.ok) return result.response;
 

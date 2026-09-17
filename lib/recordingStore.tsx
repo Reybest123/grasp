@@ -135,6 +135,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       context: contextRef.current,
       final,
       resources: resourcesRef.current,
+      recordingId: recordingIdRef.current,
     });
     setDrafting(false);
     // A failed draft leaves the previous notes on screen; the next segment will

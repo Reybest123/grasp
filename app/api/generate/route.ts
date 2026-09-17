@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
+import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
+import { LIMITS } from "@/lib/costModel";
 
 // The blank-note counterpart to /api/enhance (§3.1): writes a starting set of
 // notes instead of improving existing ones, so the input is a title/subject
@@ -40,17 +42,24 @@ export async function POST(req: NextRequest) {
   const briefs = asBriefs(resources);
   const block = resourceBlock(briefs, "marker");
 
-  const cleanTitle = typeof title === "string" ? title.trim() : "";
-  const schedule = typeof context === "string" && context.trim() ? `\n\n${context.trim()}` : "";
+  const cleanTitle = typeof title === "string" ? title.trim().slice(0, 200) : "";
+  const schedule =
+    typeof context === "string" && context.trim()
+      ? `\n\n${context.trim().slice(0, LIMITS.contextChars)}`
+      : "";
   const focus =
     typeof instructions === "string" && instructions.trim()
-      ? `\nWhat the student asked you to focus on: ${instructions.trim()}`
+      ? `\nWhat the student asked you to focus on: ${instructions.trim().slice(0, LIMITS.instructionsChars)}`
       : "";
-  const user = `Subject: ${subjectName}
+  const user = `Subject: ${subjectName.trim().slice(0, 100)}
 Note title: ${cleanTitle || "(none given)"}${focus}${schedule}`;
+
+  const tokens = await checkAiTokens(guard.user);
+  if (!tokens.ok) return tokens.response;
 
   const result = await chatCompletion({
     model: "gpt-4o-mini",
+    max_completion_tokens: LIMITS.generateOutputTokens,
     messages: [
       { role: "system", content: block ? `${SYSTEM}\n\n${block}` : SYSTEM },
       { role: "user", content: user },
@@ -58,6 +67,7 @@ Note title: ${cleanTitle || "(none given)"}${focus}${schedule}`;
     temperature: 0.5,
   });
   if (!result.ok) return result.response;
+  await chargeAiTokens(guard.user, result.costUsd);
 
   const { text, used } = splitUsed(stripFence(result.content), briefs);
   return NextResponse.json({ generated: text, used });

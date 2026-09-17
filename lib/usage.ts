@@ -11,14 +11,24 @@ import {
   DEFAULT_PLAN,
   PLAN_LABEL,
   RECORDING_SEGMENT_MS,
+  aiTokenLimit,
+  formatCount,
+  markingLimit,
   quizLimit,
   recordingLimit,
   recordingMaxSeconds,
   resourceReadLimit,
   type Plan,
 } from "@/lib/plan";
+import { LIMITS as CAPS, tokensForCost } from "@/lib/costModel";
 
-export type UsageKind = "quiz" | "recording" | "resource";
+/**
+ * `ai` rows hold the tokens one action was charged in `units`, so that kind is
+ * summed rather than counted. `audio` and `draft` rows are per recording, not
+ * weekly allowances of their own: they hold its transcribed seconds and its
+ * note drafts, which is what keeps one recording's cost bounded.
+ */
+export type UsageKind = "quiz" | "recording" | "resource" | "mark" | "ai";
 
 /** `limit` is null in the admin's unlimited mode. */
 export type Allowance = { used: number; limit: number | null; resetsAt: string | null };
@@ -32,6 +42,8 @@ const LIMITS: Record<UsageKind, (plan: Plan) => number> = {
   quiz: quizLimit,
   recording: recordingLimit,
   resource: resourceReadLimit,
+  mark: markingLimit,
+  ai: aiTokenLimit,
 };
 
 /**
@@ -66,7 +78,8 @@ function whenFree(resetsAt: string | null): string {
 export async function allowance(account: Account, kind: UsageKind): Promise<Result<Allowance>> {
   const result = await query(async () => {
     const rows = (await sql`
-      select count(*)::int as used, min(created_at) + interval '7 days' as resets_at
+      select (case when ${kind}::text = 'ai' then coalesce(sum(units), 0) else count(*) end)::int as used,
+             min(created_at) + interval '7 days' as resets_at
       from usage
       where user_id = ${account.id} and kind = ${kind} and created_at > now() - interval '7 days'
     `) as { used: number; resets_at: string | Date | null }[];
@@ -191,6 +204,24 @@ export async function claimRecordingSegment(
   const noop = async () => {};
   if (account.unlimited) return { ok: true, release: noop };
   const plan = planOf(account);
+
+  // The segment count alone does not bound Whisper's bill, which is by the
+  // minute: a client could send long clips as "segments". Audio already
+  // transcribed for this recording is the real ceiling.
+  const heard = await query(async () => {
+    const rows = (await sql`
+      select units from usage
+      where user_id = ${account.id} and kind = 'audio' and ref = ${recordingId}
+    `) as { units: number }[];
+    return rows[0]?.units ?? 0;
+  });
+  if (!heard.ok) return failed(heard.error, heard.status);
+  if (heard.data >= recordingMaxSeconds(plan) + CAPS.recordingGraceSeconds) {
+    return refused(
+      `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
+    );
+  }
+
   const bumped = await query(async () => {
     const rows = (await sql`
       update usage set units = units + 1
@@ -232,4 +263,121 @@ export async function claimRecordingSegment(
   return refused(
     `You have used ${limit === 1 ? "this week's recording" : `all ${limit} of this week's recordings`} on the ${PLAN_LABEL[plan]} plan. Your next one frees up ${when}.`
   );
+}
+
+/** Adds a transcribed segment's length to its recording's running total. */
+export async function recordAudioSeconds(
+  account: Account,
+  recordingId: string,
+  seconds: number
+): Promise<void> {
+  if (account.unlimited) return;
+  const units = Math.max(1, Math.ceil(seconds));
+  await query(
+    () => sql`
+      insert into usage (user_id, kind, ref, units)
+      values (${account.id}, 'audio', ${recordingId}, ${units})
+      on conflict (user_id, kind, ref) do update set units = usage.units + ${units}
+    `
+  );
+}
+
+/**
+ * Takes one note draft for a recording. A recording gets one draft per segment
+ * that reached Whisper plus the final pass, which is what the client asks for
+ * at most; anything past that is a client calling the route in a loop.
+ */
+export async function claimLiveDraft(
+  account: Account,
+  recordingId: string
+): Promise<{ ok: true } | { ok: false; response: Response }> {
+  if (account.unlimited) return { ok: true };
+
+  const result = await query(async () => {
+    const segments = (await sql`
+      select units from usage
+      where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId}
+    `) as { units: number }[];
+    if (!segments[0]) return null;
+    const drafts = (await sql`
+      insert into usage (user_id, kind, ref)
+      values (${account.id}, 'draft', ${recordingId})
+      on conflict (user_id, kind, ref) do update set units = usage.units + 1
+      returning units
+    `) as { units: number }[];
+    return { segments: segments[0].units, drafts: drafts[0]?.units ?? 1 };
+  });
+  if (!result.ok) return failed(result.error, result.status);
+
+  if (!result.data) {
+    return failed("Grasp has no audio for this recording yet, so there is nothing to write up.", 409);
+  }
+  if (result.data.drafts > result.data.segments + 1) {
+    return refused("Grasp is already up to date with this recording.");
+  }
+  return { ok: true };
+}
+
+/**
+ * Reserves one quiz marking. A quiz can be marked, retaken and marked again,
+ * so the weekly marking allowance is a multiple of the quiz allowance.
+ */
+export async function claimMarking(
+  account: Account
+): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
+  const ref = randomUUID();
+  const claimed = await claim(account, "mark", ref);
+  if (!claimed.ok) return claimed;
+
+  if (!claimed.data) {
+    const current = await allowance(account, "mark");
+    const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
+    const plan = planOf(account);
+    return refused(
+      `You have had ${markingLimit(plan)} quizzes marked in the last 7 days, which is as many as the ${PLAN_LABEL[plan]} plan allows. Your next marking frees up ${when}.`
+    );
+  }
+
+  return {
+    ok: true,
+    release: async () => {
+      await query(
+        () => sql`delete from usage where user_id = ${account.id} and kind = 'mark' and ref = ${ref}`
+      );
+    },
+  };
+}
+
+/**
+ * Lets an AI-token action run while any of the week's tokens are left. What it
+ * costs is only known once the provider answers, so it is charged afterwards
+ * with `chargeAiTokens`; the last action of a week can therefore run a little
+ * past the allowance, which lib/plan.ts budgets for.
+ */
+export async function checkAiTokens(
+  account: Account
+): Promise<{ ok: true } | { ok: false; response: Response }> {
+  if (account.unlimited) return { ok: true };
+  const current = await allowance(account, "ai");
+  if (!current.ok) return current;
+  const { used, limit, resetsAt } = current.data;
+  if (limit !== null && used >= limit) {
+    const plan = planOf(account);
+    return refused(
+      `You have used this week's ${formatCount(limit)} AI tokens on the ${PLAN_LABEL[plan]} plan. They start freeing up ${whenFree(resetsAt)}.`
+    );
+  }
+  return { ok: true };
+}
+
+/** Charges what an action actually cost, in tokens. A failed write is logged, not shown. */
+export async function chargeAiTokens(account: Account, costUsd: number): Promise<void> {
+  if (account.unlimited) return;
+  const result = await query(
+    () => sql`
+      insert into usage (user_id, kind, ref, units)
+      values (${account.id}, 'ai', ${randomUUID()}, ${tokensForCost(costUsd)})
+    `
+  );
+  if (!result.ok) console.error("[grasp] could not charge AI tokens for", account.id);
 }

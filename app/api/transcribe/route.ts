@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { transcribeAudio } from "@/lib/openai";
 import { requireUser } from "@/lib/session";
-import { claimRecordingSegment } from "@/lib/usage";
+import { claimRecordingSegment, recordAudioSeconds } from "@/lib/usage";
+import { LIMITS } from "@/lib/costModel";
 
 // §3.1 Record — one segment of lecture audio in, its words out.
 //
@@ -12,8 +13,12 @@ import { claimRecordingSegment } from "@/lib/usage";
 // buffer is dropped when the request ends. Nothing is written to disk, and the
 // clip is not logged.
 
-/** Whisper's own per-request ceiling. */
-const MAX_BYTES = 25 * 1024 * 1024;
+/**
+ * A 20-second segment is a few hundred KB. Far below Whisper's own 25 MB, so
+ * one oversized clip cannot add much before the recording's audio total
+ * (lib/usage.ts) stops it.
+ */
+const MAX_BYTES = LIMITS.segmentBytes;
 
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
@@ -51,5 +56,6 @@ export async function POST(req: NextRequest) {
     return result.response;
   }
 
+  await recordAudioSeconds(guard.user, recording, result.seconds);
   return NextResponse.json({ text: result.text });
 }

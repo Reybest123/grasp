@@ -3,6 +3,7 @@ import { chatCompletion } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
 import { claimQuiz } from "@/lib/usage";
+import { LIMITS, joinNotes } from "@/lib/costModel";
 
 /** Keeps one press from running up a large call. Mirrors the cap in the UI. */
 const MAX_PER_KIND = 10;
@@ -34,12 +35,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const noteList = Array.isArray(notes) ? notes : [];
-  const notesContext = noteList.length
-    ? `Here are the student's actual notes to base questions on:\n\n${noteList
-        .map((n: { title: string; body: string }) => `## ${n.title}\n${n.body}`)
-        .join("\n\n")}`
+  // Capped so a quiz's cost has a ceiling (lib/costModel.ts). Past the cap the
+  // later notes are left out rather than the request refused.
+  const joined = joinNotes(notes);
+  const noteList = joined ? [joined] : [];
+  const notesContext = joined
+    ? `Here are the student's actual notes to base questions on:\n\n${joined}`
     : "";
+  const topicList = Array.isArray(topics)
+    ? topics.slice(0, LIMITS.topics).map((t: unknown) => String(t).slice(0, LIMITS.topicChars))
+    : [];
+  const focus = typeof instructions === "string" ? instructions.trim().slice(0, LIMITS.instructionsChars) : "";
+  const schedule = typeof context === "string" ? context.trim().slice(0, LIMITS.contextChars) : "";
 
   // A subject with no notes yet still gets a quiz — it just can't be personal.
   // Saying so in the prompt is better than refusing: a brand-new account would
@@ -61,8 +68,8 @@ export async function POST(req: NextRequest) {
     .filter(Boolean)
     .join(", ");
 
-  // §6 — taken before the model call so the cap holds, and handed back if no
-  // quiz comes out of it.
+  // §6 — taken before the model call so the cap holds, and handed back only if
+  // the provider fails.
   const spend = await claimQuiz(guard.user);
   if (!spend.ok) return spend.response;
 
@@ -73,6 +80,8 @@ export async function POST(req: NextRequest) {
     // temperature.
     model: "gpt-5-mini",
     reasoning_effort: "medium",
+    // Reasoning counts against this too. The costliest quiz measured used 4.7k.
+    max_completion_tokens: LIMITS.quizOutputTokens,
     response_format: { type: "json_object" },
     messages: [
       {
@@ -93,18 +102,14 @@ export async function POST(req: NextRequest) {
       {
         role: "user",
         content: `Write exactly ${wanted}.\n${
-          Array.isArray(topics) && topics.length
-            ? `Topics to cover: ${topics.join(", ")}\n`
-            : `Subject: ${typeof subjectName === "string" && subjectName.trim() ? subjectName.trim() : "this subject"}\n`
+          topicList.length
+            ? `Topics to cover: ${topicList.join(", ")}\n`
+            : `Subject: ${typeof subjectName === "string" && subjectName.trim() ? subjectName.trim().slice(0, 100) : "this subject"}\n`
         }${
-          typeof context === "string" && context.trim()
-            ? `Student's schedule and assessments (background only — never quiz them on this): ${context.trim()}\n`
+          schedule
+            ? `Student's schedule and assessments (background only — never quiz them on this): ${schedule}\n`
             : ""
-        }${
-          typeof instructions === "string" && instructions.trim()
-            ? `Focus instructions from the student: ${instructions.trim()}\n`
-            : ""
-        }${notesContext}`,
+        }${focus ? `Focus instructions from the student: ${focus}\n` : ""}${notesContext}`,
       },
     ],
   });
@@ -128,10 +133,11 @@ export async function POST(req: NextRequest) {
         q.answerIndex < q.options.length
       );
     });
-    if (!clean.length) await spend.release();
+    // Only a provider failure hands the quiz back (above). Once the model has
+    // run it is paid for, and refunding an empty or broken reply would let a
+    // request built to produce one generate for free indefinitely.
     return NextResponse.json({ questions: clean, used: pickUsed(parsed.used, briefs) });
   } catch {
-    await spend.release();
     console.error("[grasp] quiz JSON did not parse:", result.content.slice(0, 300));
     return NextResponse.json(
       { error: "Grasp could not build a quiz from that. Try again." },

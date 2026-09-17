@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
+import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
+import { LIMITS } from "@/lib/costModel";
 
 // Notes are HTML (see lib/richText.ts), so enhancement round-trips HTML too —
 // otherwise every enhance would flatten the student's bold, colours and
@@ -25,8 +27,8 @@ Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size=
 
 Never use emojis.`;
 
-function line(label: string, value: unknown): string {
-  return typeof value === "string" && value.trim() ? `${label}: ${value.trim()}\n` : "";
+function line(label: string, value: unknown, max: number): string {
+  return typeof value === "string" && value.trim() ? `${label}: ${value.trim().slice(0, max)}\n` : "";
 }
 
 export async function POST(req: NextRequest) {
@@ -42,6 +44,15 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  if (body.length > LIMITS.noteChars) {
+    return NextResponse.json(
+      { error: "This note is too long to enhance in one go. Split it into shorter notes and try again." },
+      { status: 413 }
+    );
+  }
+
+  const tokens = await checkAiTokens(guard.user);
+  if (!tokens.ok) return tokens.response;
 
   // §3.4 — the student's own criteria, planners and rubrics, already read once
   // and stored, so an enhance can align the note with what is actually marked.
@@ -49,12 +60,13 @@ export async function POST(req: NextRequest) {
   const block = resourceBlock(briefs, "marker");
 
   const head =
-    line("Subject", subjectName) +
-    line("Background on the student (never write this into the note)", context) +
-    line("What the student asked you to focus on", instructions);
+    line("Subject", subjectName, 100) +
+    line("Background on the student (never write this into the note)", context, LIMITS.contextChars) +
+    line("What the student asked you to focus on", instructions, LIMITS.instructionsChars);
 
   const result = await chatCompletion({
     model: "gpt-4o-mini",
+    max_completion_tokens: LIMITS.noteOutputTokens,
     messages: [
       { role: "system", content: block ? `${SYSTEM}\n\n${block}` : SYSTEM },
       { role: "user", content: head ? `${head}\nThe note:\n${body}` : body },
@@ -62,6 +74,7 @@ export async function POST(req: NextRequest) {
     temperature: 0.4,
   });
   if (!result.ok) return result.response;
+  await chargeAiTokens(guard.user, result.costUsd);
 
   const { text, used } = splitUsed(stripFence(result.content), briefs);
   return NextResponse.json({ enhanced: text || body, used });

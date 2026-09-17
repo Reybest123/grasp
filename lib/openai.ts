@@ -6,12 +6,14 @@
 // whatever `error` it receives directly in the UI.
 
 import { NextResponse } from "next/server";
+import { costUsd } from "@/lib/costModel";
 
 /** The only failure text a user ever sees from these routes. */
 const UNAVAILABLE = "Grasp could not reach the AI just now. Try again in a moment.";
 
 export type ChatResult =
-  | { ok: true; content: string }
+  /** `costUsd` is what the call cost, from the provider's own token counts. */
+  | { ok: true; content: string; costUsd: number }
   | { ok: false; response: NextResponse };
 
 /**
@@ -82,11 +84,20 @@ export async function chatCompletion(body: Record<string, unknown>): Promise<Cha
     console.error("[grasp] OpenAI returned a body that was not JSON");
     return fail(502);
   }
-  return { ok: true, content: data.choices?.[0]?.message?.content ?? "" };
+  return {
+    ok: true,
+    content: data.choices?.[0]?.message?.content ?? "",
+    costUsd: costUsd(
+      String(body.model ?? ""),
+      Number(data.usage?.prompt_tokens) || 0,
+      Number(data.usage?.completion_tokens) || 0
+    ),
+  };
 }
 
 export type TranscriptResult =
-  | { ok: true; text: string }
+  /** `seconds` is the audio's length, which is what Whisper bills by. */
+  | { ok: true; text: string; seconds: number }
   | { ok: false; response: NextResponse };
 
 /**
@@ -107,9 +118,9 @@ export async function transcribeAudio(file: Blob, filename: string): Promise<Tra
   const form = new FormData();
   form.append("file", file, filename);
   form.append("model", "whisper-1");
-  // Plain text rather than JSON: we only ever want the words, and it keeps the
-  // response small enough to matter when a segment lands every few seconds.
-  form.append("response_format", "text");
+  // verbose_json rather than text for its `duration`: Whisper bills by the
+  // minute, and a segment's byte size says nothing reliable about its length.
+  form.append("response_format", "verbose_json");
 
   let res: Response;
   try {
@@ -130,7 +141,16 @@ export async function transcribeAudio(file: Blob, filename: string): Promise<Tra
     return fail(502);
   }
 
-  return { ok: true, text: (await res.text()).trim() };
+  const data = await res.json().catch(() => null);
+  if (!data) {
+    console.error("[grasp] Whisper returned a body that was not JSON");
+    return fail(502);
+  }
+  return {
+    ok: true,
+    text: String(data.text ?? "").trim(),
+    seconds: Math.max(0, Number(data.duration) || 0),
+  };
 }
 
 /** Models fence HTML and JSON even when told not to. */

@@ -3,6 +3,7 @@
 // comes from lib/plan.ts, so the two can never show different plans.
 
 import {
+  BILLING_PERIOD,
   PLAN_LABEL,
   PLAN_PERKS,
   PLAN_PRICE,
@@ -53,7 +54,7 @@ export function PlanCard({
             <span className="font-display text-3xl font-extrabold tracking-tight text-ink">
               {PLAN_PRICE[plan]}
             </span>
-            <span className="text-xs text-slate-500">/ month</span>
+            <span className="text-xs text-slate-500">/ {BILLING_PERIOD}</span>
           </div>
         </div>
       ) : (
@@ -64,7 +65,7 @@ export function PlanCard({
             <span className="font-display text-5xl font-extrabold tracking-tight text-ink">
               {PLAN_PRICE[plan]}
             </span>
-            <span className="text-sm text-slate-500">/ month</span>
+            <span className="text-sm text-slate-500">/ {BILLING_PERIOD}</span>
           </div>
         </>
       )}

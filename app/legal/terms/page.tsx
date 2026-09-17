@@ -29,9 +29,10 @@ export default function Terms() {
 
       <LegalSection title="Plans and limits">
         <p>
-          Grasp has two plans, Pro and Max, each with weekly limits on AI features such as lecture
-          recordings and quiz generation. The current limits are shown in the app, and they may
-          change over time.
+          Grasp has two plans, Pro and Max, each with weekly limits on AI features: lecture
+          recordings, quizzes, Resource Bank documents, and a weekly amount of AI tokens used by
+          explanations, refining, enhancing and generating notes. The current limits are shown on
+          the Plans page, and they may change over time.
         </p>
         <p>
           A new account starts with a {TRIAL_DAYS}-day free trial of Pro. Paid plans cannot be bought
@@ -47,8 +48,8 @@ export default function Terms() {
         </p>
         <ul>
           <li>
-            <b>Billing.</b> Paid plans are billed monthly, in advance, at the price shown on the
-            Plans page when you subscribe. They renew each month until you cancel.
+            <b>Billing.</b> Paid plans are billed weekly, in advance, at the price shown on the
+            Plans page when you subscribe. They renew each week until you cancel.
           </li>
           <li>
             <b>Free trial.</b> The free trial is not charged. You will not be charged when it ends
@@ -60,7 +61,7 @@ export default function Terms() {
             ends, and is not renewed after that. You can resume it before then.
           </li>
           <li>
-            <b>Refunds.</b> Payments are not refundable, including for part of a month you did not
+            <b>Refunds.</b> Payments are not refundable, including for part of a week you did not
             use, except in the cases below.
           </li>
           <li>

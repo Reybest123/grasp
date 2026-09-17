@@ -144,7 +144,14 @@ export async function transcribeSegment(
 
 /** `limit` is null in the admin's unlimited mode. */
 export type Allowance = { used: number; limit: number | null; resetsAt: string | null };
-export type Usage = { quizzes: Allowance; recordings: Allowance };
+export type Usage = {
+  quizzes: Allowance;
+  recordings: Allowance;
+  /** AI tokens this week, summed rather than counted */
+  tokens: Allowance;
+  /** Resource Bank reads this week */
+  resources: Allowance;
+};
 
 /** This week's allowances (§6), or null if they could not be read. */
 export async function fetchUsage(): Promise<Usage | null> {
@@ -165,6 +172,8 @@ export async function liveNotes(params: {
   context: string;
   final: boolean;
   resources: ResourceBrief[];
+  /** the same id every segment was sent with; drafts are counted per recording */
+  recordingId: string;
 }): Promise<{
   html: string;
   cited: Citation[];

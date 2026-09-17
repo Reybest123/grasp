@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
+import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
+import { LIMITS } from "@/lib/costModel";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -45,8 +47,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (noteBody.length > LIMITS.noteChars || highlight.length > LIMITS.noteChars) {
+    return NextResponse.json(
+      { error: "This note is too long for Grasp to work on in one go. Split it into shorter notes and try again." },
+      { status: 413 }
+    );
+  }
+
   const refine = mode === "refine";
   const modeRules = refine ? MODES.refine : MODES.explain;
+
+  const tokens = await checkAiTokens(guard.user);
+  if (!tokens.ok) return tokens.response;
 
   // §3.4 — this is the headline case for the Resource Bank: the student asks
   // "does this match the criteria?" and the answer comes from the criteria
@@ -56,7 +68,7 @@ export async function POST(req: NextRequest) {
 
   const schedule =
     typeof context === "string" && context.trim()
-      ? `\n\nThe student's schedule for this subject: ${context.trim()}
+      ? `\n\nThe student's schedule for this subject: ${context.trim().slice(0, LIMITS.contextChars)}
 Use this naturally when it genuinely helps — e.g. tying revision advice to an upcoming exam or their next class. Do not force it in or mention it in every reply.`
       : "";
 
@@ -79,16 +91,23 @@ The part the student selected:
 
   const messages = [
     { role: "system", content: system },
-    ...(history as ChatMsg[]).map((m) => ({ role: m.role, content: m.content })),
+    // The most recent messages only, each capped, so a long thread has a ceiling.
+    ...(history as ChatMsg[]).slice(-LIMITS.historyMessages).map((m) => ({
+      role: m?.role === "assistant" ? "assistant" : "user",
+      content: String(m?.content ?? "").slice(0, LIMITS.historyMessageChars),
+    })),
   ];
 
   const result = await chatCompletion({
     model: "gpt-4o-mini",
+    // Refine returns the whole note; Explain only a short reply.
+    max_completion_tokens: refine ? LIMITS.noteOutputTokens : LIMITS.explainOutputTokens,
     response_format: { type: "json_object" },
     messages,
     temperature: 0.4,
   });
   if (!result.ok) return result.response;
+  await chargeAiTokens(guard.user, result.costUsd);
 
   const raw = result.content || "{}";
   try {

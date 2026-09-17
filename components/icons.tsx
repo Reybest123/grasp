@@ -382,9 +382,8 @@ export function WorkspaceIcon({ className }: IconProps) {
 export function PlansIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
-      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
-      <path d="M2.5 10h19" />
-      <path d="M6.5 15h4" />
+      <path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z" />
+      <circle cx="7.5" cy="7.5" r="1.25" />
     </svg>
   );
 }

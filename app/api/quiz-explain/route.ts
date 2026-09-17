@@ -8,12 +8,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
+import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
+import { LIMITS, joinNotes } from "@/lib/costModel";
 
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { question, kind, studentAnswer, correctAnswer, notes, context, resources } = await req.json();
+  const {
+    question,
+    kind,
+    studentAnswer: rawStudentAnswer,
+    correctAnswer: rawCorrectAnswer,
+    notes,
+    context: rawContext,
+    resources,
+  } = await req.json().catch(() => ({}));
 
   if (typeof question !== "string" || !question.trim()) {
     return NextResponse.json({ error: "Nothing to explain." }, { status: 400 });
@@ -24,16 +34,24 @@ export async function POST(req: NextRequest) {
   const briefs = asBriefs(resources);
   const block = resourceBlock(briefs, "marker");
 
-  const noteList = Array.isArray(notes) ? notes : [];
-  const notesContext = noteList.length
-    ? `The student's own notes on this — explain in the same terms they used:\n\n${noteList
-        .map((n: { title: string; body: string }) => `## ${n.title}\n${n.body}`)
-        .join("\n\n")}`
+  const joined = joinNotes(notes);
+  const notesContext = joined
+    ? `The student's own notes on this — explain in the same terms they used:\n\n${joined}`
     : "";
+  const cap = (value: unknown, max: number) =>
+    typeof value === "string" ? value.trim().slice(0, max) : "";
+  const context = cap(rawContext, LIMITS.contextChars);
+  const studentAnswer = cap(rawStudentAnswer, LIMITS.quizExplainAnswerChars);
+  const correctAnswer = cap(rawCorrectAnswer, LIMITS.quizExplainAnswerChars);
+
+  // AI tokens, not a weekly count: charged at what the call actually cost.
+  const tokens = await checkAiTokens(guard.user);
+  if (!tokens.ok) return tokens.response;
 
   const result = await chatCompletion({
     model: "gpt-5-mini",
     reasoning_effort: "low",
+    max_completion_tokens: LIMITS.quizExplainOutputTokens,
     messages: [
       {
         role: "system",
@@ -47,23 +65,17 @@ export async function POST(req: NextRequest) {
       },
       {
         role: "user",
-        content: `${
-          typeof context === "string" && context.trim()
-            ? `Background on the student: ${context.trim()}\n\n`
-            : ""
-        }${notesContext ? `${notesContext}\n\n` : ""}Question (${
-          kind === "mcq" ? "multiple choice" : "written answer"
-        }): ${question}\n\nThe student answered: ${
-          typeof studentAnswer === "string" && studentAnswer.trim()
-            ? studentAnswer.trim()
-            : "(left blank)"
-        }\n\nThe correct answer: ${
-          typeof correctAnswer === "string" ? correctAnswer : ""
-        }`,
+        content: `${context ? `Background on the student: ${context}\n\n` : ""}${
+          notesContext ? `${notesContext}\n\n` : ""
+        }Question (${kind === "mcq" ? "multiple choice" : "written answer"}): ${question.slice(
+          0,
+          LIMITS.quizExplainAnswerChars
+        )}\n\nThe student answered: ${studentAnswer || "(left blank)"}\n\nThe correct answer: ${correctAnswer}`,
       },
     ],
   });
   if (!result.ok) return result.response;
+  await chargeAiTokens(guard.user, result.costUsd);
 
   const { text, used } = splitUsed(result.content.trim(), briefs);
   return NextResponse.json({ explanation: text, used });
