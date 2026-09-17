@@ -11,10 +11,6 @@
 // Fixed to the viewport like the dashboard: the header and progress bar stay
 // put and the page never scrolls. The step below them only scrolls inside
 // itself on a screen too short to hold it.
-//
-// Shared by two pages. /onboarding passes an `onFinish` that saves; /sample
-// (components/onboarding/SamplePreview.tsx) passes one that moves the preview
-// on, so nothing is written there.
 
 import { useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
@@ -33,17 +29,12 @@ const PRIMARY =
 export function OnboardingFlow({
   onFinish,
   onLogOut,
-  startOnPlans = false,
-  onReachPlans,
 }: {
-  /** saves (or, in the preview, moves on); resolves to an error to show, or null */
+  /** saves; resolves to an error to show, or null */
   onFinish: (answers: OnboardingAnswers, plan: Plan) => Promise<string | null>;
   onLogOut: () => void;
-  /** the preview's way to open straight on the plans */
-  startOnPlans?: boolean;
-  onReachPlans?: () => void;
 }) {
-  const [step, setStep] = useState(startOnPlans ? PLANS_STEP : 0);
+  const [step, setStep] = useState(0);
   const [picked, setPicked] = useState<Record<Question["id"], string[]>>({
     yearLevel: [],
     uses: [],
@@ -57,7 +48,6 @@ export function OnboardingFlow({
 
   function goTo(next: number) {
     setStep(next);
-    if (next === PLANS_STEP) onReachPlans?.();
     scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }
 

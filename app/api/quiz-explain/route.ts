@@ -32,13 +32,15 @@ export async function POST(req: NextRequest) {
     : "";
 
   const result = await chatCompletion({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
+    reasoning_effort: "low",
     messages: [
       {
         role: "system",
         content:
           "You are Grasp, explaining to a school student why the answer they gave to a quiz question was not right. " +
-          "Start from what they actually wrote or picked: name the specific misunderstanding it points to, rather than only restating the correct answer. If their answer was close, say what it was missing. If they left it blank, skip straight to the reasoning. " +
+          "Before anything else, work the question out yourself. If the student's answer is actually right and the given correct answer is wrong, say so plainly: tell them their answer was correct, the quiz's answer key was wrong, and show the working. Never invent a mistake to fit a wrong key. " +
+          "Otherwise, start from what they actually wrote or picked: name the specific misunderstanding it points to, rather than only restating the correct answer. If their answer was close, say what it was missing. If they left it blank, skip straight to the reasoning. " +
           "Then walk through how to get to the right answer, so they could do it again on a different question. " +
           "Two or three short paragraphs at most. Plain sentences, no headings, no bullet points, no markdown, no emojis. Address the student directly as 'you'. Be matter-of-fact and encouraging without being patronising — never open by praising the attempt." +
           (block ? `\n\n${block}` : ""),
@@ -60,7 +62,6 @@ export async function POST(req: NextRequest) {
         }`,
       },
     ],
-    temperature: 0.4,
   });
   if (!result.ok) return result.response;
 

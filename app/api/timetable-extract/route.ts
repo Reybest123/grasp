@@ -92,8 +92,7 @@ type Extracted = { name: string; teacher?: string; classes: Slot[] };
 
 export async function POST(req: NextRequest) {
   // Every call spends a vision-model request, so it is for signed-in students
-  // only. Without this, anyone could run the reader at Grasp's cost — which
-  // mattered once /sample put the same upload screen on a public URL.
+  // only. Without this, anyone could run the reader at Grasp's cost.
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 

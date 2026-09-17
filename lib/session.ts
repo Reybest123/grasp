@@ -24,6 +24,19 @@ export { SESSION_COOKIE };
 /** Long enough that a student is not logged out mid-term. */
 const SESSION_DAYS = 30;
 
+/**
+ * Away this long and the session ends. "Away" means no open Grasp tab: an open
+ * one pings /api/auth/heartbeat (components/app/SessionHeartbeat.tsx) well
+ * inside this window, so a student who stays on the site is never signed out.
+ */
+const IDLE_MS = 30 * 60 * 1000;
+
+/** Writing last_seen_at on every request would be a write per debounced save. */
+const TOUCH_EVERY_MS = 60 * 1000;
+
+/** Where a page sends a stale session: it clears the cookie, then goes to /login. */
+export const EXPIRED_PATH = "/api/auth/expired";
+
 export type SessionUser = {
   id: string;
   email: string;
@@ -103,19 +116,34 @@ export async function endOtherSessions(userId: string): Promise<void> {
  * route calls this before it does anything else.
  *
  * An expired row is treated as absent and deleted on sight, so the table does
- * not accumulate dead sessions without a separate sweep.
+ * not accumulate dead sessions without a separate sweep. So is one unused for
+ * 30 minutes, which is what signs out a student who closed Grasp and came back
+ * later.
  */
 export async function currentUser(): Promise<SessionUser | null> {
+  const found = await lookupSession();
+  return found === "none" || found === "error" ? null : found;
+}
+
+/**
+ * The lookup behind `currentUser`, which also says why there is no user:
+ * "none" is a missing, expired or idle session, "error" is a database that
+ * could not be asked. Pages need the difference: a stale session should go to
+ * log in, a database blip should not bounce a student who is fine.
+ */
+async function lookupSession(): Promise<SessionUser | "none" | "error"> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
+  if (!token) return "none";
+  const hash = hashToken(token);
 
   try {
     const rows = (await sql`
-      select u.id, u.email, u.name, u.email_verified_at, u.plan, u.trial_ends_at, s.expires_at
+      select u.id, u.email, u.name, u.email_verified_at, u.plan, u.trial_ends_at,
+             s.expires_at, s.last_seen_at
       from sessions s
       join users u on u.id = s.user_id
-      where s.token_hash = ${hashToken(token)}
+      where s.token_hash = ${hash}
     `) as {
       id: string;
       email: string;
@@ -123,15 +151,21 @@ export async function currentUser(): Promise<SessionUser | null> {
       email_verified_at: string | null;
       plan: string | null;
       trial_ends_at: string | Date | null;
-      expires_at: string;
+      expires_at: string | Date;
+      last_seen_at: string | Date;
     }[];
 
     const row = rows[0];
-    if (!row) return null;
+    if (!row) return "none";
 
-    if (new Date(row.expires_at).getTime() <= Date.now()) {
-      await sql`delete from sessions where token_hash = ${hashToken(token)}`;
-      return null;
+    const now = Date.now();
+    const lastSeen = new Date(row.last_seen_at).getTime();
+    if (new Date(row.expires_at).getTime() <= now || now - lastSeen > IDLE_MS) {
+      await sql`delete from sessions where token_hash = ${hash}`;
+      return "none";
+    }
+    if (now - lastSeen > TOUCH_EVERY_MS) {
+      await sql`update sessions set last_seen_at = now() where token_hash = ${hash}`;
     }
 
     return {
@@ -144,7 +178,7 @@ export async function currentUser(): Promise<SessionUser | null> {
     };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);
-    return null;
+    return "error";
   }
 }
 
@@ -202,21 +236,24 @@ export async function requireUser({
  * the step they have not finished before anything renders, so there is no
  * flash of a screen whose every request is about to be refused.
  *
- * A missing or expired session is left alone: proxy.ts already keeps cookieless
- * visitors out, and a lookup that fails because the database is down should
- * not bounce a student who is fine.
+ * An expired or idle session goes to log in through EXPIRED_PATH: the cookie is
+ * still there, and proxy.ts would bounce a cookie-carrying visit to /login
+ * straight back to /home. A lookup that fails because the database is down is
+ * left alone, so it does not bounce a student who is fine.
  */
 export async function guardAppPage(): Promise<void> {
-  const user = await currentUser();
-  if (!user) return;
+  const user = await lookupSession();
+  if (user === "error") return;
+  if (user === "none") redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
   if (!user.plan) redirect("/onboarding");
 }
 
 /** Onboarding runs once: after the email is confirmed, and never again once a plan is chosen. */
 export async function guardOnboardingPage(): Promise<void> {
-  const user = await currentUser();
-  if (!user) return;
+  const user = await lookupSession();
+  if (user === "error") return;
+  if (user === "none") redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
   if (user.plan) redirect("/home");
 }

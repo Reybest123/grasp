@@ -42,13 +42,15 @@ export async function POST(req: NextRequest) {
     .join("\n\n");
 
   const result = await chatCompletion({
-    model: "gpt-4o-mini",
+    // Same reasoning model as generation, so a correct working is not marked down.
+    model: "gpt-5-mini",
+    reasoning_effort: "low",
     response_format: { type: "json_object" },
     messages: [
       {
         role: "system",
         content:
-          "You are Grasp, marking a school student's written quiz answers. Mark the substance, not the spelling, grammar or length: an answer that says the right thing badly is still correct. " +
+          "You are Grasp, marking a school student's written quiz answers. Work each question out yourself first and mark against that: if the full-mark answer you are given is itself wrong, mark against the right answer instead. Mark the substance, not the spelling, grammar or length: an answer that says the right thing badly is still correct. " +
           'Use "correct" when the answer covers the key point, "partial" when it is on the right track but misses or muddles something important, and "wrong" when it misses the point, contradicts the material, or is blank. ' +
           "Be fair rather than generous — a student who is told they were right when they were not will walk into the exam thinking they know it. " +
           "Write the feedback as one short sentence addressed to the student, saying what was missing or what earned the mark. Do not restate the whole model answer, and never use emojis. " +
@@ -64,7 +66,6 @@ export async function POST(req: NextRequest) {
         }${notesContext ? `${notesContext}\n\n` : ""}Answers to mark:\n\n${items}`,
       },
     ],
-    temperature: 0.2,
   });
   if (!result.ok) return result.response;
 

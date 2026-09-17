@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@/lib/session";
+import { EXPIRED_PATH, currentUser } from "@/lib/session";
 import { VerifyEmail } from "@/components/auth/VerifyEmail";
 
 export const metadata = { title: "Confirm your email — Grasp" };
@@ -17,7 +17,7 @@ export default async function VerifyEmailPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const user = await currentUser();
-  if (!user) redirect("/login?next=/verify-email");
+  if (!user) redirect(EXPIRED_PATH);
   if (user.verified) redirect("/home");
 
   const { status } = await searchParams;

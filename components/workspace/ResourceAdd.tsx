@@ -150,8 +150,8 @@ export function ResourceAdd({
       <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-xl font-bold tracking-tight text-ink">Add a resource</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Assessment criteria, a rubric, the term planner, a syllabus, a past paper. Grasp reads it
-          once, keeps what it says, and works from that afterwards — the file itself is never stored.
+          Anything Grasp might find useful for this subject: a handout, a worksheet, a past paper, a
+          textbook page. Grasp reads it once, keeps what it says, and works from that afterwards — the file itself is never stored.
         </p>
 
         {shown && <ErrorNote message={shown} className="mt-5" />}
@@ -236,7 +236,7 @@ export function ResourceAdd({
                 // The over-the-limit error goes as soon as the text is back under.
                 if (localError && textFits(e.target.value)) setLocalError("");
               }}
-              placeholder="Paste the marking criteria, the rubric bands, the term plan — whatever the document says."
+              placeholder="Paste in whatever you want Grasp to work from."
               aria-invalid={over || undefined}
               aria-describedby="resource-word-count"
               className={`h-44 w-full rounded-xl border p-3 text-sm outline-none transition ${

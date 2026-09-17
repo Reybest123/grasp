@@ -23,8 +23,6 @@ export function TimetableDialog({
   onSkip,
   onFinish,
   save,
-  preview = false,
-  initialSubjects,
   onSubjects,
 }: {
   open: boolean;
@@ -34,8 +32,6 @@ export function TimetableDialog({
   /** "Go to my notebooks"; closes by default */
   onFinish?: () => void;
   save?: (subjects: ExtractedSubject[]) => Promise<unknown>;
-  preview?: boolean;
-  initialSubjects?: ExtractedSubject[];
   onSubjects?: (subjects: ExtractedSubject[]) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -64,13 +60,7 @@ export function TimetableDialog({
   if (!open) return null;
 
   return (
-    // The preview keeps its bar pinned above the popup, so the popup starts
-    // below it there rather than tucking its heading and close button under it.
-    <div
-      className={`fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8 ${
-        preview ? "pt-28 sm:pt-28" : ""
-      }`}
-    >
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
       {/* Light enough that the app stays legible behind it. */}
       <div aria-hidden="true" onClick={onClose} className="absolute inset-0 bg-ink/35" />
 
@@ -80,11 +70,7 @@ export function TimetableDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="timetable-dialog-title"
-        className={`relative flex w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none ${
-          preview
-            ? "max-h-[calc(100dvh-8rem)]"
-            : "max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)]"
-        }`}
+        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none sm:max-h-[calc(100dvh-4rem)]"
       >
         <div className="relative shrink-0 px-6 pt-6 sm:px-8 sm:pt-8">
           <button
@@ -111,8 +97,6 @@ export function TimetableDialog({
         <div className="scroll-thin flex min-h-0 flex-auto flex-col overflow-y-auto px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
           <TimetableSetup
             save={save}
-            preview={preview}
-            initialSubjects={initialSubjects}
             onSubjects={onSubjects}
             onFinish={onFinish ?? onClose}
             onSkip={onSkip ?? onClose}

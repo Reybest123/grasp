@@ -1,8 +1,7 @@
 "use client";
 
 // §2 Onboarding — the saving half. The screen itself is
-// components/onboarding/OnboardingFlow.tsx, shared with the /sample preview;
-// this page is what makes finishing it write to the account.
+// components/onboarding/OnboardingFlow.tsx; this page is what makes finishing it write to the account.
 //
 // Finishing sends the student to /home with `?setup=timetable`, which is what
 // opens the timetable popup over the dashboard. Nothing else on the way needs the

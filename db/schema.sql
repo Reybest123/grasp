@@ -84,6 +84,12 @@ create table if not exists sessions (
   created_at timestamptz not null default now()
 );
 
+-- When the session was last used, for the 30-minute away timeout in
+-- lib/session.ts. Grown rather than declared in the table body, since
+-- `create table if not exists` never adds a column to an existing table; the
+-- default gives every session that already exists a fresh start.
+alter table sessions add column if not exists last_seen_at timestamptz not null default now();
+
 create index if not exists sessions_user_idx on sessions (user_id);
 create index if not exists sessions_expires_idx on sessions (expires_at);
 

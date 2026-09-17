@@ -19,12 +19,9 @@ const STATUS_MESSAGE = {
 export function VerifyEmail({
   email,
   status,
-  preview,
 }: {
   email: string;
   status?: "expired" | "error" | "unsent";
-  /** /sample only: nothing is sent, and Log out goes back to the signup step */
-  preview?: { onLogOut: () => void };
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -35,13 +32,6 @@ export function VerifyEmail({
     setBusy(true);
     setError("");
     setSent(false);
-    if (preview) {
-      setTimeout(() => {
-        setSent(true);
-        setBusy(false);
-      }, 700);
-      return;
-    }
     try {
       const res = await fetch("/api/auth/verify/resend", { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -58,7 +48,6 @@ export function VerifyEmail({
   }
 
   async function logOut() {
-    if (preview) return preview.onLogOut();
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {

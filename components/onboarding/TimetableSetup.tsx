@@ -8,8 +8,7 @@
 //
 // Only the content: TimetableDialog puts it in the popup that opens over the
 // dashboard once onboarding is finished. The dashboard passes `save`, which
-// writes the subjects; /sample passes `preview` and no `save`, so nothing is
-// written there.
+// writes the subjects.
 
 import { useRef, useState } from "react";
 import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
@@ -17,7 +16,6 @@ import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
 import { FoundSubjectEditor } from "@/components/onboarding/FoundSubjectEditor";
 import { ErrorNote } from "@/components/ErrorNote";
-import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 import {
   MAX_UPLOAD_BYTES,
   TIMETABLE_ACCEPT,
@@ -39,9 +37,6 @@ import { WaitingState } from "@/components/WaitingState";
 const MAX_BYTES = MAX_UPLOAD_BYTES;
 const ACCEPT = TIMETABLE_ACCEPT;
 
-/** What `requireUser` answers with — the preview rewords it, since there it is expected. */
-const NOT_SIGNED_IN = SIGNED_OUT_MESSAGE;
-
 type Stage = "upload" | "reading" | "done";
 
 function readDataUrl(file: File): Promise<string> {
@@ -55,17 +50,12 @@ function readDataUrl(file: File): Promise<string> {
 
 export function TimetableSetup({
   save,
-  preview = false,
-  initialSubjects,
   onSubjects,
   onFinish,
   onSkip,
 }: {
-  /** writes what was read to the account; absent in the preview */
+  /** writes what was read to the account */
   save?: (subjects: ExtractedSubject[]) => Promise<unknown>;
-  preview?: boolean;
-  /** opens straight on the finished list, as the preview does when a step is skipped */
-  initialSubjects?: ExtractedSubject[];
   /** the list after a read, and again after every edit to it */
   onSubjects?: (subjects: ExtractedSubject[]) => void;
   /** the done step's button */
@@ -73,11 +63,11 @@ export function TimetableSetup({
   /** offered while nothing has been uploaded */
   onSkip?: () => void;
 }) {
-  const [stage, setStage] = useState<Stage>(initialSubjects ? "done" : "upload");
+  const [stage, setStage] = useState<Stage>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
-  const [subjects, setSubjects] = useState<ExtractedSubject[]>(initialSubjects ?? []);
+  const [subjects, setSubjects] = useState<ExtractedSubject[]>([]);
   const [editing, setEditing] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Saves queue behind one another, so two quick edits cannot land out of order
@@ -123,11 +113,7 @@ export function TimetableSetup({
 
     const result = await extractTimetable(dataUrl);
     if (result.error) {
-      setError(
-        preview && result.error === NOT_SIGNED_IN
-          ? "Log in to try the timetable reader in this preview. It still saves nothing to your account."
-          : result.error
-      );
+      setError(result.error);
       setStage("upload");
       return;
     }

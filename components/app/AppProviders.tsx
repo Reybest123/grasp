@@ -14,10 +14,12 @@ import { SubjectsProvider } from "@/lib/subjectsStore";
 import { ProfileProvider } from "@/lib/profileStore";
 import { RecordingProvider } from "@/lib/recordingStore";
 import { AppShell } from "@/components/app/AppShell";
+import { SessionHeartbeat } from "@/components/app/SessionHeartbeat";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ProfileProvider>
+      <SessionHeartbeat />
       <SubjectsProvider>
         <RecordingProvider>
           <AppShell>{children}</AppShell>

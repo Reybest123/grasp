@@ -54,17 +54,11 @@ export function AuthForm({
   mode,
   next,
   verified,
-  onPreviewSubmit,
 }: {
   mode: "login" | "signup";
   next?: string;
   /** arrived from a confirmation link opened on a device that was not signed in */
   verified?: boolean;
-  /**
-   * /sample only: a valid submit calls this instead of creating an account. Its
-   * presence is what puts the form in preview mode.
-   */
-  onPreviewSubmit?: (email: string) => void;
 }) {
   const router = useRouter();
   const signup = mode === "signup";
@@ -158,12 +152,6 @@ export function AuthForm({
     }
 
     setBusy(true);
-    if (onPreviewSubmit) {
-      // Held briefly so the pending state is visible, as it would be for real.
-      const entered = normalizeEmail(values.email);
-      setTimeout(() => onPreviewSubmit(entered), 700);
-      return;
-    }
     const { name, email, password } = values;
     try {
       const res = await fetch(`/api/auth/${mode}`, {

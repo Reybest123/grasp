@@ -99,12 +99,12 @@ export function ResourcesTab({
               <BankIcon className="h-7 w-7" />
             </span>
             <h2 className="mt-5 text-2xl font-bold tracking-tight text-ink transition group-hover:text-brand-700">
-              Add your assessment criteria
+              Add anything that helps
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Drop in the criteria you&apos;re marked against, your rubric, the term planner or a
-              past paper. Grasp reads it once, then writes your notes, explanations and quizzes
-              against what actually gets assessed — and tells you every time it uses one.
+              Add any resource you think Grasp might find useful for this subject: a handout, a
+              worksheet, a past paper, a textbook page, marking criteria. Grasp reads it once, then
+              uses it in your notes, explanations and quizzes, and tells you every time it does.
             </p>
             <span className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition group-hover:bg-brand-700">
               <PlusIcon className="h-4 w-4" />

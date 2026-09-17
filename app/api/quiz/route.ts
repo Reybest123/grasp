@@ -67,7 +67,12 @@ export async function POST(req: NextRequest) {
   if (!spend.ok) return spend.response;
 
   const result = await chatCompletion({
-    model: "gpt-4o-mini",
+    // A reasoning model, not gpt-4o-mini: mini wrote answer keys that were
+    // simply wrong ("2x + 3 = 11" keyed as x = 5), and a quiz that marks a
+    // right answer wrong is worse than no quiz. Reasoning models take no
+    // temperature.
+    model: "gpt-5-mini",
+    reasoning_effort: "medium",
     response_format: { type: "json_object" },
     messages: [
       {
@@ -77,6 +82,7 @@ export async function POST(req: NextRequest) {
           grounding +
           ' Never use emojis. If the student has an assessment coming up soon, lean toward exam-style application questions. ' +
           'A "mcq" question has exactly 4 options and exactly one correct answer, given as a 0-based answerIndex; the wrong options must be plausible, not filler. ' +
+          'Work every question out yourself before writing it down, and check that answerIndex points at the option you worked out, and that no other option is also correct. The same goes for every modelAnswer. ' +
           'A "short" question expects one or two sentences. A "long" question expects a paragraph and should ask the student to explain, compare or justify rather than recall. ' +
           'Both "short" and "long" carry a modelAnswer: what a full-mark answer would say. ' +
           'Do not explain the answers — explanations are generated later, only if the student asks. ' +
@@ -101,7 +107,6 @@ export async function POST(req: NextRequest) {
         }${notesContext}`,
       },
     ],
-    temperature: 0.6,
   });
   if (!result.ok) {
     await spend.release();
