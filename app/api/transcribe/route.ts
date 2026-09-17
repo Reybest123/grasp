@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That clip is too large to transcribe." }, { status: 413 });
   }
 
-  // §6 — every segment names the recording it belongs to, which is what lets the
-  // weekly cap count recordings rather than requests.
+  // §6 — every segment names the recording it belongs to, which is what lets a
+  // recording's audio seconds and drafts be totalled against its caps.
   const recording = form.get("recording");
   if (typeof recording !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(recording)) {
     return NextResponse.json({ error: "That recording could not be read." }, { status: 400 });

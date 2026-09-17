@@ -15,7 +15,7 @@ import {
   RESOURCE_READ_WORST_USD,
   TOKEN_USD,
   quizWorstUsd,
-  recordingWorstUsd,
+  recordingTimeWorstUsd,
   tokenActionWorstUsd,
 } from "@/lib/costModel";
 
@@ -85,13 +85,17 @@ export const RESOURCE_READ_LIMIT: Record<Plan, number> = { pro: 10, max: 15 };
 /** Quizzes generated in a rolling week, enforced by `/api/quiz` through lib/usage.ts. */
 export const QUIZ_LIMIT: Record<Plan, number> = { pro: 10, max: 25 };
 
-/** Recordings per rolling week, enforced by `/api/transcribe`. */
-export const RECORDING_LIMIT: Record<Plan, number> = { pro: 5, max: 10 };
+/**
+ * Seconds of lecture recording a rolling week, enforced by `/api/transcribe`
+ * against the audio Whisper actually heard. A recording takes at least
+ * LIMITS.recordingMinChargeSeconds.
+ */
+export const RECORDING_SECONDS: Record<Plan, number> = { pro: 100 * 60, max: 300 * 60 };
 
 /**
- * The longest a single recording runs, in seconds. With the weekly count this
- * bounds a plan's worst-case Whisper bill (§9.1): Pro tops out at 100 minutes a
- * week, Max at 300.
+ * The longest a single recording runs, in seconds. Each draft re-reads the
+ * transcript so far, so a recording's cost per minute grows with its length;
+ * this is what keeps that bounded.
  */
 export const RECORDING_MAX_SECONDS: Record<Plan, number> = { pro: 20 * 60, max: 30 * 60 };
 
@@ -115,8 +119,8 @@ export function quizLimit(plan: Plan): number {
   return QUIZ_LIMIT[plan];
 }
 
-export function recordingLimit(plan: Plan): number {
-  return RECORDING_LIMIT[plan];
+export function recordingSeconds(plan: Plan): number {
+  return RECORDING_SECONDS[plan];
 }
 
 export function recordingMaxSeconds(plan: Plan): number {
@@ -143,8 +147,11 @@ function fixedWorstUsd(plan: Plan) {
   return {
     quizzes: QUIZ_LIMIT[plan] * quizWorstUsd(),
     resourceReads: RESOURCE_READ_LIMIT[plan] * RESOURCE_READ_WORST_USD,
-    recordings:
-      RECORDING_LIMIT[plan] * recordingWorstUsd(RECORDING_MAX_SECONDS[plan], RECORDING_SEGMENT_MS),
+    recordings: recordingTimeWorstUsd(
+      RECORDING_SECONDS[plan],
+      RECORDING_MAX_SECONDS[plan],
+      RECORDING_SEGMENT_MS
+    ),
   };
 }
 
@@ -191,19 +198,32 @@ export function formatCount(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+/**
+ * "1h 40m", "5h", "12m". With `seconds`, the remainder too ("1h 39m 12s"), for
+ * a countdown. Zero reads "0m", or "0s" with seconds.
+ */
+export function formatDuration(total: number, seconds = false): string {
+  const t = Math.max(0, Math.floor(total));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = t % 60;
+  if (seconds) return h ? `${h}h ${m}m ${s}s` : m ? `${m}m ${s}s` : `${s}s`;
+  return [h ? `${h}h` : "", m || !h ? `${m}m` : ""].filter(Boolean).join(" ");
+}
+
 /** What each plan card lists, built from the caps above so the two cannot disagree. */
 export const PLAN_PERKS: Record<Plan, string[]> = {
   pro: [
     "Unlimited subjects and notes",
     `${formatCount(AI_TOKEN_LIMIT.pro)} AI tokens a week to explain, refine, enhance and generate`,
-    `${RECORDING_LIMIT.pro} lecture recordings a week, up to ${RECORDING_MAX_SECONDS.pro / 60} minutes each`,
+    `${formatDuration(RECORDING_SECONDS.pro)} of lecture recording a week`,
     `${QUIZ_LIMIT.pro} quizzes a week, marked against your notes`,
     `${RESOURCE_READ_LIMIT.pro} Resource Bank documents a week, ${RESOURCE_LIMIT.pro} per subject`,
   ],
   max: [
     "Everything in Pro",
     `${formatCount(AI_TOKEN_LIMIT.max)} AI tokens a week`,
-    `${RECORDING_LIMIT.max} lecture recordings a week, up to ${RECORDING_MAX_SECONDS.max / 60} minutes each`,
+    `${formatDuration(RECORDING_SECONDS.max)} of lecture recording a week`,
     `${QUIZ_LIMIT.max} quizzes a week`,
     `${RESOURCE_READ_LIMIT.max} Resource Bank documents a week, ${RESOURCE_LIMIT.max} per subject`,
   ],

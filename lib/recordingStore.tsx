@@ -21,7 +21,13 @@ import type { Citation, ResourceBrief } from "@/lib/resources";
 import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/lib/recorder";
 import { useSubjects } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
-import { DEFAULT_PLAN, PLAN_LABEL, RECORDING_SEGMENT_MS, recordingMaxSeconds } from "@/lib/plan";
+import {
+  DEFAULT_PLAN,
+  PLAN_LABEL,
+  RECORDING_SEGMENT_MS,
+  formatDuration,
+  recordingMaxSeconds,
+} from "@/lib/plan";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const SEGMENT_MS = RECORDING_SEGMENT_MS;
@@ -38,6 +44,12 @@ export type RecordingState = {
   subjectId: string | null;
   subjectName: string;
   seconds: number;
+  /**
+   * Recording time left this week, in seconds, as it stood before the current
+   * recording started; subtract `seconds` for the live figure. Null while
+   * unknown, and in unlimited mode.
+   */
+  weekLeft: number | null;
   transcript: string;
   notesHtml: string;
   /** true once a final draft has run and the transcript turned out too short (§3.1) to write anything from */
@@ -78,7 +90,7 @@ const RecordingContext = createContext<RecordingState | null>(null);
 
 export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const { subjects, updateSubject } = useSubjects();
-  const { profile } = useProfile();
+  const { profile, ready: profileReady } = useProfile();
   const plan = profile.plan ?? DEFAULT_PLAN;
   // The server enforces the same ceiling for the plan; stopping here is what
   // keeps the student from running into it.
@@ -88,6 +100,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [subjectName, setSubjectName] = useState("");
   const [seconds, setSeconds] = useState(0);
+  const [weekLeft, setWeekLeft] = useState<number | null>(null);
   const [transcript, setTranscript] = useState("");
   const [notesHtml, setNotesHtml] = useState("");
   const [noMaterial, setNoMaterial] = useState(false);
@@ -197,16 +210,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       setStarting(true);
       try {
         // Checked before the microphone is asked for, so a student out of
-        // recordings is told now rather than twenty seconds into a lecture.
+        // recording time is told now rather than twenty seconds into a lecture.
         // If the check itself fails, the server still enforces the cap.
-        const usage = await fetchUsage();
-        if (
-          usage &&
-          usage.recordings.limit !== null &&
-          usage.recordings.used >= usage.recordings.limit
-        ) {
-          const back = usage.recordings.resetsAt
-            ? new Date(usage.recordings.resetsAt).toLocaleDateString(undefined, {
+        const week = (await fetchUsage())?.recordings;
+        if (week) setWeekLeft(week.limit === null ? null : Math.max(0, week.limit - week.used));
+        if (week && week.limit !== null && week.used >= week.limit) {
+          const back = week.resetsAt
+            ? new Date(week.resetsAt).toLocaleDateString(undefined, {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -214,8 +224,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
             : null;
           setFatal({
             subjectId: subject.id,
-            message: `You have used all of this week's recordings on the ${PLAN_LABEL[plan]} plan.${
-              back ? ` Your next one is available on ${back}.` : ""
+            message: `You have used this week's ${formatDuration(week.limit)} of recording on the ${PLAN_LABEL[plan]} plan.${
+              back ? ` More frees up on ${back}.` : ""
             }`,
           });
           return;
@@ -284,10 +294,29 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     stopRef.current = stop;
   }, [stop]);
 
-  // The advertised cap, enforced rather than just printed.
+  // The advertised caps, enforced rather than just printed: the length of one
+  // recording, and the time left this week.
   useEffect(() => {
-    if (phase === "recording" && seconds >= maxSeconds) void stop();
-  }, [phase, seconds, maxSeconds, stop]);
+    if (phase === "recording" && seconds >= Math.min(maxSeconds, weekLeft ?? Infinity)) {
+      void stop();
+    }
+  }, [phase, seconds, maxSeconds, weekLeft, stop]);
+
+  // Re-read whenever no recording is running, so the time left shown before
+  // Start reflects the recording that just ended as the server charged it.
+  const unlimited = profile.unlimited;
+  useEffect(() => {
+    if (phase !== "idle" || !profileReady) return;
+    let cancelled = false;
+    void fetchUsage().then((u) => {
+      if (cancelled || !u) return;
+      const week = u.recordings;
+      setWeekLeft(week.limit === null ? null : Math.max(0, week.limit - week.used));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, plan, unlimited, profileReady]);
 
   const reset = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -454,6 +483,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         subjectId,
         subjectName,
         seconds,
+        weekLeft,
         transcript,
         notesHtml,
         noMaterial,

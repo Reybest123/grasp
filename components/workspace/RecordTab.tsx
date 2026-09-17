@@ -14,7 +14,7 @@ import { useState } from "react";
 import type { Note } from "@/lib/subjects";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { useProfile } from "@/lib/profileStore";
-import { DEFAULT_PLAN, PLAN_LABEL, recordingLimit, recordingMaxSeconds } from "@/lib/plan";
+import { DEFAULT_PLAN, PLAN_LABEL, formatDuration, recordingMaxSeconds } from "@/lib/plan";
 import { useNow } from "@/lib/subjectsStore";
 import { updatedLabel } from "@/lib/schedule";
 import type { ResourceBrief } from "@/lib/resources";
@@ -61,7 +61,9 @@ export function RecordTab({
   const active = rec.phase !== "idle" && rec.subjectId === subjectId;
   const fatal = rec.fatal?.subjectId === subjectId ? rec.fatal.message : null;
 
-  const remaining = maxSeconds - rec.seconds;
+  // Ticks down with the recording's own timer, so it moves every second.
+  const weekLeft = rec.weekLeft === null ? null : Math.max(0, rec.weekLeft - rec.seconds);
+  const remaining = Math.min(maxSeconds - rec.seconds, weekLeft ?? Infinity);
   const hasContent = Boolean(rec.notesHtml || rec.transcript.trim());
   // Both leave the transcript as the only thing to save, but they read
   // differently: one says nothing was recorded, the other that the audio
@@ -118,8 +120,8 @@ export function RecordTab({
       <p className="mt-3 max-w-md text-xs leading-5 text-slate-500">
         Check your school allows recording before you start. {PLAN_LABEL[plan]} plan:{" "}
         {profile.unlimited
-          ? "unlimited recordings, with no length limit."
-          : `${recordingLimit(plan)} recordings a week, up to ${maxSeconds / 60} minutes each.`}
+          ? "unlimited recording, with no length limit."
+          : `${weekLeft === null ? "…" : formatDuration(weekLeft, true)} of recording left this week, up to ${maxSeconds / 60} minutes a recording.`}
       </p>
     </div>
   );
@@ -168,9 +170,18 @@ export function RecordTab({
           )}
         </div>
         <div className="flex items-center gap-3">
-          {rec.phase === "recording" && remaining <= 60 && (
+          {rec.phase === "recording" && weekLeft !== null && (
+            <span
+              className={`text-xs font-semibold tabular-nums ${
+                remaining <= 60 ? "text-amber-600" : "text-slate-500"
+              }`}
+            >
+              {formatDuration(weekLeft, true)} left this week
+            </span>
+          )}
+          {rec.phase === "recording" && remaining <= 60 && remaining < (weekLeft ?? Infinity) && (
             <span className="text-xs font-semibold text-amber-600">
-              {mmss(Math.max(remaining, 0))} left
+              Stops in {mmss(Math.max(remaining, 0))}
             </span>
           )}
           <span className="font-mono text-sm tabular-nums text-slate-500">{mmss(rec.seconds)}</span>

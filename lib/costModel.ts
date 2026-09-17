@@ -64,6 +64,14 @@ export const LIMITS = {
   segmentBytes: 2_000_000,
   /** audio past the plan's length still transcribed, for the segment flushed on Stop */
   recordingGraceSeconds: 30,
+  /**
+   * The least a recording takes off the weekly time allowance. Each recording
+   * brings its own note drafts and final pass, so without a floor a stream of
+   * one-second recordings would cost far more per minute than a lecture does.
+   */
+  recordingMinChargeSeconds: 60,
+  /** a draft's reply is capped at this plus twice the transcript it was given */
+  liveOutputBaseTokens: 500,
 
   /** a note's HTML, and the passage highlighted in it */
   noteChars: 60_000,
@@ -138,31 +146,62 @@ export function quizWorstUsd(): number {
  */
 export const RESOURCE_READ_WORST_USD = 0.0085;
 
-/** The segment ceiling /api/transcribe enforces; the Stop flush can add one. */
-export function recordingSegments(maxSeconds: number, segmentMs: number): number {
-  return Math.ceil((maxSeconds * 1000) / segmentMs) + 1;
+/** The longest transcript /api/live-notes will read for a recording of this many seconds. */
+export function transcriptCharCap(seconds: number): number {
+  return Math.ceil(((seconds + LIMITS.recordingGraceSeconds) / 60) * LIMITS.transcriptCharsPerMinute);
 }
 
-/** The longest transcript /api/live-notes will read for a recording of this length. */
-export function transcriptCharCap(maxSeconds: number): number {
-  return Math.ceil(((maxSeconds + LIMITS.recordingGraceSeconds) / 60) * LIMITS.transcriptCharsPerMinute);
+/** The seconds a recording takes off the weekly allowance, given the audio heard. */
+export function chargedSeconds(heardSeconds: number): number {
+  return Math.max(heardSeconds, LIMITS.recordingMinChargeSeconds);
 }
 
 /**
- * One recording at full length. Whisper is billed by the minute; the notes are
- * redrafted once per segment and each draft re-reads the whole transcript so
- * far, so the drafting grows with the square of the length, then one final pass.
+ * Note drafts, the final pass included, a recording is allowed for the seconds
+ * it is charged: one per segment's worth of audio, plus the final pass. The
+ * client only redrafts once enough new words have landed, so it rarely needs
+ * one per segment.
  */
-export function recordingWorstUsd(maxSeconds: number, segmentMs: number): number {
-  const whisper = ((maxSeconds + LIMITS.recordingGraceSeconds) / 60) * WHISPER_USD_PER_MINUTE;
-  const drafts = recordingSegments(maxSeconds, segmentMs);
-  const transcript = transcriptCharCap(maxSeconds);
-  // Draft i reads i segments' worth: the sum of 1..n shares of the transcript.
-  const interimTranscript = (transcript / drafts) * ((drafts * (drafts + 1)) / 2);
+export function draftCeiling(charged: number, segmentMs: number): number {
+  return Math.ceil((charged * 1000) / segmentMs) + 1;
+}
+
+/** A draft's reply cap: notes are shorter than the speech they come from. */
+export function liveOutputTokens(final: boolean, transcriptChars: number): number {
+  const cap = final ? LIMITS.liveFinalOutputTokens : LIMITS.liveDraftOutputTokens;
+  return Math.min(cap, LIMITS.liveOutputBaseTokens + 2 * tokensIn(transcriptChars));
+}
+
+/**
+ * One recording charged `charged` seconds, at its worst: Whisper on every one of
+ * them, and every draft allowed, each re-reading the transcript so far at its cap.
+ */
+function recordingWorstUsd(charged: number, segmentMs: number): number {
+  const whisper = (charged / 60) * WHISPER_USD_PER_MINUTE;
+  const calls = draftCeiling(charged, segmentMs);
+  const transcript = transcriptCharCap(charged);
   const fixed = PROMPT_CHARS + RESOURCE_BLOCK_CHARS + LIMITS.contextChars;
-  const input = tokensIn((drafts + 1) * fixed + interimTranscript + transcript);
-  const output = drafts * LIMITS.liveDraftOutputTokens + LIMITS.liveFinalOutputTokens;
-  return whisper + costUsd("gpt-4o-mini", input, output);
+  let llm = 0;
+  for (let k = 1; k <= calls; k++) {
+    const final = k === calls;
+    const read = final ? transcript : Math.ceil((transcript * k) / (calls - 1));
+    llm += costUsd("gpt-4o-mini", tokensIn(fixed + Math.min(read, transcript)), liveOutputTokens(final, read));
+  }
+  return whisper + llm;
+}
+
+/**
+ * A week's recording time used to the full, at its worst. The allowance can be
+ * split into recordings of any length up to `maxSeconds`, so this takes the
+ * length that costs most per second. Short ones are dearest, which is what
+ * LIMITS.recordingMinChargeSeconds is there to hold down.
+ */
+export function recordingTimeWorstUsd(weeklySeconds: number, maxSeconds: number, segmentMs: number): number {
+  let perSecond = 0;
+  for (let s = LIMITS.recordingMinChargeSeconds; s <= maxSeconds; s += 5) {
+    perSecond = Math.max(perSecond, recordingWorstUsd(s, segmentMs) / s);
+  }
+  return perSecond * (weeklySeconds + LIMITS.recordingGraceSeconds);
 }
 
 /** One AI token is this much provider spend. */

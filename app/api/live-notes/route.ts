@@ -3,8 +3,7 @@ import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
 import { claimLiveDraft } from "@/lib/usage";
-import { LIMITS, transcriptCharCap } from "@/lib/costModel";
-import { DEFAULT_PLAN, recordingMaxSeconds } from "@/lib/plan";
+import { LIMITS, liveOutputTokens } from "@/lib/costModel";
 
 // §3.1 Record — turns the lecture transcript so far into notes, re-run as more
 // of the lecture arrives so the student watches the notes build.
@@ -65,24 +64,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That recording could not be read." }, { status: 400 });
   }
 
-  // Never longer than the plan's recording could have produced, so a draft's
-  // input is bounded as well as how many drafts there are (lib/costModel.ts).
-  const transcript = guard.user.unlimited
-    ? sent
-    : sent.slice(0, transcriptCharCap(recordingMaxSeconds(guard.user.plan ?? DEFAULT_PLAN)));
-
   // Checked before spending a model call: a clip this short can't hold two
   // sentences of material whatever it says, so there's nothing for the model
   // to judge. Only the final pass over the complete lecture means anything
   // here — a partial transcript is short by definition.
-  if (final && looksTooShort(transcript)) {
+  if (final && looksTooShort(sent)) {
     return NextResponse.json({ notes: "", used: [], outcome: "short" });
   }
 
-  // Labelled explicitly. Handed over bare, the model treated the schedule as
-  // material to write up whenever the transcript was too thin to carry a note.
   const draft = await claimLiveDraft(guard.user, recordingId);
   if (!draft.ok) return draft.response;
+
+  // Never longer than the audio heard for this recording could have produced,
+  // so a draft's input is bounded as well as how many drafts there are
+  // (lib/costModel.ts).
+  const transcript = draft.transcriptChars === null ? sent : sent.slice(0, draft.transcriptChars);
+
+  // Labelled explicitly. Handed over bare, the model treated the schedule as
+  // material to write up whenever the transcript was too thin to carry a note.
 
   const schedule =
     typeof context === "string" && context.trim()
@@ -111,7 +110,7 @@ ${transcript.trim()}`;
     ],
     // Low: this is a faithful write-up of what was said, not creative writing.
     temperature: 0.3,
-    max_completion_tokens: final ? LIMITS.liveFinalOutputTokens : LIMITS.liveDraftOutputTokens,
+    max_completion_tokens: liveOutputTokens(Boolean(final), transcript.length),
   });
   if (!result.ok) return result.response;
 

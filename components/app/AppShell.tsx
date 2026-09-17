@@ -11,7 +11,6 @@
 // recording down with it on the next navigation.
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { fetchUsage } from "@/lib/ai";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/app/Sidebar";
@@ -21,7 +20,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubjectEditor } from "@/components/SubjectEditor";
 import { useSubjects, useNow } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
-import { DEFAULT_PLAN, planName, trialDaysLeft } from "@/lib/plan";
+import { DEFAULT_PLAN, formatDuration, planName, trialDaysLeft } from "@/lib/plan";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { AlertIcon, MicIcon } from "@/components/icons";
 
@@ -58,18 +57,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [confirmLogOut, setConfirmLogOut] = useState(false);
   const recording = rec.phase !== "idle";
 
-  // Read from the server, which is where the cap is enforced. Re-read each time
-  // a recording ends, since that is when the count can have changed.
-  const [recordingsLeft, setRecordingsLeft] = useState<number | null>(null);
-  useEffect(() => {
-    if (recording) return;
-    void fetchUsage().then(
-      (u) =>
-        u &&
-        u.recordings.limit !== null &&
-        setRecordingsLeft(Math.max(0, u.recordings.limit - u.recordings.used))
-    );
-  }, [recording]);
+  // The store re-reads it from the server whenever no recording is running, and
+  // it counts down with the timer while one is.
+  const timeLeft =
+    rec.weekLeft === null
+      ? null
+      : Math.max(0, rec.weekLeft - (rec.phase === "recording" ? rec.seconds : 0));
 
   const editing = subjects.find((s) => s.id === editingId) ?? null;
 
@@ -127,11 +120,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       : `${trialLeft} day${trialLeft === 1 ? "" : "s"} left`}
                   </span>
                 ) : (
-                  recordingsLeft !== null && (
-                    <span className="text-slate-500">
-                      {recordingsLeft === 0
-                        ? "No recordings left this week"
-                        : `${recordingsLeft} recording${recordingsLeft === 1 ? "" : "s"} left`}
+                  timeLeft !== null && (
+                    <span className="tabular-nums text-slate-500">
+                      {timeLeft === 0
+                        ? "No recording time left this week"
+                        : `${formatDuration(timeLeft, true)} recording left`}
                     </span>
                   )
                 )}

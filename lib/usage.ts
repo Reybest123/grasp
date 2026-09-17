@@ -13,20 +13,29 @@ import {
   RECORDING_SEGMENT_MS,
   aiTokenLimit,
   formatCount,
+  formatDuration,
   markingLimit,
   quizLimit,
-  recordingLimit,
   recordingMaxSeconds,
+  recordingSeconds,
   resourceReadLimit,
   type Plan,
 } from "@/lib/plan";
-import { LIMITS as CAPS, tokensForCost } from "@/lib/costModel";
+import {
+  LIMITS as CAPS,
+  chargedSeconds,
+  draftCeiling,
+  tokensForCost,
+  transcriptCharCap,
+} from "@/lib/costModel";
 
 /**
  * `ai` rows hold the tokens one action was charged in `units`, so that kind is
- * summed rather than counted. `audio` and `draft` rows are per recording, not
- * weekly allowances of their own: they hold its transcribed seconds and its
- * note drafts, which is what keeps one recording's cost bounded.
+ * summed rather than counted. The `recording` allowance is seconds: it sums each
+ * recording's `audio` row (its transcribed seconds, at least
+ * CAPS.recordingMinChargeSeconds). `recording` rows count a recording's
+ * segments and `draft` rows its note drafts, which is what keeps one
+ * recording's cost bounded.
  */
 export type UsageKind = "quiz" | "recording" | "resource" | "mark" | "ai";
 
@@ -40,7 +49,7 @@ type Result<T> = { ok: true; data: T } | { ok: false; response: Response };
 
 const LIMITS: Record<UsageKind, (plan: Plan) => number> = {
   quiz: quizLimit,
-  recording: recordingLimit,
+  recording: recordingSeconds,
   resource: resourceReadLimit,
   mark: markingLimit,
   ai: aiTokenLimit,
@@ -77,12 +86,22 @@ function whenFree(resetsAt: string | null): string {
 
 export async function allowance(account: Account, kind: UsageKind): Promise<Result<Allowance>> {
   const result = await query(async () => {
+    type Row = { used: number; resets_at: string | Date | null };
+    if (kind === "recording") {
+      const rows = (await sql`
+        select coalesce(sum(greatest(units, ${CAPS.recordingMinChargeSeconds})), 0)::int as used,
+               min(created_at) + interval '7 days' as resets_at
+        from usage
+        where user_id = ${account.id} and kind = 'audio' and created_at > now() - interval '7 days'
+      `) as Row[];
+      return rows[0];
+    }
     const rows = (await sql`
       select (case when ${kind}::text = 'ai' then coalesce(sum(units), 0) else count(*) end)::int as used,
              min(created_at) + interval '7 days' as resets_at
       from usage
       where user_id = ${account.id} and kind = ${kind} and created_at > now() - interval '7 days'
-    `) as { used: number; resets_at: string | Date | null }[];
+    `) as Row[];
     return rows[0];
   });
   if (!result.ok) return failed(result.error, result.status);
@@ -193,9 +212,9 @@ export async function claimResourceRead(
 }
 
 /**
- * Accounts for one audio segment of a recording. The first segment that
- * reaches the server is what counts the recording against the week, so a
- * recording started by mistake and stopped in silence costs nothing.
+ * Accounts for one audio segment of a recording. Time is taken off the week
+ * only once Whisper has heard it (`recordAudioSeconds`), so a recording started
+ * by mistake and stopped in silence costs nothing.
  */
 export async function claimRecordingSegment(
   account: Account,
@@ -204,6 +223,14 @@ export async function claimRecordingSegment(
   const noop = async () => {};
   if (account.unlimited) return { ok: true, release: noop };
   const plan = planOf(account);
+
+  const week = await allowance(account, "recording");
+  if (!week.ok) return week;
+  if (week.data.limit !== null && week.data.used >= week.data.limit) {
+    return refused(
+      `You have used this week's ${formatDuration(week.data.limit)} of recording on the ${PLAN_LABEL[plan]} plan. Time starts freeing up ${whenFree(week.data.resetsAt)}.`
+    );
+  }
 
   // The segment count alone does not bound Whisper's bill, which is by the
   // minute: a client could send long clips as "segments". Audio already
@@ -224,45 +251,31 @@ export async function claimRecordingSegment(
 
   const bumped = await query(async () => {
     const rows = (await sql`
-      update usage set units = units + 1
-      where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId}
+      insert into usage (user_id, kind, ref)
+      values (${account.id}, 'recording', ${recordingId})
+      on conflict (user_id, kind, ref) do update set units = usage.units + 1
       returning units
     `) as { units: number }[];
-    return rows[0]?.units ?? null;
+    return rows[0]?.units ?? 1;
   });
   if (!bumped.ok) return failed(bumped.error, bumped.status);
 
-  if (bumped.data !== null) {
-    if (bumped.data > maxSegments(plan)) {
-      return refused(
-        `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
+  if (bumped.data > maxSegments(plan)) {
+    return refused(
+      `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
+    );
+  }
+  // Whisper failing on a segment hands its count back, so a failure does not
+  // eat into the recording's draft allowance.
+  return {
+    ok: true,
+    release: async () => {
+      await query(
+        () =>
+          sql`update usage set units = units - 1 where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId} and units > 1`
       );
-    }
-    return { ok: true, release: noop };
-  }
-
-  const claimed = await claim(account, "recording", recordingId);
-  if (!claimed.ok) return claimed;
-  if (claimed.data) {
-    // Only the segment that opened the recording hands it back: if Whisper
-    // fails on it, nothing was transcribed and the week's recording is intact.
-    return {
-      ok: true,
-      release: async () => {
-        await query(
-          () =>
-            sql`delete from usage where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId} and units = 1`
-        );
-      },
-    };
-  }
-
-  const current = await allowance(account, "recording");
-  const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
-  const limit = recordingLimit(plan);
-  return refused(
-    `You have used ${limit === 1 ? "this week's recording" : `all ${limit} of this week's recordings`} on the ${PLAN_LABEL[plan]} plan. Your next one frees up ${when}.`
-  );
+    },
+  };
 }
 
 /** Adds a transcribed segment's length to its recording's running total. */
@@ -283,39 +296,45 @@ export async function recordAudioSeconds(
 }
 
 /**
- * Takes one note draft for a recording. A recording gets one draft per segment
- * that reached Whisper plus the final pass, which is what the client asks for
- * at most; anything past that is a client calling the route in a loop.
+ * Takes one note draft for a recording, and says how much transcript it may
+ * read (null: no cap). A recording gets one draft per segment that reached
+ * Whisper plus the final pass, and no more than its heard seconds allow
+ * (`draftCeiling`), so a stream of tiny recordings cannot buy extra drafts.
  */
 export async function claimLiveDraft(
   account: Account,
   recordingId: string
-): Promise<{ ok: true } | { ok: false; response: Response }> {
-  if (account.unlimited) return { ok: true };
+): Promise<{ ok: true; transcriptChars: number | null } | { ok: false; response: Response }> {
+  if (account.unlimited) return { ok: true, transcriptChars: null };
+  const plan = planOf(account);
 
   const result = await query(async () => {
-    const segments = (await sql`
-      select units from usage
-      where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId}
-    `) as { units: number }[];
-    if (!segments[0]) return null;
+    const rows = (await sql`
+      select kind, units from usage
+      where user_id = ${account.id} and kind in ('recording', 'audio') and ref = ${recordingId}
+    `) as { kind: string; units: number }[];
+    const segments = rows.find((r) => r.kind === "recording")?.units;
+    const heard = rows.find((r) => r.kind === "audio")?.units;
+    if (!segments || !heard) return null;
     const drafts = (await sql`
       insert into usage (user_id, kind, ref)
       values (${account.id}, 'draft', ${recordingId})
       on conflict (user_id, kind, ref) do update set units = usage.units + 1
       returning units
     `) as { units: number }[];
-    return { segments: segments[0].units, drafts: drafts[0]?.units ?? 1 };
+    return { segments, heard, drafts: drafts[0]?.units ?? 1 };
   });
   if (!result.ok) return failed(result.error, result.status);
 
   if (!result.data) {
     return failed("Grasp has no audio for this recording yet, so there is nothing to write up.", 409);
   }
-  if (result.data.drafts > result.data.segments + 1) {
+  const { segments, heard, drafts } = result.data;
+  const charged = Math.min(chargedSeconds(heard), recordingMaxSeconds(plan));
+  if (drafts > Math.min(segments + 1, draftCeiling(charged, RECORDING_SEGMENT_MS))) {
     return refused("Grasp is already up to date with this recording.");
   }
-  return { ok: true };
+  return { ok: true, transcriptChars: transcriptCharCap(charged) };
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   BILLING_PERIOD,
   DEFAULT_PLAN,
   formatCount,
+  formatDuration,
   PLANS,
   PLAN_AVAILABLE,
   PLAN_LABEL,
@@ -196,14 +197,24 @@ function ThisWeek() {
     );
   }
 
-  const rows: { label: string; hint: string; allowance: Allowance | undefined }[] = [
+  const rows: {
+    label: string;
+    hint: string;
+    allowance: Allowance | undefined;
+    format?: (n: number, isLimit: boolean) => string;
+  }[] = [
     {
       label: "AI tokens",
       hint: "Explain, refine, enhance, generate, and explaining a quiz answer. Each uses tokens by how much work it takes.",
       allowance: usage?.tokens,
     },
     { label: "Quizzes", hint: "Generated quizzes.", allowance: usage?.quizzes },
-    { label: "Lecture recordings", hint: "Recordings started.", allowance: usage?.recordings },
+    {
+      label: "Lecture recording",
+      hint: "Time recorded. Each recording counts as at least a minute.",
+      allowance: usage?.recordings,
+      format: (n, isLimit) => formatDuration(n, !isLimit),
+    },
     {
       label: "Resource Bank documents",
       hint: "Documents read into any subject.",
@@ -224,10 +235,12 @@ function Meter({
   label,
   hint,
   allowance,
+  format = (n) => formatCount(n),
 }: {
   label: string;
   hint: string;
   allowance: Allowance | undefined;
+  format?: (n: number, isLimit: boolean) => string;
 }) {
   if (!allowance) return <Skeleton className="h-[108px] rounded-2xl" />;
 
@@ -242,11 +255,11 @@ function Meter({
         <p className="text-sm font-semibold text-ink">{label}</p>
         <p className="text-sm tabular-nums text-slate-600">
           {limit === null ? (
-            `${formatCount(used)} used · Unlimited`
+            `${format(used, false)} used · Unlimited`
           ) : (
             <>
-              <span className="font-semibold text-ink">{formatCount(Math.min(used, limit))}</span> of{" "}
-              {formatCount(limit)}
+              <span className="font-semibold text-ink">{format(Math.min(used, limit), false)}</span>{" "}
+              of {format(limit, true)}
             </>
           )}
         </p>
