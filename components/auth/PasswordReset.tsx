@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { ErrorNote } from "@/components/ErrorNote";
 import { Field } from "@/components/auth/AuthForm";
-import { ArrowLeftIcon, CheckIcon, MailIcon } from "@/components/icons";
+import { ArrowLeftIcon, MailIcon } from "@/components/icons";
 import { emailProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
 
 const NO_CONNECTION = "Grasp could not reach the server. Please check your connection and try again.";
@@ -275,10 +275,6 @@ export function ResetPasswordForm({
         />
         <SubmitButton busy={busy} label="Change password" busyLabel="Changing…" />
       </form>
-      <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-500">
-        <CheckIcon className="h-3.5 w-3.5 shrink-0" />
-        The link works once, for one hour.
-      </p>
     </Frame>
   );
 }
