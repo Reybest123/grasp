@@ -7,7 +7,7 @@ import { briefsFor, type Resource } from "@/lib/resources";
 import { useSubjects } from "@/lib/subjectsStore";
 import { useRecording } from "@/lib/recordingStore";
 import { getColor } from "@/lib/subjectColors";
-import { nextExam, weeklyLabel, subjectContext } from "@/lib/schedule";
+import { weeklyLabel, subjectContext } from "@/lib/schedule";
 import { NotesTab } from "@/components/workspace/NotesTab";
 import { RecordTab } from "@/components/workspace/RecordTab";
 import { QuizzesTab, type QuizView } from "@/components/workspace/QuizzesTab";
@@ -19,7 +19,6 @@ import {
   MicIcon,
   ArrowLeftIcon,
   EditIcon,
-  ExamIcon,
 } from "@/components/icons";
 
 function Separator() {
@@ -183,7 +182,6 @@ export function SubjectWorkspace({
 
   const color = getColor(subject.colorKey);
   const weekly = weeklyLabel(subject.classes);
-  const exam = now ? nextExam(subject.exams, now) : null;
 
   // Class times + exams travel with every AI request for this subject, so
   // explanations and quizzes can reference the student's actual week.
@@ -248,19 +246,6 @@ export function SubjectWorkspace({
               {[subject.teacher, weekly].filter(Boolean).join(" · ") || "No class times set yet"}
             </p>
           </div>
-          {exam && (
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                exam.overdue
-                  ? "bg-red-50 text-red-700"
-                  : exam.soon
-                    ? "bg-amber-100 text-amber-800"
-                    : color.tint
-              }`}
-            >
-              <ExamIcon className="h-4 w-4" /> {exam.label}
-            </span>
-          )}
           {onEdit && (
             <button
               onClick={onEdit}

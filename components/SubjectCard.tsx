@@ -2,8 +2,8 @@
 
 import type { Subject } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
-import { examStatuses, nextClassLabel } from "@/lib/schedule";
-import { ClockIcon, ExamIcon, EditIcon, PlusIcon } from "@/components/icons";
+import { nextClassLabel } from "@/lib/schedule";
+import { ClockIcon, EditIcon, PlusIcon } from "@/components/icons";
 
 export function SubjectCard({
   subject,
@@ -19,10 +19,7 @@ export function SubjectCard({
 }) {
   const color = getColor(subject.colorKey);
   const nextClass = now ? nextClassLabel(subject.classes, now) : null;
-  // Only the soonest exam gets a chip; the rest are summarised as a count.
-  const exams = now ? examStatuses(subject.exams, now) : [];
-  const exam = exams[0];
-  const moreExams = Math.max(0, exams.length - 1);
+  // Assessments are shown on the dashboard only, not on the card.
 
   return (
     <div className="group flex min-h-[220px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-ring transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lift">
@@ -48,32 +45,12 @@ export function SubjectCard({
             <ClockIcon className="h-4 w-4 shrink-0 text-slate-400" />
             <span className="truncate">{nextClass ?? (now ? "No class times yet" : " ")}</span>
           </p>
-          {exam && (
-            <p className="flex flex-wrap items-center gap-1.5">
-              <span
-                className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  exam.overdue
-                    ? "bg-red-50 text-red-700"
-                    : exam.soon
-                      ? "bg-amber-50 text-amber-700"
-                      : color.tint
-                }`}
-              >
-                <ExamIcon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{exam.label}</span>
-              </span>
-              {moreExams > 0 && (
-                <span className="text-xs font-medium text-slate-400">+{moreExams} more</span>
-              )}
-            </p>
-          )}
         </div>
 
         {/* No content counts. Three bare numbers said nothing a student was
             asking — whether a subject holds 2 notes or 5 doesn't help decide
-            which to open, and the row read as stray metadata. `mt-auto` moved
-            onto the action row, which is what has to stay aligned across the
-            grid when a subject has no exam chip.
+            which to open, and the row read as stray metadata. `mt-auto` keeps
+            the action row aligned across the grid.
 
             The primary action here is navy, not the brand orange: a grid of
             eight orange buttons is eight things shouting equally. Orange is
