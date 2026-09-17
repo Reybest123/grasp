@@ -20,6 +20,7 @@ const PROTECTED = [
   "/home",
   "/workspace",
   "/settings",
+  "/plans",
   "/dashboard",
   "/subject",
   "/onboarding",

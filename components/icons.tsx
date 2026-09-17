@@ -379,6 +379,16 @@ export function WorkspaceIcon({ className }: IconProps) {
   );
 }
 
+export function PlansIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+      <path d="M2.5 10h19" />
+      <path d="M6.5 15h4" />
+    </svg>
+  );
+}
+
 export function SettingsIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>

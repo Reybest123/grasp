@@ -17,13 +17,21 @@ export async function DELETE(req: NextRequest) {
 
   const found = await query(async () => {
     const rows = (await sql`
-      select password_hash from users where id = ${guard.user.id}
-    `) as { password_hash: string }[];
-    return rows[0]?.password_hash ?? null;
+      select password_hash, plan, plan_cancelled_at from users where id = ${guard.user.id}
+    `) as { password_hash: string; plan: string | null; plan_cancelled_at: string | Date | null }[];
+    return rows[0] ?? null;
   });
   if (!found.ok) return NextResponse.json({ error: found.error }, { status: found.status });
 
-  if (!found.data || !(await verifyPassword(password, found.data))) {
+  // Checked here as well as in Settings, which only disables the button.
+  if (found.data?.plan && !found.data.plan_cancelled_at) {
+    return NextResponse.json(
+      { error: "Cancel your plan on the Plans page before deleting your account.", planActive: true },
+      { status: 409 }
+    );
+  }
+
+  if (!found.data || !(await verifyPassword(password, found.data.password_hash))) {
     return NextResponse.json({ error: "That password is not right." }, { status: 403 });
   }
 

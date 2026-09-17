@@ -11,7 +11,7 @@ export default function Privacy() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="12 September 2026"
+      updated="17 September 2026"
       intro="This explains what Grasp collects when you use it, what happens to it, who else handles it, and how to get it deleted. Grasp is a study tool for students, so it collects only what it needs to run your notebooks, and nothing for advertising."
     >
       <LegalSection title="What Grasp stores">
@@ -21,7 +21,8 @@ export default function Privacy() {
             stored as a one-way scrypt hash, never as the password itself.
           </li>
           <li>
-            <b>Your plan and setup answers:</b> which plan you are on, when your free trial ends, and
+            <b>Your plan and setup answers:</b> which plan you are on, when your free trial ends,
+            when you cancelled your plan if you have, and
             your answers to the three questions asked when you set up your account: your year level,
             how you plan to use Grasp, and what you most want help with.
           </li>

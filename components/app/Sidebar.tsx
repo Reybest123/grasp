@@ -9,14 +9,14 @@
 // is picked out by tint rather than by giving each destination its own colour,
 // which would compete with the subject colours the rest of the app is built on.
 //
-// Settings and Log out sit apart at the foot, small, since they are not places
-// the student moves between while working.
+// Plans, Settings and Log out sit apart at the foot, small, since they are not
+// places the student moves between while working.
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { JSX } from "react";
 import { useRecording } from "@/lib/recordingStore";
-import { HomeIcon, WorkspaceIcon, SettingsIcon, LogOutIcon } from "@/components/icons";
+import { HomeIcon, WorkspaceIcon, PlansIcon, SettingsIcon, LogOutIcon } from "@/components/icons";
 
 type Item = {
   href: string;
@@ -28,6 +28,12 @@ const MAIN: Item[] = [
   { href: "/home", label: "Home", icon: (c) => <HomeIcon className={c} /> },
   { href: "/workspace", label: "Workspace", icon: (c) => <WorkspaceIcon className={c} /> },
 ];
+
+const PLANS: Item = {
+  href: "/plans",
+  label: "Plans",
+  icon: (c) => <PlansIcon className={c} />,
+};
 
 const SETTINGS: Item = {
   href: "/settings",
@@ -66,6 +72,11 @@ export function Sidebar({ onLogOut }: { onLogOut: () => void }) {
         </div>
 
         <div className="flex flex-col items-center gap-1 border-t border-slate-200 py-3">
+          <FootButton
+            item={PLANS}
+            active={isActive(PLANS.href)}
+            onClick={() => rec.guard(() => router.push(PLANS.href))}
+          />
           <FootButton
             item={SETTINGS}
             active={isActive(SETTINGS.href)}

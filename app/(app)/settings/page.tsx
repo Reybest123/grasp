@@ -1,6 +1,7 @@
 "use client";
 
-// Settings: the account's name, its password, its plan, and deleting it.
+// Settings: the account's name, its password, and deleting it. The plan lives
+// on its own page, /plans, and has to be cancelled there before deletion.
 //
 // Laid out like the other pages in the shell — full width, a heading over a
 // rule, uppercase section labels above white cards — rather than the centred
@@ -16,8 +17,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useRecording } from "@/lib/recordingStore";
-import { useNow } from "@/lib/subjectsStore";
-import { DEFAULT_PLAN, PLAN_PERKS, PLAN_PRICE, planName, trialDaysLeft } from "@/lib/plan";
+import { usePlanStatus } from "@/lib/usePlanStatus";
 import { nameProblem, passwordProblem } from "@/lib/accounts";
 import { Skeleton } from "@/components/Skeleton";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -45,9 +45,6 @@ export default function SettingsPage() {
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
           <ProfileSection />
           <PasswordSection />
-          <div className="lg:col-span-2">
-            <PlanSection />
-          </div>
           <div className="lg:col-span-2">
             <DeleteSection />
           </div>
@@ -258,57 +255,13 @@ function PasswordSection() {
   );
 }
 
-/** Which plan, when a trial ends, and what the plan includes. Nothing to change here until billing exists. */
-function PlanSection() {
-  const { profile } = useProfile();
-  const now = useNow();
-  const plan = profile.plan ?? DEFAULT_PLAN;
-  const trialLeft = now ? trialDaysLeft(profile.trialEndsAt, now) : null;
-  const ends = profile.trialEndsAt
-    ? new Date(profile.trialEndsAt).toLocaleDateString(undefined, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      })
-    : null;
-
-  return (
-    <Section title="Plan">
-      <p className="text-lg font-bold text-ink">{planName(plan, profile.trialEndsAt)}</p>
-      <p className="mt-1 text-sm text-slate-500">
-        {!ends
-          ? `${PLAN_PRICE[plan]} a month.`
-          : trialLeft === 0
-            ? `Your free trial ended on ${ends}.`
-            : `Your free trial ends on ${ends}${
-                trialLeft !== null ? `, ${trialLeft} day${trialLeft === 1 ? "" : "s"} from now` : ""
-              }.`}
-      </p>
-
-      <ul className="mt-5 grid gap-2.5 border-t border-slate-100 pt-5 sm:grid-cols-2">
-        {PLAN_PERKS[plan].map((perk) => (
-          <li key={perk} className="flex items-start gap-2.5 text-sm text-slate-600">
-            <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
-            {perk}
-          </li>
-        ))}
-      </ul>
-
-      <p className="mt-5 text-xs text-slate-500">
-        Billing is not set up yet, so nothing is charged, and Max arrives with it.
-      </p>
-      {profile.unlimited && (
-        <p className="mt-2 text-xs font-semibold text-ink">
-          Unlimited mode is on in this browser, so none of these limits apply.
-        </p>
-      )}
-    </Section>
-  );
-}
-
 function DeleteSection() {
   const router = useRouter();
   const rec = useRecording();
+  const { profile } = useProfile();
+  const status = usePlanStatus();
+  // A plan still running has to be cancelled first; the route checks it too.
+  const planActive = Boolean(profile.plan) && status.loaded && !status.error && !status.cancelledAt;
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -366,12 +319,27 @@ function DeleteSection() {
         {!open && (
           <button
             onClick={() => setOpen(true)}
-            className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50"
+            disabled={!status.loaded || planActive}
+            className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-red-200 disabled:hover:bg-white"
           >
             Delete account
           </button>
         )}
       </div>
+
+      {planActive && (
+        <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Your plan is still active. Cancel it first on the{" "}
+          <button
+            type="button"
+            onClick={() => rec.guard(() => router.push("/plans"))}
+            className="font-semibold text-brand-700 hover:underline"
+          >
+            Plans page
+          </button>
+          , then come back here to delete your account.
+        </p>
+      )}
 
       {open && (
         <form onSubmit={remove} noValidate className="mt-5 border-t border-slate-100 pt-5">

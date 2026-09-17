@@ -57,6 +57,12 @@ alter table users alter column plan drop default;
 alter table users add column if not exists trial_ends_at timestamptz default (now() + interval '7 days');
 alter table users alter column trial_ends_at drop default;
 
+-- When the student cancelled their plan from /plans, or null while it is active.
+-- A cancelled plan keeps working until its period ends, and an account can only
+-- be deleted once its plan is cancelled. Not read by the session lookup, so a
+-- database without it breaks /plans and account deletion, not signing in.
+alter table users add column if not exists plan_cancelled_at timestamptz;
+
 -- The answers to onboarding's three questions, as {yearLevel, uses, focus}
 -- (lib/onboarding.ts). Only ever read and written whole, hence JSONB.
 alter table users add column if not exists onboarding jsonb;
