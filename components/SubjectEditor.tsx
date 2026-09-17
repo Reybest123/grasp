@@ -8,10 +8,11 @@ import { useEffect, useState } from "react";
 import type { Subject } from "@/lib/subjects";
 import { makeSlot, makeExam } from "@/lib/subjects";
 import { SUBJECT_COLORS, getColor } from "@/lib/subjectColors";
-import { DAY_SHORT, type ClassSlot, type Exam } from "@/lib/schedule";
+import type { ClassSlot, Exam } from "@/lib/schedule";
 import { CloseIcon, PlusIcon, TrashIcon, CheckIcon, ExamIcon, ClockIcon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { DatePicker } from "@/components/DatePicker";
+import { DateSelect } from "@/components/DateSelect";
+import { DaySelect, TimeSelect } from "@/components/ClassTimeSelects";
 import { useEnterTransition } from "@/lib/useEnterTransition";
 
 export function SubjectEditor({
@@ -192,29 +193,24 @@ export function SubjectEditor({
             <div className="mt-3 space-y-2">
               {classes.map((c) => (
                 <div key={c.id} className="flex items-center gap-2">
-                  <select
+                  <DaySelect
                     value={c.day}
-                    onChange={(e) => patchSlot(c.id, { day: Number(e.target.value) })}
-                    className={`${inputCls} w-[92px] shrink-0`}
-                  >
-                    {DAY_SHORT.map((d, i) => (
-                      <option key={d} value={i}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="time"
+                    onChange={(day) => patchSlot(c.id, { day })}
+                    className="w-[84px] shrink-0"
+                  />
+                  <TimeSelect
+                    label="Starts"
                     value={c.start}
-                    onChange={(e) => patchSlot(c.id, { start: e.target.value })}
-                    className={`${inputCls} flex-1`}
+                    onChange={(start) => patchSlot(c.id, { start })}
+                    className="min-w-0 flex-1"
                   />
                   <span className="text-xs text-slate-400">to</span>
-                  <input
-                    type="time"
+                  <TimeSelect
+                    label="Ends"
+                    optional
                     value={c.end ?? ""}
-                    onChange={(e) => patchSlot(c.id, { end: e.target.value || undefined })}
-                    className={`${inputCls} flex-1`}
+                    onChange={(end) => patchSlot(c.id, { end: end || undefined })}
+                    className="min-w-0 flex-1"
                   />
                   <button
                     onClick={() => setClasses((cur) => cur.filter((x) => x.id !== c.id))}
@@ -255,24 +251,24 @@ export function SubjectEditor({
               quizzes.
             </p>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-4">
               {exams.map((e) => (
-                // items-start, so a date flagged as invalid can grow its own
-                // column downwards without pulling the row's other boxes.
+                // The date's three dropdowns take the row's width, so the
+                // title sits under them rather than squeezed beside them.
                 <div key={e.id} className="flex items-start gap-2">
-                  <DatePicker
-                    value={e.date}
-                    onChange={(date) => patchExam(e.id, { date })}
-                    label="Exam date"
-                    className={inputCls}
-                    wrapperClassName="w-[150px] shrink-0"
-                  />
-                  <input
-                    value={e.title ?? ""}
-                    onChange={(ev) => patchExam(e.id, { title: ev.target.value })}
-                    placeholder="e.g. Paper 2 mock"
-                    className={`${inputCls} min-w-0 flex-1`}
-                  />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <DateSelect
+                      value={e.date}
+                      onChange={(date) => patchExam(e.id, { date })}
+                      label="Exam date"
+                    />
+                    <input
+                      value={e.title ?? ""}
+                      onChange={(ev) => patchExam(e.id, { title: ev.target.value })}
+                      placeholder="e.g. Paper 2 mock"
+                      className={`${inputCls} w-full`}
+                    />
+                  </div>
                   <button
                     onClick={() => setExams((cur) => cur.filter((x) => x.id !== e.id))}
                     aria-label="Remove this exam"

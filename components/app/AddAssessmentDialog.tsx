@@ -13,7 +13,8 @@ import { useEffect, useState } from "react";
 import type { Subject } from "@/lib/subjects";
 import type { Exam } from "@/lib/schedule";
 import { getColor } from "@/lib/subjectColors";
-import { DatePicker } from "@/components/DatePicker";
+import { DateSelect } from "@/components/DateSelect";
+import { Select } from "@/components/Select";
 import { CloseIcon, ExamIcon } from "@/components/icons";
 
 export function AddAssessmentDialog({
@@ -104,7 +105,7 @@ export function AddAssessmentDialog({
           </div>
 
           <div className="mt-6 space-y-4">
-            <label className="block">
+            <div>
               <span className="mb-1.5 block text-sm font-semibold text-ink">Subject</span>
               <div className="flex items-center gap-2.5">
                 {chosen && (
@@ -116,29 +117,19 @@ export function AddAssessmentDialog({
                     {chosen.name.charAt(0).toUpperCase()}
                   </span>
                 )}
-                <select
+                <Select
+                  label="Subject"
                   value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
-                  className={`${inputCls} min-w-0 flex-1`}
-                >
-                  {subjects.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+                  onChange={setSubjectId}
+                  className="min-w-0 flex-1"
+                />
               </div>
-            </label>
+            </div>
 
             <div>
               <span className="mb-1.5 block text-sm font-semibold text-ink">Date</span>
-              <DatePicker
-                value={date}
-                onChange={setDate}
-                label="Assessment date"
-                className={inputCls}
-                wrapperClassName="w-full"
-              />
+              <DateSelect value={date} onChange={setDate} label="Assessment date" />
             </div>
 
             <label className="block">

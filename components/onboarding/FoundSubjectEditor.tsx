@@ -8,7 +8,8 @@
 import { useState } from "react";
 import type { ExtractedSubject } from "@/lib/ai";
 import { makeSlot } from "@/lib/subjects";
-import { DAY_SHORT, type ClassSlot } from "@/lib/schedule";
+import type { ClassSlot } from "@/lib/schedule";
+import { DaySelect, TimeSelect } from "@/components/ClassTimeSelects";
 import { PlusIcon, TrashIcon } from "@/components/icons";
 
 const INPUT =
@@ -95,32 +96,24 @@ export function FoundSubjectEditor({
       <div className="mt-1.5 space-y-2">
         {classes.map((c) => (
           <div key={c.id} className="flex items-center gap-2">
-            <select
+            <DaySelect
               value={c.day}
-              onChange={(e) => patch(c.id, { day: Number(e.target.value) })}
-              aria-label="Day"
-              className={`${INPUT} w-[4.75rem] shrink-0 px-2`}
-            >
-              {DAY_SHORT.map((d, i) => (
-                <option key={d} value={i}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <input
-              type="time"
+              onChange={(day) => patch(c.id, { day })}
+              className="w-[4.75rem] shrink-0"
+            />
+            <TimeSelect
+              label="Starts"
               value={c.start}
-              onChange={(e) => patch(c.id, { start: e.target.value })}
-              aria-label="Starts"
-              className={`${INPUT} min-w-0 flex-1`}
+              onChange={(start) => patch(c.id, { start })}
+              className="min-w-0 flex-1"
             />
             <span className="text-xs text-slate-500">to</span>
-            <input
-              type="time"
+            <TimeSelect
+              label="Ends"
+              optional
               value={c.end ?? ""}
-              onChange={(e) => patch(c.id, { end: e.target.value || undefined })}
-              aria-label="Ends"
-              className={`${INPUT} min-w-0 flex-1`}
+              onChange={(end) => patch(c.id, { end: end || undefined })}
+              className="min-w-0 flex-1"
             />
             <button
               type="button"
