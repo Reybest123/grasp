@@ -370,6 +370,11 @@ No native app, no OCR SDK, no persistent audio storage. Functional over polished
   - **`isoDate` in `subjectsDb` reads a `date` with local getters, never `toISOString()`.** The driver parses a bare `2026-11-12` into *local* midnight, so round-tripping it through UTC moved the day for anyone east of Greenwich — caught in testing as an exam saved on the 12th reading back as the 11th, with every countdown built on it a day out. An exam is a day, not an instant, so there is no timezone question here, only a formatting one.
   - **Signup offers the name field (optional), so onboarding does not ask.** `/onboarding` is the three questions and the plan, and it sits behind the proxy like the rest of the app — the account exists before a student ever reaches it.
   - **Signup asks for the password twice**, and a mismatch is refused in the form before anything is sent. Only the form checks it: the route is sent one password, and a mistyped one is the mistake the second box exists to catch.
+- **Forgot password** (2026-09-17). A "Forgot password?" link beside the login form's Password label goes to `/forgot-password` (email in, `POST /api/auth/forgot`), which mails a link to `/reset-password?token=...` (new password twice, `POST /api/auth/reset`). Logic in `lib/passwordReset.ts`, screens in `components/auth/PasswordReset.tsx`, which reuses `AuthForm`'s exported `Field` (it gained an `aside` slot for the link). Verified end to end by the user against their own Resend account.
+  - **The forgot route answers the same whether or not the address has an account, and does not wait on the send**, so neither the wording nor the response time says who is registered. The screen reads "If {email} has a Grasp account, a link ... is on its way".
+  - **Links are a sha256 in `password_resets`** (like sessions and confirmation links), last 60 minutes, and are sent at most once a minute per account (`RESEND_COOLDOWN_SECONDS`); a mail that fails to send deletes its row. Rate limited by a `reset` scope in `lib/rateLimit.ts` (5 per account / 30 per address per hour) that counts **every** request, since each can send an email.
+  - **Opening the link spends nothing** (the page only checks it, so a mail scanner visiting first is harmless); setting the password does. It clears every reset link and **every session** the account has, confirms an unconfirmed email (the link proves the inbox), and sends the student to `/login?reset=1` rather than signing them in. A dead link shows "This link cannot be used" with a button to send a new one.
+  - The Privacy Policy lists reset link records and Resend sending them. `password_resets` was applied with `npm run db:setup`.
 - **A session ends after 30 minutes away from Grasp** (2026-09-17). `sessions.last_seen_at` (grown with `alter table ... add column if not exists`, applied with `npm run db:setup`) is refreshed by any session lookup, at most once a minute; a lookup that finds it older than 30 minutes deletes the row. "Away" means no open tab: `SessionHeartbeat` (mounted in `AppProviders`) pings `POST /api/auth/heartbeat` every 5 minutes and whenever the tab becomes visible, so a student who stays on the site is never signed out, and a 401 from it sends them to log in. `guardAppPage`, `guardOnboardingPage` and `/verify-email` send a stale session to `GET /api/auth/expired`, which clears the cookie and redirects to `/login` — a server page cannot delete a cookie, and while it exists `proxy.ts` would bounce `/login` back to `/home`. A database failure is still left alone rather than signing anyone out. Verified against the dev server: 25 minutes idle stays signed in and is refreshed, 31 minutes goes `/home` → `/api/auth/expired` → `/login` with the row gone.
 - **The Resource Bank's empty state is generic** (2026-09-17): "Add anything that helps", naming handouts, worksheets, past papers and textbook pages rather than leading with assessment criteria, since a resource can be anything.
 - **The account routes are rate limited (`lib/rateLimit.ts`, `auth_attempts` table, 2026-09-16).** Without it `/api/auth/login` answered a guess as fast as the network allowed, and since scrypt is ~100ms of CPU by design, an unbounded guessing run was a denial-of-service against the server at the same time as a password attack.
@@ -429,6 +434,7 @@ proxy.ts        route protection (Next 16's middleware) — cookie presence
                 only; the real check is requireUser() in lib/session
 db/             schema.sql (the schema), setup.mjs (npm run db:setup)
 app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
+                forgot-password/, reset-password/ (the reset email's link),
                 verify-email/ (check-your-email, where unconfirmed accounts wait),
                 (app)/ — logged-in route group; its layout.tsx mounts the
                       providers, so they survive navigation between:
@@ -437,7 +443,8 @@ app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
                 dashboard/, subject/[id]/ — legacy redirects
                 api/auth/ (signup, login, logout, me, password, account,
                       heartbeat, expired (clears a stale cookie, then /login),
-                      verify (the email link), verify/resend)
+                      verify (the email link), verify/resend,
+                      forgot (mails a reset link), reset (sets the new password))
                 api/subjects/ + api/subjects/[subjectId]
                 api/ (enhance, generate, explain-chat, quiz,
                       mark-quiz, quiz-explain, transcribe, live-notes,
@@ -454,7 +461,8 @@ components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEd
                 StatRing (shared by the dashboard tiles and quiz results),
                 LegalPage + LegalSection (the legal pages' frame),
                 PlanCard (landing pricing and onboarding's plan step)
-components/auth/ AuthForm (login and signup are the same form), VerifyEmail
+components/auth/ AuthForm (login and signup are the same form), VerifyEmail,
+                PasswordReset (forgot-password and choose-a-new-password screens)
 components/onboarding/ OnboardingFlow (questions + plans), TimetableSetup (the upload and read),
                 TimetableDialog (it as a popup over /home),
                 FoundSubjectEditor (fixing one subject the read got wrong)
@@ -476,7 +484,7 @@ lib/            subjects (model + factories), subjectsStore, profileStore,
                 db (Postgres client), subjectsDb (subject queries),
                 session (cookie + requireUser + guardAppPage/guardOnboardingPage),
                 onboarding (the three questions + answer validation),
-                verification (confirmation links), email (Resend),
+                verification (confirmation links), passwordReset (reset links), email (Resend),
                 sessionCookie (name only,
                       so proxy.ts can import it without node:crypto),
                 password (scrypt), accounts (field validation),

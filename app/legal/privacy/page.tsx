@@ -30,6 +30,10 @@ export default function Privacy() {
             confirmation link sent to you until it is used or expires 24 hours later.
           </li>
           <li>
+            <b>Password resets:</b> a record of each password reset link sent to you, kept until it is
+            used or expires one hour later.
+          </li>
+          <li>
             <b>Your study material:</b> your subjects, class times and assessment dates, the notes you
             write or record, your quizzes with your answers and marks, and the text Grasp reads out
             of documents you add to a Resource Bank.
@@ -94,8 +98,9 @@ export default function Privacy() {
             your IP address, to deliver the site and keep it secure.
           </li>
           <li>
-            <b>Resend</b> sends the email that confirms your address. It receives your email
-            address, your name and the confirmation link, and nothing from your study material.
+            <b>Resend</b> sends the email that confirms your address and any password reset email you
+            ask for. It receives your email address, your name and the link, and nothing from your
+            study material.
           </li>
         </ul>
       </LegalSection>

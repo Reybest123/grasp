@@ -72,6 +72,18 @@ create table if not exists email_verifications (
 
 create index if not exists email_verifications_user_idx on email_verifications (user_id, created_at);
 
+-- Password reset links. Stored as a sha256 like confirmation links and sessions,
+-- so a dumped table hands out no usable links. Short-lived, and every link an
+-- account has is cleared once one is used.
+create table if not exists password_resets (
+  token_hash text primary key,
+  user_id    uuid not null references users(id) on delete cascade,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists password_resets_user_idx on password_resets (user_id, created_at);
+
 -- Sessions are rows rather than self-contained tokens so that logging out
 -- really ends the session server-side, rather than asking the browser to
 -- forget a token that would still be valid if it were kept.

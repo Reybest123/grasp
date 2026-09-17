@@ -11,11 +11,11 @@ export const metadata = { title: "Log in — Grasp" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; verified?: string }>;
+  searchParams: Promise<{ next?: string; verified?: string; reset?: string }>;
 }) {
-  const { next, verified } = await searchParams;
+  const { next, verified, reset } = await searchParams;
   // Only in-app paths. An absolute URL here would make the login form an open
   // redirect — somewhere to send a student after authenticating them.
   const safe = next?.startsWith("/") && !next.startsWith("//") ? next : undefined;
-  return <AuthForm mode="login" next={safe} verified={verified === "1"} />;
+  return <AuthForm mode="login" next={safe} verified={verified === "1"} reset={reset === "1"} />;
 }

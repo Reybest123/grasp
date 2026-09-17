@@ -54,11 +54,14 @@ export function AuthForm({
   mode,
   next,
   verified,
+  reset,
 }: {
   mode: "login" | "signup";
   next?: string;
   /** arrived from a confirmation link opened on a device that was not signed in */
   verified?: boolean;
+  /** arrived straight from setting a new password */
+  reset?: boolean;
 }) {
   const router = useRouter();
   const signup = mode === "signup";
@@ -249,6 +252,16 @@ export function AuthForm({
               </p>
             )}
 
+            {reset && !signup && (
+              <p
+                role="status"
+                className="mt-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+              >
+                <CheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                Your password has been changed. Log in with your new password.
+              </p>
+            )}
+
             <form onSubmit={submit} noValidate className="mt-5">
               {formError && <ErrorNote message={formError} className="mb-4" />}
 
@@ -280,6 +293,16 @@ export function AuthForm({
                 // Tells a password manager to offer to save a new one rather
                 // than to fill the existing one, and vice versa.
                 autoComplete={signup ? "new-password" : "current-password"}
+                aside={
+                  !signup && (
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm font-semibold text-brand-700 underline-offset-4 hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  )
+                }
               />
 
               {signup && (
@@ -385,7 +408,7 @@ function BrandPanel({ signup }: { signup: boolean }) {
   );
 }
 
-function Field({
+export function Field({
   id,
   label,
   value,
@@ -397,6 +420,7 @@ function Field({
   autoFocus,
   autoComplete,
   optional = false,
+  aside,
 }: {
   id: string;
   label: string;
@@ -411,6 +435,8 @@ function Field({
   autoComplete?: string;
   /** says "optional" beside the label; the field is never checked */
   optional?: boolean;
+  /** something to sit at the right of the label, like the forgot-password link */
+  aside?: React.ReactNode;
 }) {
   const invalid = error !== undefined;
   const messageId = error ? `${id}-error` : undefined;
@@ -425,6 +451,7 @@ function Field({
       <label htmlFor={id} className="mb-1 flex items-baseline justify-between text-sm font-semibold text-ink">
         {label}
         {optional && <span className="text-xs font-normal text-slate-500">optional</span>}
+        {aside}
       </label>
       {type === "password" ? (
         <PasswordInput
