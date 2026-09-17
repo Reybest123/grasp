@@ -9,7 +9,7 @@
 // click would blur the field, and signup checks a field when it loses focus,
 // so a half-typed password would be called too short just for peeking at it.
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { EyeIcon, EyeOffIcon } from "@/components/icons";
 
 export function PasswordInput({
@@ -38,10 +38,30 @@ export function PasswordInput({
   describedBy?: string;
 }) {
   const [shown, setShown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Swapping `type` between "password" and "text" resets the browser's own
+  // caret to the end of the value, as if it were a fresh field — there is
+  // nothing to opt out of, so the position has to be saved before the toggle
+  // and put back once the new type has rendered.
+  const caretRef = useRef<{ start: number | null; end: number | null } | null>(null);
+
+  useLayoutEffect(() => {
+    const saved = caretRef.current;
+    if (!saved) return;
+    caretRef.current = null;
+    inputRef.current?.setSelectionRange(saved.start, saved.end);
+  }, [shown]);
+
+  function toggleShown() {
+    const el = inputRef.current;
+    caretRef.current = el ? { start: el.selectionStart, end: el.selectionEnd } : null;
+    setShown((s) => !s);
+  }
 
   return (
     <span className="relative block">
       <input
+        ref={inputRef}
         id={id}
         type={shown ? "text" : "password"}
         value={value}
@@ -62,7 +82,7 @@ export function PasswordInput({
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setShown((s) => !s)}
+        onClick={toggleShown}
         aria-label={shown ? "Hide password" : "Show password"}
         aria-pressed={shown}
         title={shown ? "Hide password" : "Show password"}
