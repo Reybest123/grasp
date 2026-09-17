@@ -82,7 +82,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const plan = profile.plan ?? DEFAULT_PLAN;
   // The server enforces the same ceiling for the plan; stopping here is what
   // keeps the student from running into it.
-  const maxSeconds = recordingMaxSeconds(plan);
+  const maxSeconds = profile.unlimited ? Infinity : recordingMaxSeconds(plan);
 
   const [phase, setPhase] = useState<RecordPhase>("idle");
   const [subjectId, setSubjectId] = useState<string | null>(null);
@@ -199,7 +199,11 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         // recordings is told now rather than twenty seconds into a lecture.
         // If the check itself fails, the server still enforces the cap.
         const usage = await fetchUsage();
-        if (usage && usage.recordings.used >= usage.recordings.limit) {
+        if (
+          usage &&
+          usage.recordings.limit !== null &&
+          usage.recordings.used >= usage.recordings.limit
+        ) {
           const back = usage.recordings.resetsAt
             ? new Date(usage.recordings.resetsAt).toLocaleDateString(undefined, {
                 weekday: "long",

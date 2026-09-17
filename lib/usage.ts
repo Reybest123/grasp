@@ -20,10 +20,11 @@ import {
 
 export type UsageKind = "quiz" | "recording" | "resource";
 
-export type Allowance = { used: number; limit: number; resetsAt: string | null };
+/** `limit` is null in the admin's unlimited mode. */
+export type Allowance = { used: number; limit: number | null; resetsAt: string | null };
 
 /** Whose allowance — the signed-in user from `requireUser`. */
-type Account = { id: string; plan: Plan | null };
+type Account = { id: string; plan: Plan | null; unlimited: boolean };
 
 type Result<T> = { ok: true; data: T } | { ok: false; response: Response };
 
@@ -78,7 +79,7 @@ export async function allowance(account: Account, kind: UsageKind): Promise<Resu
     ok: true,
     data: {
       used: result.data?.used ?? 0,
-      limit: LIMITS[kind](planOf(account)),
+      limit: account.unlimited ? null : LIMITS[kind](planOf(account)),
       resetsAt: resets ? new Date(resets).toISOString() : null,
     },
   };
@@ -94,6 +95,9 @@ async function claim(
   kind: UsageKind,
   ref: string
 ): Promise<Result<boolean>> {
+  // Nothing is recorded in unlimited mode, so switching it off leaves the
+  // account's real week exactly as it was.
+  if (account.unlimited) return { ok: true, data: true };
   const limit = LIMITS[kind](planOf(account));
   const result = await query(async () => {
     const rows = await sql`
@@ -185,6 +189,7 @@ export async function claimRecordingSegment(
   recordingId: string
 ): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
   const noop = async () => {};
+  if (account.unlimited) return { ok: true, release: noop };
   const plan = planOf(account);
   const bumped = await query(async () => {
     const rows = (await sql`

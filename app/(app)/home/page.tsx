@@ -281,12 +281,12 @@ function StatRow({ subjects, week }: { subjects: Subject[]; week: ActivityDay[] 
   const days = activeDays(week);
   // The server's figures are the ones the cap is enforced against — a deleted
   // quiz still counts there. The local ones only fill the gap until it answers.
-  const [server, setServer] = useState<{ used: number; limit: number } | null>(null);
+  const [server, setServer] = useState<{ used: number; limit: number | null } | null>(null);
   useEffect(() => {
     void fetchUsage().then((u) => u && setServer({ used: u.quizzes.used, limit: u.quizzes.limit }));
   }, []);
   const used = server?.used ?? quizzesIn(week);
-  const limit = server?.limit ?? quizLimit(plan);
+  const limit = profile.unlimited ? null : (server?.limit ?? quizLimit(plan));
 
   // Read the other way up from the score ring: a full allowance ring is the bad
   // outcome, so it warms towards red as it fills rather than cooling to green.
@@ -339,7 +339,11 @@ function StatRow({ subjects, week }: { subjects: Subject[]; week: ActivityDay[] 
           </span>
         )}
         label="Quiz allowance"
-        sub={`of ${limit} this week on ${planLabel}`}
+        sub={
+          limit === null
+            ? `this week, unlimited on ${planLabel}`
+            : `of ${limit} this week on ${planLabel}`
+        }
         detail={
           <AllowanceDetail
             used={used}
@@ -506,19 +510,24 @@ function AllowanceDetail({
   trialEndsAt,
 }: {
   used: number;
-  limit: number;
+  /** null in the admin's unlimited mode */
+  limit: number | null;
   planLabel: string;
   trialEndsAt: string | null;
 }) {
   const now = useNow();
   const trialLeft = now ? trialDaysLeft(trialEndsAt, now) : null;
-  const left = Math.max(0, limit - used);
+  const left = limit === null ? null : Math.max(0, limit - used);
   return (
     <>
       <p className="text-sm font-semibold text-ink">
-        {left === 0 ? "None left this week" : `${left} left this week`}
+        {left === null
+          ? "Unlimited this week"
+          : left === 0
+            ? "None left this week"
+            : `${left} left this week`}
       </p>
-      {limit <= 12 ? (
+      {limit === null ? null : limit <= 12 ? (
         <div className="mt-3 flex gap-1.5">
           {Array.from({ length: limit }, (_, i) => (
             <span

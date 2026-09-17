@@ -21,6 +21,8 @@ export type Profile = {
   plan: Plan | null;
   /** ISO; null for an account not on a free trial */
   trialEndsAt: string | null;
+  /** the admin's unlimited mode (/admin): no caps to show or stop at */
+  unlimited: boolean;
 };
 
 type Store = {
@@ -36,7 +38,7 @@ type Store = {
 
 const ProfileContext = createContext<Store | null>(null);
 
-const EMPTY: Profile = { name: "", email: "", plan: null, trialEndsAt: null };
+const EMPTY: Profile = { name: "", email: "", plan: null, trialEndsAt: null, unlimited: false };
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile>(EMPTY);
@@ -56,6 +58,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
             email: data.user.email ?? "",
             plan: isPlan(data.user.plan) ? data.user.plan : null,
             trialEndsAt: typeof data.user.trialEndsAt === "string" ? data.user.trialEndsAt : null,
+            unlimited: data.user.unlimited === true,
           });
           setSignedIn(true);
         }

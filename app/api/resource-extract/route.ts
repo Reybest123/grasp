@@ -141,7 +141,9 @@ export async function POST(req: NextRequest) {
   // and not only in the tab: the tab disables its Add button at the cap, but a
   // disabled button is a courtesy to the student, not a limit -- anything that
   // can post JSON ignores it, and this route is the one that spends money.
-  const full = await bankIsFull(guard.user.id, subjectId, guard.user.plan ?? DEFAULT_PLAN);
+  const full = guard.user.unlimited
+    ? null
+    : await bankIsFull(guard.user.id, subjectId, guard.user.plan ?? DEFAULT_PLAN);
   if (full) return full;
 
   // Claimed only once the document is known to be within the caps, so a

@@ -64,7 +64,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (recording) return;
     void fetchUsage().then(
-      (u) => u && setRecordingsLeft(Math.max(0, u.recordings.limit - u.recordings.used))
+      (u) =>
+        u &&
+        u.recordings.limit !== null &&
+        setRecordingsLeft(Math.max(0, u.recordings.limit - u.recordings.used))
     );
   }, [recording]);
 
@@ -115,7 +118,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-3 pr-3.5 text-xs font-semibold text-slate-600 sm:inline-flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
                 {planName(profile.plan ?? DEFAULT_PLAN, profile.trialEndsAt)}
-                {trialLeft !== null ? (
+                {profile.unlimited ? (
+                  <span className="text-slate-500">Unlimited</span>
+                ) : trialLeft !== null ? (
                   <span className="text-slate-500">
                     {trialLeft === 0
                       ? "Trial ended"

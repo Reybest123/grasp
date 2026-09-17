@@ -18,6 +18,7 @@ import { sql } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/sessionCookie";
 import { isPlan, type Plan } from "@/lib/plan";
 import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
+import { readAdmin } from "@/lib/admin";
 
 export { SESSION_COOKIE };
 
@@ -46,6 +47,8 @@ export type SessionUser = {
   plan: Plan | null;
   /** ISO; null for an account not on a free trial */
   trialEndsAt: string | null;
+  /** admin override (lib/admin.ts): no weekly allowances or Resource Bank cap */
+  unlimited: boolean;
 };
 
 /** The cookie holds the token; the database holds this. Email links too. */
@@ -168,13 +171,23 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       await sql`update sessions set last_seen_at = now() where token_hash = ${hash}`;
     }
 
+    // Applied here, where the plan is first read, so every limit check and
+    // /api/auth/me follow it without knowing it exists. Only for an account
+    // that already has a plan, so it never skips anyone past onboarding.
+    const plan = isPlan(row.plan) ? row.plan : null;
+    const admin = plan ? await readAdmin() : null;
+    const forced = admin?.plan ?? null;
+
     return {
       id: row.id,
       email: row.email,
       name: row.name,
       verified: row.email_verified_at !== null,
-      plan: isPlan(row.plan) ? row.plan : null,
-      trialEndsAt: row.trial_ends_at ? new Date(row.trial_ends_at).toISOString() : null,
+      plan: forced ?? plan,
+      // A forced plan reads as the plan itself, not as a trial of it.
+      trialEndsAt:
+        forced || !row.trial_ends_at ? null : new Date(row.trial_ends_at).toISOString(),
+      unlimited: admin?.unlimited === true,
     };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);

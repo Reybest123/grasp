@@ -50,7 +50,7 @@ export function RecordTab({
   const now = useNow();
   const { profile } = useProfile();
   const plan = profile.plan ?? DEFAULT_PLAN;
-  const maxSeconds = recordingMaxSeconds(plan);
+  const maxSeconds = profile.unlimited ? Infinity : recordingMaxSeconds(plan);
 
   const recorded = notes.filter((n) => n.recorded);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -117,7 +117,9 @@ export function RecordTab({
       </button>
       <p className="mt-3 max-w-md text-xs leading-5 text-slate-500">
         Check your school allows recording before you start. {PLAN_LABEL[plan]} plan:{" "}
-        {recordingLimit(plan)} recordings a week, up to {maxSeconds / 60} minutes each.
+        {profile.unlimited
+          ? "unlimited recordings, with no length limit."
+          : `${recordingLimit(plan)} recordings a week, up to ${maxSeconds / 60} minutes each.`}
       </p>
     </div>
   );

@@ -110,7 +110,9 @@ export default function Privacy() {
           Grasp sets one cookie, <code>grasp_session</code>, which keeps you logged in. It can only be
           read by Grasp&apos;s server, and it expires after 30 days or when you log out. It is
           strictly necessary for your account to work, which is why Grasp does not show a cookie
-          banner asking you to accept it.
+          banner asking you to accept it. Grasp&apos;s own staff may also have a{" "}
+          <code>grasp_admin</code> cookie, used only for testing; it is never set for students and
+          is deleted when the browser closes.
         </p>
         <p>
           Grasp also stores one setting in your browser: whether you have hidden the tip at the

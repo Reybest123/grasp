@@ -65,6 +65,8 @@ You need Node 20+, a Postgres database and an OpenAI API key.
 
    `RESEND_API_KEY` sends the email that confirms a new account; an unconfirmed account cannot use
    the app. Without `EMAIL_FROM`, Resend's test sender only delivers to your own Resend login address.
+   An optional `ADMIN_PASSWORD` unlocks `/admin`, where a browser can try the app as Pro or Max or
+   with every usage limit off; without it `/admin` stays locked.
 
    Any Postgres works, local included. To use the Railway database from your machine, take the
    Postgres service's `DATABASE_PUBLIC_URL`; the `*.railway.internal` address only resolves inside
@@ -102,7 +104,8 @@ replace a variable that is already set.
 Pushing to `main` deploys to Railway, where the app and its Postgres run as two services in one
 project. The app service needs `DATABASE_URL` (the Postgres service's private
 `*.railway.internal` URL), `OPENAI_API_KEY` and `RESEND_API_KEY`, plus `EMAIL_FROM` (an address on
-a domain verified in Resend) and `APP_URL` (the site's public address) once it has real users.
+a domain verified in Resend) and `APP_URL` (the site's public address) once it has real users, and
+`ADMIN_PASSWORD` for `/admin`.
 
 When `db/schema.sql` changes, run `npm run db:setup` against the production database (its
 `DATABASE_PUBLIC_URL`, from your machine) before the new code needs it. If a deployed page says "Grasp's database has not been set up yet",

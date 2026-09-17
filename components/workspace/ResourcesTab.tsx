@@ -37,7 +37,7 @@ export function ResourcesTab({
   const { profile } = useProfile();
   const plan = profile.plan ?? DEFAULT_PLAN;
   const resources = subject.resources;
-  const limit = resourceLimit(plan);
+  const limit = profile.unlimited ? Infinity : resourceLimit(plan);
   const full = resources.length >= limit;
 
   async function add(payload: ResourcePayload) {
@@ -124,7 +124,8 @@ export function ResourcesTab({
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <span className="text-xs font-semibold text-slate-500">
-                {resources.length} of {limit} · {PLAN_LABEL[plan]} plan
+                {profile.unlimited ? `${resources.length} · Unlimited` : `${resources.length} of ${limit}`}{" "}
+                · {PLAN_LABEL[plan]} plan
               </span>
               <button
                 onClick={() => setView("add")}

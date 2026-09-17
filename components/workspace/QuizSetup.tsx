@@ -331,7 +331,8 @@ export function QuizSetup({
           Generate quiz
         </button>
         <p className="mt-2 text-center text-[11px] text-slate-400">
-          {PLAN_LABEL[plan]} plan: {quizLimit(plan)} quizzes a week
+          {PLAN_LABEL[plan]} plan:{" "}
+          {profile.unlimited ? "unlimited quizzes" : `${quizLimit(plan)} quizzes a week`}
         </p>
       </div>
     </div>

@@ -142,7 +142,8 @@ export async function transcribeSegment(
   return { text: typeof data.text === "string" ? data.text : "", error: null, limit: false };
 }
 
-export type Allowance = { used: number; limit: number; resetsAt: string | null };
+/** `limit` is null in the admin's unlimited mode. */
+export type Allowance = { used: number; limit: number | null; resetsAt: string | null };
 export type Usage = { quizzes: Allowance; recordings: Allowance };
 
 /** This week's allowances (§6), or null if they could not be read. */

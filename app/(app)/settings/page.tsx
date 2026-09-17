@@ -297,6 +297,11 @@ function PlanSection() {
       <p className="mt-5 text-xs text-slate-500">
         Billing is not set up yet, so nothing is charged, and Max arrives with it.
       </p>
+      {profile.unlimited && (
+        <p className="mt-2 text-xs font-semibold text-ink">
+          Unlimited mode is on in this browser, so none of these limits apply.
+        </p>
+      )}
     </Section>
   );
 }

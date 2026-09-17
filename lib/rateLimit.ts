@@ -28,7 +28,7 @@ import { createHash } from "node:crypto";
 import { query, sql } from "@/lib/db";
 
 /** Which route is counting. Each gets its own buckets and its own thresholds. */
-export type AuthScope = "login" | "signup" | "password" | "reset";
+export type AuthScope = "login" | "signup" | "password" | "reset" | "admin";
 
 type Rule = {
   windowMinutes: number;
@@ -52,6 +52,9 @@ const RULES: Record<AuthScope, Rule> = {
   // Every request is counted, not just failures: each one can send an email, so
   // an unbounded form would be a way to flood someone's inbox.
   reset: { windowMinutes: 60, perAccount: 5, perAddress: 30 },
+  // One password for everyone, so the "account" is /admin itself. Looser than
+  // the address limit, so one guesser cannot lock the real admin out for long.
+  admin: { windowMinutes: 15, perAccount: 30, perAddress: 10 },
 };
 
 /** How long a recorded failure is kept before pruning removes it. */
