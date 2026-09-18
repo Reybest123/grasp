@@ -306,7 +306,7 @@ function DeleteSection() {
 
   return (
     <Section title="Delete account">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="max-w-xl">
           <p className="text-sm font-semibold text-ink">
             Delete your account and everything in it

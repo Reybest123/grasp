@@ -39,12 +39,12 @@ export default function PlansPage() {
         <PlansSkeleton />
       ) : (
         <>
-          <CurrentPlan status={status} />
-
-          <h2 className="mt-10 text-sm font-bold uppercase tracking-wide text-slate-500">
+          <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-slate-500">
             All plans
           </h2>
           <AllPlans />
+
+          <CurrentPlan status={status} heading="mt-10" />
         </>
       )}
 
@@ -65,7 +65,13 @@ export default function PlansPage() {
   );
 }
 
-function CurrentPlan({ status }: { status: ReturnType<typeof usePlanStatus> }) {
+function CurrentPlan({
+  status,
+  heading = "mt-8",
+}: {
+  status: ReturnType<typeof usePlanStatus>;
+  heading?: string;
+}) {
   const { profile } = useProfile();
   const now = useNow();
   const plan = profile.plan ?? DEFAULT_PLAN;
@@ -94,11 +100,11 @@ function CurrentPlan({ status }: { status: ReturnType<typeof usePlanStatus> }) {
 
   return (
     <>
-      <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-slate-500">Your plan</h2>
+      <h2 className={`${heading} text-sm font-bold uppercase tracking-wide text-slate-500`}>Your plan</h2>
       <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {(status.error || error) && <ErrorNote message={error || status.error} className="mb-5" />}
 
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="max-w-xl">
             <p className="text-lg font-bold text-ink">{planName(plan, profile.trialEndsAt)}</p>
             <p className="mt-1 text-sm text-slate-500">
@@ -164,7 +170,7 @@ function AllPlans() {
   const current = profile.plan ?? DEFAULT_PLAN;
 
   return (
-    <div className="mt-3 grid max-w-4xl gap-6 sm:grid-cols-2">
+    <div className="mt-3 grid max-w-4xl gap-6 sm:grid-cols-2 mx-auto">
       {PLANS.map((plan) => {
         const isCurrent = plan === current;
         return (
@@ -198,13 +204,13 @@ function PlansSkeleton() {
       <p className="sr-only" role="status">
         Loading plans
       </p>
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="mt-3 h-28 w-full rounded-2xl" />
-      <Skeleton className="mt-10 h-4 w-20" />
-      <div className="mt-3 grid max-w-4xl gap-6 sm:grid-cols-2">
+      <Skeleton className="h-4 w-20" />
+      <div className="mt-3 grid max-w-4xl gap-6 sm:grid-cols-2 mx-auto">
         <Skeleton className="h-80 rounded-3xl" />
         <Skeleton className="h-80 rounded-3xl" />
       </div>
+      <Skeleton className="mt-10 h-4 w-24" />
+      <Skeleton className="mt-3 h-28 w-full rounded-2xl" />
     </div>
   );
 }
