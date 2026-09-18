@@ -263,10 +263,20 @@ function DeleteSection() {
   // A plan still running has to be cancelled first; the route checks it too.
   const planActive = Boolean(profile.plan) && status.loaded && !status.error && !status.cancelledAt;
   const [open, setOpen] = useState(false);
+  // Set by pressing Delete account while the plan is still running. The button
+  // stays pressable in that state rather than sitting disabled: a disabled
+  // control does not say why it is disabled, and the reason here is something
+  // the student can actually go and fix.
+  const [blocked, setBlocked] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const recording = rec.phase !== "idle";
+
+  function press() {
+    if (planActive) return setBlocked(true);
+    setOpen(true);
+  }
 
   function cancel() {
     setOpen(false);
@@ -318,8 +328,8 @@ function DeleteSection() {
         </div>
         {!open && (
           <button
-            onClick={() => setOpen(true)}
-            disabled={!status.loaded || planActive}
+            onClick={press}
+            disabled={!status.loaded}
             className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-red-200 disabled:hover:bg-white"
           >
             Delete account
@@ -327,12 +337,14 @@ function DeleteSection() {
         )}
       </div>
 
-      {planActive && (
+      {/* `planActive` as well as `blocked`, so the notice clears itself if the
+          plan is cancelled in another tab. */}
+      {blocked && planActive && (
         <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           Your plan is still active. Cancel it first on the{" "}
           <button
             type="button"
-            onClick={() => rec.guard(() => router.push("/plans"))}
+            onClick={() => rec.guard(() => router.push("/plans?cancel=1"))}
             className="font-semibold text-brand-700 hover:underline"
           >
             Plans page

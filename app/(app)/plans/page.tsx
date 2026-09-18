@@ -4,7 +4,8 @@
 // side by side. Laid out like Settings. There is no billing yet, so neither plan
 // can be switched to here; the buttons say so rather than disappearing.
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useNow } from "@/lib/subjectsStore";
 import { usePlanStatus } from "@/lib/usePlanStatus";
@@ -24,6 +25,47 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { Skeleton } from "@/components/Skeleton";
 
 const LONG_DATE: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" };
+
+// Settings sends a student here with `?cancel=1` when they try to delete an
+// account whose plan is still running. Cancel plan is the last thing on the
+// page, so arriving at the top leaves them to find it themselves.
+const CANCEL_ANCHOR = "your-plan";
+
+/**
+ * Only rendered once the page has its data, so the section it scrolls to is
+ * already in the DOM — a hash in the URL would fire against the skeleton and
+ * find nothing. The flag is dropped afterwards so a refresh does not re-scroll.
+ *
+ * `behavior: "instant"`, for the same reason the quiz views use it: `html`
+ * carries `scroll-behavior: smooth` globally, and inheriting it here left the
+ * page at scrollY 0 with the section still below the fold — measured, the
+ * animated scroll never lands, while instant moves the full 300px. It is also
+ * the right feel regardless, since the student is arriving on a new page and
+ * should simply find it already open at the part they were sent for.
+ */
+function CancelScroll() {
+  const params = useSearchParams();
+  const wanted = params.get("cancel") === "1";
+
+  useEffect(() => {
+    if (!wanted) return;
+    // `history.replaceState`, not `router.replace`: the router's navigation put
+    // the page back at the top even with `scroll: false`, landing after the
+    // scroll and undoing it. Nothing re-reads this flag, so the URL is all that
+    // needs to change, and doing it this way touches nothing else.
+    // Synchronously, not in a `requestAnimationFrame`: this sits inside a
+    // Suspense boundary that unmounts and remounts as the page settles, and the
+    // cleanup that ran with it cancelled the frame before it ever fired —
+    // measured, the scroll simply never happened. The effect only runs once the
+    // page has its data, so the section is already in the DOM to scroll to.
+    document
+      .getElementById(CANCEL_ANCHOR)
+      ?.scrollIntoView({ block: "center", behavior: "instant" });
+    window.history.replaceState(window.history.state, "", "/plans");
+  }, [wanted]);
+
+  return null;
+}
 
 export default function PlansPage() {
   const { ready } = useProfile();
@@ -45,6 +87,11 @@ export default function PlansPage() {
           <AllPlans />
 
           <CurrentPlan status={status} heading="mt-10" />
+
+          {/* Its own Suspense boundary, since reading the URL's query can suspend. */}
+          <Suspense fallback={null}>
+            <CancelScroll />
+          </Suspense>
         </>
       )}
 
@@ -100,7 +147,12 @@ function CurrentPlan({
 
   return (
     <>
-      <h2 className={`${heading} text-sm font-bold uppercase tracking-wide text-slate-500`}>Your plan</h2>
+      <h2
+        id={CANCEL_ANCHOR}
+        className={`${heading} text-sm font-bold uppercase tracking-wide text-slate-500`}
+      >
+        Your plan
+      </h2>
       <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {(status.error || error) && <ErrorNote message={error || status.error} className="mb-5" />}
 
