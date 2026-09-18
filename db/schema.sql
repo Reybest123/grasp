@@ -61,11 +61,34 @@ alter table users alter column trial_ends_at drop default;
 -- A cancelled plan keeps working until its period ends, and an account can only
 -- be deleted once its plan is cancelled. Not read by the session lookup, so a
 -- database without it breaks /plans and account deletion, not signing in.
+-- Mirrored from Stripe's `cancel_at_period_end` (lib/billing.ts syncSubscription)
+-- as well as set directly by PATCH /api/plan, so it stays right if a
+-- subscription is ever changed from Stripe's side rather than Grasp's.
 alter table users add column if not exists plan_cancelled_at timestamptz;
 
 -- The answers to onboarding's three questions, as {yearLevel, uses, focus}
 -- (lib/onboarding.ts). Only ever read and written whole, hence JSONB.
 alter table users add column if not exists onboarding jsonb;
+
+-- Real billing (§6, lib/billing.ts). A card is required to start the Pro trial
+-- or to subscribe to Max, taken through a Stripe Checkout Session, and these
+-- four columns are what lib/billing.ts's syncSubscription keeps in step with
+-- Stripe: the customer and subscription ids, Stripe's own status string
+-- ("trialing", "active", "past_due", "canceled", ...), and when the current
+-- billing period (or the trial) ends. Not read by the session lookup, so a
+-- database without them breaks checkout and the Plans page, not signing in.
+alter table users add column if not exists stripe_customer_id text;
+alter table users add column if not exists stripe_subscription_id text;
+alter table users add column if not exists subscription_status text;
+alter table users add column if not exists current_period_end timestamptz;
+
+-- A customer or subscription id is looked up by its Stripe id in the webhook
+-- and the checkout-complete redirect, both of which run before they know which
+-- user they are for. Partial: most rows have neither yet.
+create unique index if not exists users_stripe_customer_idx
+  on users (stripe_customer_id) where stripe_customer_id is not null;
+create unique index if not exists users_stripe_subscription_idx
+  on users (stripe_subscription_id) where stripe_subscription_id is not null;
 
 -- Confirmation links. Stored as the sha256 of the token in the link, for the
 -- same reason sessions are: a dumped table hands out no working links.

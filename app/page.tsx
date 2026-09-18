@@ -146,7 +146,7 @@ export default function Home() {
               </Link>
             </div>
             <p className="mt-5 text-sm text-slate-500">
-              {TRIAL_DAYS}-day free trial · no card needed · set up in one screenshot
+              {TRIAL_DAYS}-day free trial · cancel any time · set up in one screenshot
             </p>
           </div>
 
@@ -224,15 +224,15 @@ export default function Home() {
           title="Simple pricing for students"
           body={`Try Pro free for ${TRIAL_DAYS} days. Go Max if you record every lesson.`}
         />
-        {/* Information only, with no buttons: there is no billing to send
-            anyone to, and an account has to exist before a plan can be chosen. */}
+        {/* Information only, with no buttons: an account has to exist before a
+            plan can be chosen and paid for, which happens in onboarding. */}
         <div className="mx-auto mt-14 grid max-w-3xl gap-6 sm:grid-cols-2">
           {PLANS.map((plan) => (
             <PlanCard key={plan} plan={plan} />
           ))}
         </div>
         <p className="mt-8 text-center text-xs text-slate-400">
-          Placeholder pricing — final plans to be confirmed.
+          Billed weekly. Cancel any time from the Plans page.
         </p>
       </section>
 

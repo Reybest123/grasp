@@ -209,8 +209,10 @@ export type Guard =
  * An account whose email is not confirmed is refused too, unless the route
  * opts in with `allowUnverified` — which only the routes a student needs in
  * order to get confirmed should do. So is one that has not finished onboarding
- * by choosing a plan, unless the route opts in with `allowNoPlan`. An
- * unconfirmed account cannot have a plan yet, so `allowUnverified` implies it.
+ * by choosing a plan, unless the route opts in with `allowNoPlan` — only
+ * app/api/checkout does, since it is how such an account gets a plan in the
+ * first place. An unconfirmed account cannot have a plan yet, so
+ * `allowUnverified` implies it.
  */
 export async function requireUser({
   allowUnverified = false,

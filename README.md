@@ -25,7 +25,7 @@ conventions and a detailed changelog of how everything is built live in [`CLAUDE
 | Lecture recording with Whisper transcription and notes drafted live | subject > Record |
 | Quizzes from your notes: multiple choice, short and long answer, AI marking with half marks, "explain why I'm wrong" | subject > Quizzes |
 | Resource Bank: rubrics, criteria and term planners read once and cited wherever the AI uses them | subject > Resource Bank |
-| Pro and Max plans (placeholder figures, no billing yet) with weekly quiz and recording limits enforced server-side | `lib/plan.ts`, `lib/usage.ts` |
+| Pro and Max plans, billed weekly through Stripe (a card is taken to start Pro's free trial or to choose Max), with weekly quiz and recording limits enforced server-side | `lib/plan.ts`, `lib/billing.ts`, `lib/usage.ts` |
 | Flag an AI answer as wrong | under AI output |
 | Terms of Service and Privacy Policy | `/legal/terms`, `/legal/privacy` |
 
@@ -38,16 +38,21 @@ is kept.
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript** + **Tailwind CSS**
 - **Postgres on Railway**, through `pg` (one pooled client in `lib/db.ts`)
-- **OpenAI**: GPT-4o for timetable and document reading, GPT-4o-mini for notes, explanations and
-  quizzes, Whisper for transcription. Called with plain `fetch` from `lib/openai.ts`; there is no
-  OpenAI SDK dependency.
+- **OpenAI**: GPT-4o for timetable and document reading, gpt-5-mini for quiz generation, marking and
+  "explain why I'm wrong", GPT-4o-mini for everything else, Whisper for transcription. Called with
+  plain `fetch` from `lib/openai.ts`; there is no OpenAI SDK dependency.
+- **Stripe** for billing: hosted Checkout takes the card, a webhook and the Checkout return route
+  keep `users` in sync with the subscription (`lib/billing.ts`). The one dependency that *is* the
+  official SDK, since verifying webhook signatures by hand is not worth reinventing.
 - Hosted on **Railway**
 
 ---
 
 ## Run it locally
 
-You need Node 20+, a Postgres database and an OpenAI API key.
+You need Node 20+, a Postgres database, an OpenAI API key, and a Stripe account (a free test-mode
+account is enough to run everything locally, including a real trial-to-paid conversion, without
+charging a real card).
 
 1. Install dependencies:
 
@@ -61,6 +66,8 @@ You need Node 20+, a Postgres database and an OpenAI API key.
    OPENAI_API_KEY=sk-...
    DATABASE_URL=postgresql://user:password@host:port/dbname
    RESEND_API_KEY=re_...
+   STRIPE_SECRET_KEY=sk_test_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
    ```
 
    `RESEND_API_KEY` sends the email that confirms a new account; an unconfirmed account cannot use
@@ -78,7 +85,22 @@ You need Node 20+, a Postgres database and an OpenAI API key.
    npm run db:setup
    ```
 
-4. Start the dev server and open http://localhost:3000:
+4. Create the two weekly Stripe prices, and add the `STRIPE_PRICE_PRO` / `STRIPE_PRICE_MAX` lines it
+   prints to `.env.local`:
+
+   ```bash
+   npm run billing:setup
+   ```
+
+   To receive webhooks locally, run the [Stripe CLI](https://docs.stripe.com/stripe-cli) alongside
+   the dev server: `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. It prints a
+   `whsec_...` signing secret the first time you run it — put that in `STRIPE_WEBHOOK_SECRET`.
+   Without it, a subscription can still be created (Checkout itself does not need the webhook), but
+   nothing in Grasp's database will know about it until `app/api/checkout/complete` syncs it on the
+   redirect back, and any *later* change (a renewal, a cancellation from Stripe's own dashboard) will
+   never reach Grasp at all.
+
+5. Start the dev server and open http://localhost:3000:
 
    ```bash
    npm run dev
@@ -96,6 +118,7 @@ replace a variable that is already set.
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` | TypeScript check with no output files |
 | `npm run db:setup` | Apply `db/schema.sql` to the database in `DATABASE_URL` |
+| `npm run billing:setup` | Create (or reuse) the two weekly Stripe prices; prints the env lines to add |
 
 ---
 
@@ -107,9 +130,20 @@ project. The app service needs `DATABASE_URL` (the Postgres service's private
 a domain verified in Resend) and `APP_URL` (the site's public address) once it has real users, and
 `ADMIN_PASSWORD` for `/admin`.
 
+Billing needs three more: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO` and `STRIPE_PRICE_MAX` (from
+`npm run billing:setup`, run once against production — see below), and `STRIPE_WEBHOOK_SECRET` for
+an endpoint you add in the Stripe dashboard pointed at
+`https://<your domain>/api/webhooks/stripe`, subscribed to `checkout.session.completed`,
+`customer.subscription.updated` and `customer.subscription.deleted`. Start in Stripe's test mode
+(`sk_test_...` keys) until you are ready to take real cards, then repeat the price setup and the
+webhook endpoint in live mode — test and live mode each need their own prices and their own webhook
+secret, since they are entirely separate Stripe environments.
+
 When `db/schema.sql` changes, run `npm run db:setup` against the production database (its
 `DATABASE_PUBLIC_URL`, from your machine) before the new code needs it. If a deployed page says "Grasp's database has not been set up yet",
-this is what was missed.
+this is what was missed. `npm run billing:setup` is the same idea for Stripe: run it once (pointed
+at the right `STRIPE_SECRET_KEY` — test or live) before the prices it creates are needed, and again
+only if a plan's price in `lib/plan.ts` is deliberately changed.
 
 ---
 

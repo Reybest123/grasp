@@ -1,24 +1,18 @@
 "use client";
 
-// Plans: which plan the student is on, cancelling or resuming it, and both plans
-// side by side. Laid out like Settings. There is no billing yet, so neither plan
-// can be switched to here; the buttons say so rather than disappearing.
+// Plans: which plan the student is on, cancelling or resuming it, and both
+// plans side by side. Laid out like Settings. Real Stripe billing sits behind
+// every button here (lib/billing.ts): switching between an active Pro and Max
+// updates the existing subscription directly, and choosing a plan with no
+// active subscription (never subscribed, or one that has fully ended) opens
+// Stripe Checkout to take a card.
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useNow } from "@/lib/subjectsStore";
 import { usePlanStatus } from "@/lib/usePlanStatus";
-import {
-  BILLING_PERIOD,
-  DEFAULT_PLAN,
-  PLANS,
-  PLAN_AVAILABLE,
-  PLAN_LABEL,
-  PLAN_PRICE,
-  planName,
-  trialDaysLeft,
-} from "@/lib/plan";
+import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, PLAN_PRICE, planName, trialDaysLeft, type Plan } from "@/lib/plan";
 import { PlanCard } from "@/components/PlanCard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -84,7 +78,7 @@ export default function PlansPage() {
           <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-slate-500">
             All plans
           </h2>
-          <AllPlans />
+          <AllPlans status={status} />
 
           <CurrentPlan status={status} heading="mt-10" />
 
@@ -98,7 +92,6 @@ export default function PlansPage() {
       {/* New tab: /legal sits outside the route group, and leaving for it in
           place would end a live recording. */}
       <p className="mt-10 border-t border-slate-200 pt-5 text-sm text-slate-500">
-        Billing is not set up yet, so nothing is charged.{" "}
         <a
           href="/legal/terms#refunds"
           target="_blank"
@@ -129,6 +122,9 @@ function CurrentPlan({
   const cancelledOn = status.cancelledAt
     ? new Date(status.cancelledAt).toLocaleDateString(undefined, LONG_DATE)
     : null;
+  const renewsOn = status.currentPeriodEnd
+    ? new Date(status.currentPeriodEnd).toLocaleDateString(undefined, LONG_DATE)
+    : null;
 
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -143,7 +139,31 @@ function CurrentPlan({
     if (failed) setError(failed);
   }
 
-  const accessUntil = trialEnds ? `until ${trialEnds}` : "until the end of your current billing period";
+  const accessUntil = trialEnds
+    ? `until ${trialEnds}`
+    : renewsOn
+      ? `until ${renewsOn}`
+      : "until the end of your current billing period";
+
+  if (status.expired) {
+    return (
+      <>
+        <h2
+          id={CANCEL_ANCHOR}
+          className={`${heading} text-sm font-bold uppercase tracking-wide text-slate-500`}
+        >
+          Your plan
+        </h2>
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          {status.error && <ErrorNote message={status.error} className="mb-5" />}
+          <p className="text-lg font-bold text-ink">Your plan has ended</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Choose a plan above to subscribe again — you will need to add a card.
+          </p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -161,14 +181,14 @@ function CurrentPlan({
             <p className="text-lg font-bold text-ink">{planName(plan, profile.trialEndsAt)}</p>
             <p className="mt-1 text-sm text-slate-500">
               {!trialEnds
-                ? `${PLAN_PRICE[plan]} a ${BILLING_PERIOD}.`
+                ? `${PLAN_PRICE[plan]} a ${BILLING_PERIOD}${renewsOn && !cancelledOn ? `, renews ${renewsOn}` : ""}.`
                 : trialLeft === 0
                   ? `Your free trial ended on ${trialEnds}.`
                   : `Your free trial ends on ${trialEnds}${
                       trialLeft !== null
                         ? `, ${trialLeft} day${trialLeft === 1 ? "" : "s"} from now`
                         : ""
-                    }.`}
+                    }, then ${PLAN_PRICE[plan]} a ${BILLING_PERIOD}.`}
             </p>
             {profile.unlimited && (
               <p className="mt-2 text-xs font-semibold text-ink">
@@ -217,35 +237,76 @@ function CurrentPlan({
   );
 }
 
-function AllPlans() {
+function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   const { profile } = useProfile();
   const current = profile.plan ?? DEFAULT_PLAN;
+  const [busyPlan, setBusyPlan] = useState<Plan | null>(null);
+  const [error, setError] = useState("");
+
+  async function choose(plan: Plan) {
+    setBusyPlan(plan);
+    setError("");
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, returnTo: "plans" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "That did not go through. Try again.");
+        setBusyPlan(null);
+        return;
+      }
+      if (typeof data.url === "string") {
+        // Stripe Checkout — a different origin, so a real navigation, not the router.
+        window.location.href = data.url;
+        return;
+      }
+      // Switched directly on the existing subscription: reload so every field
+      // that reads the profile or the plan status (this page, the rail, the
+      // header chip) picks up the new plan in one go, rather than each having
+      // to be told individually.
+      window.location.reload();
+    } catch {
+      setError("Grasp could not reach the server. Check your connection.");
+      setBusyPlan(null);
+    }
+  }
 
   return (
-    <div className="mt-3 grid max-w-4xl gap-6 sm:grid-cols-2 mx-auto">
-      {PLANS.map((plan) => {
-        const isCurrent = plan === current;
-        return (
-          // No trial badge here, ever. Every account that can reach this page
-          // has already been offered the trial at the end of onboarding and
-          // taken or declined it, and a trial is once per student — so
-          // advertising it back to them is an offer Grasp would not honour.
-          <PlanCard key={plan} plan={plan} compact trialBadge={false}>
-            <button
-              disabled
-              className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed ${
-                isCurrent ? "bg-ink text-white" : "border border-slate-200 bg-slate-50 text-slate-500"
-              }`}
-            >
-              {isCurrent
-                ? "Your current plan"
-                : PLAN_AVAILABLE[plan]
-                  ? "Available once billing is set up"
-                  : "Coming soon"}
-            </button>
-          </PlanCard>
-        );
-      })}
+    <div className="mt-3">
+      {error && <ErrorNote message={error} className="mx-auto mb-4 max-w-4xl" />}
+      <div className="grid max-w-4xl gap-6 sm:grid-cols-2 mx-auto">
+        {PLANS.map((plan) => {
+          const isCurrent = plan === current && !status.expired;
+          const switching = !status.expired;
+          const label = isCurrent
+            ? "Your current plan"
+            : switching
+              ? `Switch to ${PLAN_LABEL[plan]}`
+              : `Choose ${PLAN_LABEL[plan]}`;
+          return (
+            // No trial badge here, ever. Every account that can reach this page
+            // has already been offered the trial at the end of onboarding and
+            // taken or declined it, and a trial is once per student — so
+            // advertising it back to them is an offer Grasp would not honour.
+            <PlanCard key={plan} plan={plan} compact trialBadge={false}>
+              <button
+                onClick={() => choose(plan)}
+                disabled={isCurrent || busyPlan !== null}
+                className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed ${
+                  isCurrent
+                    ? "bg-ink text-white disabled:opacity-100"
+                    : "border border-slate-200 bg-white text-ink hover:border-slate-300 disabled:opacity-50"
+                }`}
+              >
+                {busyPlan === plan ? "Working…" : label}
+              </button>
+            </PlanCard>
+          );
+        })}
+      </div>
     </div>
   );
 }

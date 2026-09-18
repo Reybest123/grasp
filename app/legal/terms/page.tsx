@@ -10,7 +10,7 @@ export default function Terms() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="17 September 2026"
+      updated="18 September 2026"
       intro="These terms are the agreement between you and Grasp when you use the website. By creating an account or using Grasp, you agree to them. If you do not agree, do not use Grasp."
     >
       <LegalSection title="Who can use Grasp">
@@ -35,25 +35,24 @@ export default function Terms() {
           the Plans page, and they may change over time.
         </p>
         <p>
-          A new account starts with a {TRIAL_DAYS}-day free trial of Pro. Paid plans cannot be bought
-          yet, so nothing is charged, during the trial or after it. You will not be moved onto a
-          paid plan or charged without agreeing to it first.
+          A new account starts with a {TRIAL_DAYS}-day free trial of Pro. A card is taken when you
+          start the trial, through Stripe, and is charged automatically when the trial ends unless
+          you cancel before then. Choosing Max, or switching to it, is charged straight away. You
+          will not be moved onto a different plan or charged anything you have not agreed to.
         </p>
       </LegalSection>
 
       <LegalSection title="Payments, cancellation and refunds" id="refunds">
-        <p>
-          This section applies once paid plans can be bought. Until then, nothing is charged and
-          there is nothing to refund.
-        </p>
         <ul>
           <li>
-            <b>Billing.</b> Paid plans are billed weekly, in advance, at the price shown on the
-            Plans page when you subscribe. They renew each week until you cancel.
+            <b>Billing.</b> Plans are billed weekly, in advance, at the price shown on the Plans
+            page when you subscribe, through Stripe, our payment processor. Grasp never sees or
+            stores your full card number. They renew each week until you cancel.
           </li>
           <li>
-            <b>Free trial.</b> The free trial is not charged. You will not be charged when it ends
-            unless you have chosen a paid plan.
+            <b>Free trial.</b> The free trial is not charged. It ends automatically into a paid
+            Pro plan, charged to the card you gave when you started it, unless you cancel before
+            then.
           </li>
           <li>
             <b>Cancelling.</b> You can cancel at any time from the Plans page. Your plan keeps
@@ -88,7 +87,8 @@ export default function Terms() {
           </li>
           <li>
             <b>Deleting your account.</b> You need to cancel your plan before you can delete your
-            account. Deleting it does not by itself give a refund.
+            account. Deleting it ends the subscription straight away and does not by itself give a
+            refund.
           </li>
         </ul>
       </LegalSection>

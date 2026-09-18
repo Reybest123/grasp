@@ -16,7 +16,7 @@ import { useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
-import { PLANS, PLAN_AVAILABLE, PLAN_LABEL, TRIAL_DAYS, type Plan } from "@/lib/plan";
+import { BILLING_PERIOD, PLANS, PLAN_LABEL, PLAN_PRICE, TRIAL_DAYS, type Plan } from "@/lib/plan";
 import { ArrowRightIcon, BackIcon, CheckIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
 
@@ -182,7 +182,8 @@ export function OnboardingFlow({
             <div className="text-center">
               <h1 className="text-3xl font-extrabold tracking-tight text-ink">Choose your plan</h1>
               <p className="mx-auto mt-2 max-w-md text-slate-600">
-                Start with {TRIAL_DAYS} days of Pro, free. No card needed.
+                Start with {TRIAL_DAYS} days of Pro, free, then {PLAN_PRICE.pro} a {BILLING_PERIOD} unless
+                you cancel. A card is needed to start, but nothing is charged during the trial.
               </p>
             </div>
 
@@ -191,34 +192,24 @@ export function OnboardingFlow({
             <div className="mx-auto mt-7 grid max-w-4xl gap-5 sm:grid-cols-2">
               {PLANS.map((plan) => (
                 <PlanCard key={plan} plan={plan} compact>
-                  {PLAN_AVAILABLE[plan] ? (
-                    <button
-                      type="button"
-                      onClick={() => start(plan)}
-                      disabled={busy}
-                      className={`${PRIMARY} w-full`}
-                    >
-                      {busy ? (
-                        <>
-                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                          Starting your trial…
-                        </>
-                      ) : (
-                        <>
-                          {plan === "pro" ? "Start free trial" : `Choose ${PLAN_LABEL[plan]}`}
-                          <ArrowRightIcon className="h-5 w-5" />
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-6 py-3.5 text-base font-semibold text-slate-500"
-                    >
-                      Coming soon
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => start(plan)}
+                    disabled={busy}
+                    className={`${PRIMARY} w-full`}
+                  >
+                    {busy ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        Taking you to checkout…
+                      </>
+                    ) : (
+                      <>
+                        {plan === "pro" ? "Start free trial" : `Choose ${PLAN_LABEL[plan]}`}
+                        <ArrowRightIcon className="h-5 w-5" />
+                      </>
+                    )}
+                  </button>
                 </PlanCard>
               ))}
             </div>
@@ -231,9 +222,7 @@ export function OnboardingFlow({
               >
                 <BackIcon className="h-4 w-4" /> Back to the questions
               </button>
-              <p className="text-xs text-slate-500">
-                Paid plans are not live yet, so nothing is charged when the trial ends.
-              </p>
+              <p className="text-xs text-slate-500">You can cancel any time before you are charged.</p>
             </div>
           </section>
         )}

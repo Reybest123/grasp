@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { destroySession, requireUser } from "@/lib/session";
+import { cancelImmediately } from "@/lib/billing";
 
 export async function DELETE(req: NextRequest) {
   const guard = await requireUser();
@@ -34,6 +35,12 @@ export async function DELETE(req: NextRequest) {
   if (!found.data || !(await verifyPassword(password, found.data.password_hash))) {
     return NextResponse.json({ error: "That password is not right." }, { status: 403 });
   }
+
+  // Cancelled from Grasp's side (see the check above) is only ever scheduled
+  // to stop at the period's end. The account is about to disappear entirely,
+  // so the subscription is ended in Stripe right now rather than left running
+  // — billed to a card nobody signed in to Grasp can see or stop any more.
+  await cancelImmediately(guard.user.id);
 
   // Every table in db/schema.sql hangs off users with `on delete cascade`, so
   // this one row takes the sessions, subjects, notes, quizzes and resources.

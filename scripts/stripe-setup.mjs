@@ -1,0 +1,116 @@
+// Creates the two weekly Stripe Prices billing needs, and prints the env lines
+// to add once they exist.
+//
+//   npm run billing:setup
+//
+// Idempotent by `lookup_key`, the same spirit as db/setup.mjs is idempotent by
+// `if not exists`: running this again finds the Price it already made rather
+// than making a second one. A Stripe Price is immutable, though — if
+// lib/plan.ts's PLAN_PRICE_USD below changes, this script cannot update the
+// existing one in place. It creates a *new* Price under the same Product, and
+// the printed env var has to be updated to point at it; the old Price is left
+// alone (Stripe never deletes one, only lets you archive it) so subscriptions
+// already on it keep working until they are next changed.
+//
+// This is a setup script, not a pricing sync system: it is meant to be run by
+// hand, once, when a price is first decided or deliberately changed — never
+// automatically, and never as part of a deploy.
+
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import Stripe from "stripe";
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The env is read from .env.local by hand: this runs as a bare node process,
+ * not through `next`, so nothing has loaded dotenv for us. Mirrors db/setup.mjs.
+ */
+async function loadEnv() {
+  try {
+    const text = await readFile(join(here, "..", ".env.local"), "utf8");
+    for (const line of text.split(/\r?\n/)) {
+      const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
+      if (!match) continue;
+      const value = match[2].trim().replace(/^["']|["']$/g, "");
+      if (!process.env[match[1]]) process.env[match[1]] = value;
+    }
+  } catch {
+    // No .env.local — STRIPE_SECRET_KEY may still be set in the shell.
+  }
+}
+
+await loadEnv();
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error(
+    "STRIPE_SECRET_KEY is not set.\n" +
+      "Add it to .env.local (see .env.local.example) — a test-mode key (sk_test_...) is fine to\n" +
+      "start with — then run this again."
+  );
+  process.exit(1);
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Kept independent of lib/plan.ts on purpose, the same way this script does
+// not import db/schema.sql: it is a plain node script, and lib/plan.ts pulls
+// in path-aliased TypeScript this runtime cannot resolve. If the prices here
+// and PLAN_PRICE_USD in lib/plan.ts drift apart, the Plans page and what
+// Stripe actually charges will disagree — keep them in step by hand.
+const PLANS = [
+  { plan: "pro", label: "Grasp Pro", usd: 7.99, lookupKey: "grasp_pro_weekly" },
+  { plan: "max", label: "Grasp Max", usd: 16.99, lookupKey: "grasp_max_weekly" },
+];
+
+console.log(`Setting up ${PLANS.length} Stripe prices (weekly, USD).\n`);
+
+const envLines = [];
+
+for (const { plan, label, usd, lookupKey } of PLANS) {
+  const existing = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1, active: true });
+  const found = existing.data[0];
+  const wantCents = Math.round(usd * 100);
+
+  if (found && found.unit_amount === wantCents && found.recurring?.interval === "week") {
+    console.log(`  ${label}: reusing ${found.id} ($${usd}/week)`);
+    envLines.push([plan, found.id]);
+    continue;
+  }
+
+  if (found) {
+    console.log(
+      `  ${label}: existing price ${found.id} is $${(found.unit_amount ?? 0) / 100}/week, ` +
+        `not $${usd} — creating a new one under the same lookup key cannot work (Stripe requires ` +
+        `lookup keys to be unique), so archiving it and making a fresh one.`
+    );
+    await stripe.prices.update(found.id, { lookup_key: null, active: false });
+  }
+
+  const product = await findOrCreateProduct(label);
+  const price = await stripe.prices.create({
+    product: product.id,
+    currency: "usd",
+    unit_amount: wantCents,
+    recurring: { interval: "week" },
+    lookup_key: lookupKey,
+  });
+  console.log(`  ${label}: created ${price.id} ($${usd}/week)`);
+  envLines.push([plan, price.id]);
+}
+
+async function findOrCreateProduct(name) {
+  const existing = await stripe.products.search({ query: `name:'${name}' AND active:'true'` });
+  if (existing.data[0]) return existing.data[0];
+  return stripe.products.create({ name });
+}
+
+console.log("\nAdd these to .env.local (and to Railway's production variables):\n");
+for (const [plan, id] of envLines) {
+  console.log(`STRIPE_PRICE_${plan.toUpperCase()}=${id}`);
+}
+console.log(
+  "\nAlso set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET if you have not already — see\n" +
+    ".env.local.example and the README's Deploying section."
+);

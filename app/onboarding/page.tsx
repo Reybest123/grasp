@@ -3,9 +3,11 @@
 // §2 Onboarding — the saving half. The screen itself is
 // components/onboarding/OnboardingFlow.tsx; this page is what makes finishing it write to the account.
 //
-// Finishing sends the student to /home with `?setup=timetable`, which is what
-// opens the timetable popup over the dashboard. Nothing else on the way needs the
-// subject store any more: the timetable is read inside the app shell.
+// Finishing no longer grants the plan directly: it starts a Stripe Checkout
+// Session (app/api/checkout) and sends the browser there to take the card.
+// Stripe redirects back to /api/checkout/complete, which is what actually puts
+// the student on /home?setup=timetable — this page's job ends the moment the
+// student leaves for Stripe.
 
 import { useRouter } from "next/navigation";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
@@ -16,18 +18,23 @@ export default function Onboarding() {
   const router = useRouter();
 
   async function finish(answers: OnboardingAnswers, plan: Plan): Promise<string | null> {
+    let url: string | null = null;
     try {
-      const res = await fetch("/api/onboarding", {
+      const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, plan }),
+        body: JSON.stringify({ answers, plan, returnTo: "onboarding" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return data.error ?? "Something went wrong. Try again.";
+      url = typeof data.url === "string" ? data.url : null;
     } catch {
       return "Grasp could not reach the server. Check your connection.";
     }
-    router.push("/home?setup=timetable");
+    // A real navigation, not the router: Stripe's Checkout page is a different
+    // origin entirely.
+    if (url) window.location.href = url;
+    else router.push("/home?setup=timetable");
     return null;
   }
 

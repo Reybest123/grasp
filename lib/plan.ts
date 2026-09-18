@@ -1,14 +1,15 @@
 // Plan tiers, the free trial, and the caps that come with them (CLAUDE.md §6).
 //
 // There is no free plan. Every account chooses a plan at the end of onboarding,
-// and Pro starts with a free trial. Billing is not built yet, so the trial is
-// the only way onto a plan today, and Max is shown but cannot be chosen. Nothing
-// happens when a trial ends, because there is nothing to move anyone onto.
+// a card is taken through Stripe Checkout (lib/billing.ts) whichever plan is
+// picked, and Pro's choice starts with a free trial that converts to a real
+// charge on its own when the trial ends — nothing further for the student to
+// do, and nothing for Grasp to chase.
 //
-// Every figure here is a placeholder: the prices, the trial length and the caps
-// are still to be set. Anything that depends on the tier reads it from here
-// rather than hard-coding a number. No server-only imports: the client reads
-// these figures too.
+// The prices and caps are still tuned by hand here; only the plumbing that
+// takes payment for them is real. Anything that depends on the tier reads it
+// from here rather than hard-coding a number. No server-only imports: the
+// client reads these figures too.
 
 import {
   LIMITS,
@@ -48,8 +49,8 @@ export const PLAN_TAGLINE: Record<Plan, string> = {
   max: "For students who record every lesson.",
 };
 
-/** Whether a new account can pick the plan today. Max waits for billing. */
-export const PLAN_AVAILABLE: Record<Plan, boolean> = { pro: true, max: false };
+/** Whether a new account can pick the plan today. Both are real now that billing exists. */
+export const PLAN_AVAILABLE: Record<Plan, boolean> = { pro: true, max: true };
 
 /** How long the Pro free trial runs. */
 export const TRIAL_DAYS = 7;

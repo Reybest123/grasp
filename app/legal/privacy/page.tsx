@@ -11,7 +11,7 @@ export default function Privacy() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="17 September 2026"
+      updated="18 September 2026"
       intro="This explains what Grasp collects when you use it, what happens to it, who else handles it, and how to get it deleted. Grasp is a study tool for students, so it collects only what it needs to run your notebooks, and nothing for advertising."
     >
       <LegalSection title="What Grasp stores">
@@ -48,11 +48,16 @@ export default function Privacy() {
             so it can be looked into.
           </li>
           <li>
-            <b>Free trial records:</b> when you start a free trial with a payment card, Grasp keeps a
-            one-way scrambled form of a reference to that card, so that the same card cannot be used
-            to claim a second free trial. It cannot be turned back into your card details, and Grasp
-            never stores your card number. No card is collected yet, so nothing is recorded here
-            today.
+            <b>Payment records:</b> when you start a plan, your card is taken directly by Stripe, our
+            payment processor — Grasp never sees or stores your full card number. Grasp keeps
+            Stripe&apos;s customer and subscription ids for your account, and the status and renewal
+            date of your subscription, so it can show you your plan and apply your weekly limits.
+          </li>
+          <li>
+            <b>Free trial records:</b> when you start a free trial, Grasp keeps a one-way scrambled
+            form of a reference to the card used, so that the same card cannot be used to claim a
+            second free trial under a different account. It cannot be turned back into your card
+            details.
           </li>
           <li>
             <b>Sessions:</b> a record of each device you are logged in on, so you stay logged in.
@@ -91,7 +96,7 @@ export default function Privacy() {
       </LegalSection>
 
       <LegalSection title="Who else handles your information">
-        <p>Grasp relies on three services to run:</p>
+        <p>Grasp relies on four services to run:</p>
         <ul>
           <li>
             <b>OpenAI</b> provides the AI features. When you use one, the material it needs is sent
@@ -99,6 +104,11 @@ export default function Privacy() {
             timetable screenshots, Resource Bank documents, or your quiz answers. Under OpenAI&apos;s
             API terms this is not used to train their models, and it may be kept by OpenAI for up to
             30 days to monitor for abuse before being deleted.
+          </li>
+          <li>
+            <b>Stripe</b> handles payment when you start a plan. It receives your card details
+            directly — Grasp&apos;s own servers never see or store your full card number — along
+            with your email address and name to bill you and send receipts.
           </li>
           <li>
             <b>Railway</b> hosts the website and the database your account and study material are
@@ -136,9 +146,10 @@ export default function Privacy() {
         <p>
           You can delete your whole account from Settings. That immediately removes your account
           and everything stored with it: your plan and setup answers, study material, usage
-          records, flagged answers and sessions. It cannot be undone. The scrambled sign-in attempt
-          counts described above are not tied to your account and are not deleted with it; they
-          expire on their own within 24 hours.
+          records, flagged answers and sessions, and it cancels your subscription with Stripe
+          straight away. It cannot be undone. The scrambled sign-in attempt counts described above
+          are not tied to your account and are not deleted with it; they expire on their own within
+          24 hours.
         </p>
         <p>
           One thing outlives a deleted account, on purpose: the scrambled free trial record
