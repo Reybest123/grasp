@@ -48,6 +48,13 @@ export default function Privacy() {
             so it can be looked into.
           </li>
           <li>
+            <b>Free trial records:</b> when you start a free trial with a payment card, Grasp keeps a
+            one-way scrambled form of a reference to that card, so that the same card cannot be used
+            to claim a second free trial. It cannot be turned back into your card details, and Grasp
+            never stores your card number. No card is collected yet, so nothing is recorded here
+            today.
+          </li>
+          <li>
             <b>Sessions:</b> a record of each device you are logged in on, so you stay logged in.
           </li>
           <li>
@@ -132,6 +139,12 @@ export default function Privacy() {
           records, flagged answers and sessions. It cannot be undone. The scrambled sign-in attempt
           counts described above are not tied to your account and are not deleted with it; they
           expire on their own within 24 hours.
+        </p>
+        <p>
+          One thing outlives a deleted account, on purpose: the scrambled free trial record
+          described above. It has to, or deleting an account would let the same card claim another
+          free trial. What is left behind is that scrambled reference and the date, with your name
+          removed from it, so it no longer identifies you.
         </p>
       </LegalSection>
 

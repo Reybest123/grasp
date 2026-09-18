@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { parseAnswers } from "@/lib/onboarding";
+import { claimTrial } from "@/lib/trialClaims";
 import { PLAN_AVAILABLE, PLAN_LABEL, TRIAL_DAYS, isPlan } from "@/lib/plan";
 
 export async function POST(req: NextRequest) {
@@ -31,6 +32,27 @@ export async function POST(req: NextRequest) {
       { error: `${PLAN_LABEL[plan]} is not available yet. Start with the Pro free trial.` },
       { status: 400 }
     );
+  }
+
+  // One trial per card, not per account (lib/trialClaims.ts). The fingerprint
+  // comes from the payment provider once billing is in place; until then no
+  // card is collected at this step, there is nothing to key a claim on, and the
+  // trial opens on the account guard below alone.
+  const fingerprint = typeof body.paymentFingerprint === "string" ? body.paymentFingerprint.trim() : "";
+  if (fingerprint) {
+    const claimed = await claimTrial(fingerprint, guard.user.id);
+    if (!claimed.ok) {
+      return NextResponse.json({ error: claimed.error }, { status: claimed.status });
+    }
+    if (!claimed.data) {
+      return NextResponse.json(
+        {
+          error: "This card has already been used for a free trial. Choose a plan to carry on.",
+          trialUsed: true,
+        },
+        { status: 409 }
+      );
+    }
   }
 
   // `plan is null` so a second press, or a second tab, cannot restart a trial

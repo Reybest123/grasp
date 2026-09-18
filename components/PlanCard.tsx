@@ -1,6 +1,6 @@
-// One plan, as a card. Used by the landing page's pricing (information only) and
-// by onboarding's plan step, which puts its button in `children`. Every figure
-// comes from lib/plan.ts, so the two can never show different plans.
+// One plan, as a card. Used by the landing page's pricing (information only),
+// by onboarding's plan step, which puts its button in `children`, and by /plans.
+// Every figure comes from lib/plan.ts, so they can never show different plans.
 
 import {
   BILLING_PERIOD,
@@ -16,16 +16,25 @@ import { CheckIcon } from "@/components/icons";
 export function PlanCard({
   plan,
   compact = false,
+  trialBadge = true,
   children,
 }: {
   plan: Plan;
   /** tighter spacing, for onboarding's plan step, which has to fit the screen */
   compact?: boolean;
+  /**
+   * Whether Pro may advertise its free trial. False on /plans for an account
+   * that has already had one: a trial is once per student (and, once billing is
+   * in place, once per card — lib/trialClaims.ts), so offering it again to
+   * somebody who has spent theirs is an offer Grasp would not honour.
+   */
+  trialBadge?: boolean;
   children?: React.ReactNode;
 }) {
   // Pro is the plan with the trial, so it is the one a new student can start
   // today, and the one picked out.
   const featured = plan === "pro";
+  const showTrial = featured && trialBadge;
 
   return (
     <div
@@ -33,7 +42,7 @@ export function PlanCard({
         compact ? "p-6" : "p-8"
       } ${featured ? "border-brand-300 shadow-lift" : "border-slate-200 shadow-ring"}`}
     >
-      {featured && (
+      {showTrial && (
         <span
           className={`absolute -top-3 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white ${
             compact ? "left-6" : "left-8"

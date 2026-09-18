@@ -256,3 +256,21 @@ create table if not exists feedback (
   output     text not null,
   created_at timestamptz not null default now()
 );
+
+-- One free trial per payment card, across every account (§6). Keyed by the
+-- payment provider's own card fingerprint: the same card presented under a
+-- second email gives the same fingerprint, which is what stops a student
+-- collecting an unlimited run of trials by signing up again. Hashed like
+-- session tokens and rate-limit buckets, since the check is equality and
+-- nothing else, so a dumped table names no card.
+--
+-- Deliberately NOT `on delete cascade`, unlike every other table here. The row
+-- has to outlive the account: cascading would hand the card its trial back the
+-- moment the student deleted the account, which is the exact abuse this exists
+-- to prevent. `user_id` goes null instead, so what survives a deletion is a
+-- hash and a date and nothing that names anybody.
+create table if not exists trial_claims (
+  fingerprint_hash text primary key,
+  user_id          uuid references users(id) on delete set null,
+  created_at       timestamptz not null default now()
+);

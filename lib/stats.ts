@@ -186,7 +186,47 @@ export function currentStreak(week: ActivityDay[]): number {
   return n;
 }
 
-/** Quizzes generated inside the window — what the plan's weekly cap counts. */
-export function quizzesIn(week: ActivityDay[]): number {
-  return week.reduce((n, d) => n + d.quizzes, 0);
+export type Coverage = {
+  /** subjects with a note edited or a quiz made inside the window */
+  touched: number;
+  total: number;
+  /** the rest, in the order the notebooks grid shows them */
+  quiet: Subject[];
+};
+
+/**
+ * How much of the student's week reached every subject, not just the ones they
+ * like. Understanding says how well the marked work went and the study tile
+ * says how often they turned up; neither notices a notebook nobody has opened
+ * since it was created, which is the thing worth telling somebody about.
+ *
+ * Matched on a year/month/day key for the same reason `weekActivity` is: a
+ * local day is not always 86,400,000ms, so the subtraction version files work
+ * under the wrong day twice a year.
+ */
+export function subjectCoverage(subjects: Subject[], now: Date, days = 7): Coverage {
+  const base = startOfDay(now);
+  const window = new Set<string>();
+  for (let i = 0; i < days; i++) {
+    window.add(dayKey(new Date(base.getFullYear(), base.getMonth(), base.getDate() - i)));
+  }
+
+  // Undated or unparseable stamps count as untouched rather than as today,
+  // the same way weekActivity drops them instead of guessing at a column.
+  const inWindow = (iso: string): boolean => {
+    const ms = new Date(iso).getTime();
+    return Number.isFinite(ms) && window.has(dayKey(new Date(ms)));
+  };
+
+  const quiet: Subject[] = [];
+  let touched = 0;
+  for (const subject of subjects) {
+    const active =
+      subject.notes.some((n) => inWindow(n.updated)) ||
+      subject.quizzes.some((q) => inWindow(q.created));
+    if (active) touched += 1;
+    else quiet.push(subject);
+  }
+
+  return { touched, total: subjects.length, quiet };
 }

@@ -4,16 +4,13 @@
 // side by side. Laid out like Settings. There is no billing yet, so neither plan
 // can be switched to here; the buttons say so rather than disappearing.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useProfile } from "@/lib/profileStore";
 import { useNow } from "@/lib/subjectsStore";
 import { usePlanStatus } from "@/lib/usePlanStatus";
-import { fetchUsage, type Allowance, type Usage } from "@/lib/ai";
 import {
   BILLING_PERIOD,
   DEFAULT_PLAN,
-  formatCount,
-  formatDuration,
   PLANS,
   PLAN_AVAILABLE,
   PLAN_LABEL,
@@ -43,11 +40,6 @@ export default function PlansPage() {
       ) : (
         <>
           <CurrentPlan status={status} />
-
-          <h2 className="mt-10 text-sm font-bold uppercase tracking-wide text-slate-500">
-            This week
-          </h2>
-          <ThisWeek />
 
           <h2 className="mt-10 text-sm font-bold uppercase tracking-wide text-slate-500">
             All plans
@@ -167,114 +159,6 @@ function CurrentPlan({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   );
 }
 
-/**
- * Where the student stands against each weekly allowance. AI tokens lead, since
- * they are spent on the everyday features and are the one a student cannot
- * count for themselves.
- */
-function ThisWeek() {
-  const [usage, setUsage] = useState<Usage | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchUsage().then((u) => {
-      if (cancelled) return;
-      if (u) setUsage(u);
-      else setFailed(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (failed) {
-    return (
-      <ErrorNote
-        message="Grasp could not load this week's usage. Refresh to try again."
-        className="mt-3"
-      />
-    );
-  }
-
-  const rows: {
-    label: string;
-    hint: string;
-    allowance: Allowance | undefined;
-    format?: (n: number, isLimit: boolean) => string;
-  }[] = [
-    {
-      label: "AI tokens",
-      hint: "Explain, refine, enhance, generate, and explaining a quiz answer. Each uses tokens by how much work it takes.",
-      allowance: usage?.tokens,
-    },
-    { label: "Quizzes", hint: "Generated quizzes.", allowance: usage?.quizzes },
-    {
-      label: "Lecture recording",
-      hint: "Time recorded. Each recording counts as at least a minute.",
-      allowance: usage?.recordings,
-      format: (n, isLimit) => formatDuration(n, !isLimit),
-    },
-    {
-      label: "Resource Bank documents",
-      hint: "Documents read into any subject.",
-      allowance: usage?.resources,
-    },
-  ];
-
-  return (
-    <div className="mt-3 grid gap-4 sm:grid-cols-2">
-      {rows.map((row) => (
-        <Meter key={row.label} {...row} />
-      ))}
-    </div>
-  );
-}
-
-function Meter({
-  label,
-  hint,
-  allowance,
-  format = (n) => formatCount(n),
-}: {
-  label: string;
-  hint: string;
-  allowance: Allowance | undefined;
-  format?: (n: number, isLimit: boolean) => string;
-}) {
-  if (!allowance) return <Skeleton className="h-[108px] rounded-2xl" />;
-
-  const { used, limit } = allowance;
-  const share = limit ? Math.min(1, used / limit) : 0;
-  // Warms as it fills, like the dashboard's allowance ring: full is the bad end.
-  const tone = share >= 1 ? "bg-red-500" : share >= 0.66 ? "bg-amber-500" : "bg-brand-500";
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">{label}</p>
-        <p className="text-sm tabular-nums text-slate-600">
-          {limit === null ? (
-            `${format(used, false)} used · Unlimited`
-          ) : (
-            <>
-              <span className="font-semibold text-ink">{format(Math.min(used, limit), false)}</span>{" "}
-              of {format(limit, true)}
-            </>
-          )}
-        </p>
-      </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <span
-          className={`block h-full rounded-full transition-[width] duration-500 ${tone}`}
-          style={{ width: `${share * 100}%` }}
-        />
-      </div>
-      <p className="mt-2.5 text-xs text-slate-500">{hint}</p>
-    </div>
-  );
-}
-
 function AllPlans() {
   const { profile } = useProfile();
   const current = profile.plan ?? DEFAULT_PLAN;
@@ -284,7 +168,11 @@ function AllPlans() {
       {PLANS.map((plan) => {
         const isCurrent = plan === current;
         return (
-          <PlanCard key={plan} plan={plan} compact>
+          // No trial badge here, ever. Every account that can reach this page
+          // has already been offered the trial at the end of onboarding and
+          // taken or declined it, and a trial is once per student — so
+          // advertising it back to them is an offer Grasp would not honour.
+          <PlanCard key={plan} plan={plan} compact trialBadge={false}>
             <button
               disabled
               className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed ${
