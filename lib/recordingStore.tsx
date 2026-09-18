@@ -21,11 +21,10 @@ import type { Citation, ResourceBrief } from "@/lib/resources";
 import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/lib/recorder";
 import { useSubjects } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
+import { freesUpLabel, publishLimit } from "@/lib/limitNotice";
 import {
   DEFAULT_PLAN,
-  PLAN_LABEL,
   RECORDING_SEGMENT_MS,
-  formatDuration,
   recordingMaxSeconds,
 } from "@/lib/plan";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -133,6 +132,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   // Set once the plan's cap refuses a segment, so the refusal of the flushed
   // tail segment does not try to stop a recording that is already stopping.
   const limitHitRef = useRef(false);
+  /** When this week's recording time comes back, for the dialog raised on running out. */
+  const weekResetsRef = useRef<string | null>(null);
   const stopRef = useRef<() => Promise<void>>(async () => {});
 
   const draft = useCallback(async (final: boolean) => {
@@ -182,7 +183,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     async (blob: Blob, ext: string) => {
       const { text, error, limit } = await transcribeSegment(blob, ext, recordingIdRef.current);
       if (limit) {
-        setNotice(error);
+        // The refusal raised the limit dialog on its way through lib/ai.ts, so
+        // there is nothing to say here as well.
+        setNotice(null);
         if (!limitHitRef.current) {
           limitHitRef.current = true;
           // Not awaited: stop() drains this very chain, so awaiting it from
@@ -213,21 +216,12 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         // recording time is told now rather than twenty seconds into a lecture.
         // If the check itself fails, the server still enforces the cap.
         const week = (await fetchUsage())?.recordings;
-        if (week) setWeekLeft(week.limit === null ? null : Math.max(0, week.limit - week.used));
+        if (week) {
+          setWeekLeft(week.limit === null ? null : Math.max(0, week.limit - week.used));
+          weekResetsRef.current = week.resetsAt;
+        }
         if (week && week.limit !== null && week.used >= week.limit) {
-          const back = week.resetsAt
-            ? new Date(week.resetsAt).toLocaleDateString(undefined, {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })
-            : null;
-          setFatal({
-            subjectId: subject.id,
-            message: `You have used this week's ${formatDuration(week.limit)} of recording on the ${PLAN_LABEL[plan]} plan.${
-              back ? ` More frees up on ${back}.` : ""
-            }`,
-          });
+          publishLimit({ kind: "recording", freesUp: freesUpLabel(week.resetsAt) });
           return;
         }
 
@@ -271,7 +265,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setStarting(false);
       }
     },
-    [ingest, plan]
+    [ingest]
   );
 
   const stop = useCallback(async () => {
@@ -297,9 +291,14 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   // The advertised caps, enforced rather than just printed: the length of one
   // recording, and the time left this week.
   useEffect(() => {
-    if (phase === "recording" && seconds >= Math.min(maxSeconds, weekLeft ?? Infinity)) {
-      void stop();
-    }
+    if (phase !== "recording") return;
+    const outOfTime = weekLeft !== null && seconds >= weekLeft;
+    if (!outOfTime && seconds < maxSeconds) return;
+    // Which of the two caps stopped it is the difference between "that is this
+    // week gone" and "that is as long as one recording runs", so only the
+    // first raises the limit dialog.
+    if (outOfTime) publishLimit({ kind: "recording", freesUp: freesUpLabel(weekResetsRef.current) });
+    void stop();
   }, [phase, seconds, maxSeconds, weekLeft, stop]);
 
   // Re-read whenever no recording is running, so the time left shown before
@@ -312,6 +311,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       if (cancelled || !u) return;
       const week = u.recordings;
       setWeekLeft(week.limit === null ? null : Math.max(0, week.limit - week.used));
+      weekResetsRef.current = week.resetsAt;
     });
     return () => {
       cancelled = true;

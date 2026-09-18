@@ -20,6 +20,7 @@ import {
   type ResourceKind,
 } from "@/lib/resources";
 import { sanitizeNoteHtml, foldHyphenBullets } from "@/lib/richText";
+import { LIMIT_NOTICE, publishLimit, type LimitKind } from "@/lib/limitNotice";
 
 // The quiz shapes live with the rest of the subject model, since a quiz is
 // stored on its subject. Re-exported here so callers of this module don't need
@@ -35,6 +36,9 @@ export type ExtractedSubject = { name: string; teacher?: string; classes: ClassS
 type Used = { used?: string[] };
 
 const OFFLINE = "Grasp could not reach the server. Check your connection and try again.";
+
+/** What a route adds to a 429 when one of the week's allowances is spent. */
+type Refusal = { error?: string; limitKind?: LimitKind; freesUp?: string | null };
 
 /**
  * The wording for a reply that carried no `error` of its own. That happens when
@@ -54,8 +58,17 @@ function failureFor(status: number): string {
  * with nothing on screen to say why.
  */
 async function readReply<T>(res: Response): Promise<T & { error?: string }> {
-  const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
+  const data = (await res.json().catch(() => null)) as (T & Refusal) | null;
   if (res.ok && data) return data;
+
+  // A weekly allowance running out is answered with a dialog rather than a red
+  // strip wherever the student happened to be standing (lib/limitNotice.ts).
+  // Every route call comes through here, so raising it here is what saves
+  // threading the refusal down through each feature that can meet one.
+  if (res.status === 429 && data?.limitKind) {
+    publishLimit({ kind: data.limitKind, freesUp: data.freesUp ?? null });
+    return { ...(data as T), error: LIMIT_NOTICE };
+  }
   return { ...(data ?? ({} as T)), error: data?.error ?? failureFor(res.status) };
 }
 

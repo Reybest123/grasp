@@ -12,8 +12,6 @@ import {
   PLAN_LABEL,
   RECORDING_SEGMENT_MS,
   aiTokenLimit,
-  formatCount,
-  formatDuration,
   markingLimit,
   quizLimit,
   recordingMaxSeconds,
@@ -21,6 +19,11 @@ import {
   resourceReadLimit,
   type Plan,
 } from "@/lib/plan";
+import {
+  freesUpLabel,
+  limitMessage,
+  type LimitKind,
+} from "@/lib/limitNotice";
 import {
   LIMITS as CAPS,
   chargedSeconds,
@@ -70,18 +73,34 @@ function failed(error: string, status: number): { ok: false; response: Response 
   return { ok: false, response: Response.json({ error }, { status }) };
 }
 
-function refused(error: string): { ok: false; response: Response } {
+/**
+ * An allowance is spent. `limitKind` is what the browser raises the limit
+ * dialog from (lib/limitNotice.ts), so the sentence here is only a fallback for
+ * anything that is not showing that dialog.
+ */
+function refused(kind: LimitKind, resetsAt: string | null): { ok: false; response: Response } {
+  return {
+    ok: false,
+    response: Response.json(
+      { error: limitMessage(kind), limit: true, limitKind: kind, freesUp: freesUpLabel(resetsAt) },
+      { status: 429 }
+    ),
+  };
+}
+
+/**
+ * A ceiling that is not a weekly allowance — how long one recording may run,
+ * how many drafts it may have. There is nothing to free up and nothing waiting
+ * on a clock, so this keeps its own sentence and raises no dialog.
+ */
+function capped(error: string): { ok: false; response: Response } {
   return { ok: false, response: Response.json({ error, limit: true }, { status: 429 }) };
 }
 
-/** Timezone-free wording, since the server cannot say "on Thursday" for everyone. */
-function whenFree(resetsAt: string | null): string {
-  if (!resetsAt) return "soon";
-  const hours = (new Date(resetsAt).getTime() - Date.now()) / 3_600_000;
-  if (hours < 1) return "within the hour";
-  if (hours < 24) return `in ${Math.ceil(hours)} hour${Math.ceil(hours) === 1 ? "" : "s"}`;
-  const days = Math.ceil(hours / 24);
-  return `in ${days} day${days === 1 ? "" : "s"}`;
+/** The reset instant an allowance reports, or null when it could not be read. */
+async function resetOf(account: Account, kind: UsageKind): Promise<string | null> {
+  const current = await allowance(account, kind);
+  return current.ok ? current.data.resetsAt : null;
 }
 
 export async function allowance(account: Account, kind: UsageKind): Promise<Result<Allowance>> {
@@ -159,15 +178,7 @@ export async function claimQuiz(
   const claimed = await claim(account, "quiz", ref);
   if (!claimed.ok) return claimed;
 
-  if (!claimed.data) {
-    const current = await allowance(account, "quiz");
-    const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
-    const plan = planOf(account);
-    const limit = quizLimit(plan);
-    return refused(
-      `You have made ${limit} quiz${limit === 1 ? "" : "zes"} in the last 7 days, which is as many as the ${PLAN_LABEL[plan]} plan allows. Your next one frees up ${when}.`
-    );
-  }
+  if (!claimed.data) return refused("quiz", await resetOf(account, "quiz"));
 
   return {
     ok: true,
@@ -191,15 +202,7 @@ export async function claimResourceRead(
   const claimed = await claim(account, "resource", ref);
   if (!claimed.ok) return claimed;
 
-  if (!claimed.data) {
-    const current = await allowance(account, "resource");
-    const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
-    const plan = planOf(account);
-    const limit = resourceReadLimit(plan);
-    return refused(
-      `You have added ${limit} Resource Bank document${limit === 1 ? "" : "s"} in the last 7 days, which is as many as the ${PLAN_LABEL[plan]} plan allows. Your next one frees up ${when}.`
-    );
-  }
+  if (!claimed.data) return refused("resource", await resetOf(account, "resource"));
 
   return {
     ok: true,
@@ -227,9 +230,7 @@ export async function claimRecordingSegment(
   const week = await allowance(account, "recording");
   if (!week.ok) return week;
   if (week.data.limit !== null && week.data.used >= week.data.limit) {
-    return refused(
-      `You have used this week's ${formatDuration(week.data.limit)} of recording on the ${PLAN_LABEL[plan]} plan. Time starts freeing up ${whenFree(week.data.resetsAt)}.`
-    );
+    return refused("recording", week.data.resetsAt);
   }
 
   // The segment count alone does not bound Whisper's bill, which is by the
@@ -244,7 +245,7 @@ export async function claimRecordingSegment(
   });
   if (!heard.ok) return failed(heard.error, heard.status);
   if (heard.data >= recordingMaxSeconds(plan) + CAPS.recordingGraceSeconds) {
-    return refused(
+    return capped(
       `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
     );
   }
@@ -261,7 +262,7 @@ export async function claimRecordingSegment(
   if (!bumped.ok) return failed(bumped.error, bumped.status);
 
   if (bumped.data > maxSegments(plan)) {
-    return refused(
+    return capped(
       `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
     );
   }
@@ -332,7 +333,7 @@ export async function claimLiveDraft(
   const { segments, heard, drafts } = result.data;
   const charged = Math.min(chargedSeconds(heard), recordingMaxSeconds(plan));
   if (drafts > Math.min(segments + 1, draftCeiling(charged, RECORDING_SEGMENT_MS))) {
-    return refused("Grasp is already up to date with this recording.");
+    return capped("Grasp is already up to date with this recording.");
   }
   return { ok: true, transcriptChars: transcriptCharCap(charged) };
 }
@@ -348,14 +349,7 @@ export async function claimMarking(
   const claimed = await claim(account, "mark", ref);
   if (!claimed.ok) return claimed;
 
-  if (!claimed.data) {
-    const current = await allowance(account, "mark");
-    const when = current.ok ? whenFree(current.data.resetsAt) : "soon";
-    const plan = planOf(account);
-    return refused(
-      `You have had ${markingLimit(plan)} quizzes marked in the last 7 days, which is as many as the ${PLAN_LABEL[plan]} plan allows. Your next marking frees up ${when}.`
-    );
-  }
+  if (!claimed.data) return refused("mark", await resetOf(account, "mark"));
 
   return {
     ok: true,
@@ -380,12 +374,7 @@ export async function checkAiTokens(
   const current = await allowance(account, "ai");
   if (!current.ok) return current;
   const { used, limit, resetsAt } = current.data;
-  if (limit !== null && used >= limit) {
-    const plan = planOf(account);
-    return refused(
-      `You have used this week's ${formatCount(limit)} AI tokens on the ${PLAN_LABEL[plan]} plan. They start freeing up ${whenFree(resetsAt)}.`
-    );
-  }
+  if (limit !== null && used >= limit) return refused("ai", resetsAt);
   return { ok: true };
 }
 

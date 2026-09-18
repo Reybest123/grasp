@@ -15,11 +15,13 @@ import { ProfileProvider } from "@/lib/profileStore";
 import { RecordingProvider } from "@/lib/recordingStore";
 import { AppShell } from "@/components/app/AppShell";
 import { SessionHeartbeat } from "@/components/app/SessionHeartbeat";
+import { LimitDialog } from "@/components/app/LimitDialog";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ProfileProvider>
       <SessionHeartbeat />
+      <LimitDialog />
       <SubjectsProvider>
         <RecordingProvider>
           <AppShell>{children}</AppShell>

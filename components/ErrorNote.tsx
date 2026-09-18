@@ -7,6 +7,7 @@
 // place.
 
 import { AlertIcon, CloseIcon } from "@/components/icons";
+import { LIMIT_NOTICE } from "@/lib/limitNotice";
 
 export function ErrorNote({
   message,
@@ -18,6 +19,12 @@ export function ErrorNote({
   /** shows a close button when set */
   onDismiss?: () => void;
 }) {
+  // A spent allowance is already being shown as a dialog (lib/limitNotice.ts),
+  // which the feature that asked knows nothing about — it only has an error
+  // string and draws it here. Swallowing it centrally is what keeps the same
+  // refusal from appearing twice, here and in every future caller.
+  if (message === LIMIT_NOTICE) return null;
+
   return (
     <div
       role="alert"

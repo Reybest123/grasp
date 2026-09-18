@@ -50,6 +50,7 @@ import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
 import { TableMenu, type TableAction } from "@/components/workspace/TableMenu";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { LIMIT_NOTICE } from "@/lib/limitNotice";
 import {
   AlertIcon,
   CloseIcon,
@@ -1271,7 +1272,9 @@ export function NotesTab({
           </div>
         )}
 
-        {enhanceError && (
+        {/* The sentinel means a spent allowance, which the limit dialog is
+            already showing (lib/limitNotice.ts) — the same refusal twice. */}
+        {enhanceError && enhanceError !== LIMIT_NOTICE && (
           <div className="flex items-start gap-2 border-b border-red-100 bg-red-50 px-8 py-2.5 text-sm text-red-700">
             <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
             <span className="flex-1">{enhanceError}</span>

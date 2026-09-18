@@ -536,10 +536,11 @@ function CoverageDetail({ coverage }: { coverage: Coverage }) {
 
 type MeterRow = {
   label: string;
-  /** what the allowance is actually spent on; revealed on hover */
+  /** what the allowance is actually spent on; shown on the card's shared line on hover */
   hint: string;
   allowance: Allowance | undefined;
-  format: (n: number, isLimit: boolean) => string;
+  /** `coarse` drops the seconds off a duration — a week's allowance, not a countdown */
+  format: (n: number, coarse: boolean) => string;
 };
 
 /**
@@ -605,7 +606,7 @@ function WeekAllowances() {
       label: "Lecture recording",
       hint: "Time actually recorded. Every recording counts as at least a minute.",
       allowance: usage?.recordings,
-      format: (n, isLimit) => formatDuration(n, !isLimit),
+      format: (n, coarse) => formatDuration(n, !coarse),
     },
     {
       label: "Resource Bank",
@@ -619,10 +620,13 @@ function WeekAllowances() {
     <>
       <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">This week</h2>
-        <p className="text-xs text-slate-500">
+        <Link
+          href="/plans"
+          className="rounded text-xs text-slate-500 underline-offset-2 transition hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
+        >
           {profile.unlimited ? "Unlimited mode" : `Your allowances on ${planLabel}`} · a rolling{" "}
           {WEEK} days
-        </p>
+        </Link>
       </div>
 
       <div
@@ -632,18 +636,46 @@ function WeekAllowances() {
         {failed ? (
           <ErrorNote message="Grasp could not load this week's allowances. Refresh to try again." />
         ) : (
-          rows.map((row, i) => (
-            <Meter
-              key={row.label}
-              row={row}
-              grown={grown}
-              index={i}
-              dimmed={hover !== null && hover !== i}
-              active={hover === i}
-              onHover={() => setHover(i)}
-              onLeave={() => setHover(null)}
-            />
-          ))
+          <>
+            {/*
+              The rows scroll, the hint below them does not. min-h-fit on a row
+              against this: on a tall window they share the space out between
+              them, and on a short one they keep their own height and this
+              scrolls — rather than the rows squeezing their own fixed-height
+              children away, which silently left the card with no bars at all on
+              any window it did not fit.
+            */}
+            <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+              {rows.map((row, i) => (
+                <Meter
+                  key={row.label}
+                  row={row}
+                  grown={grown}
+                  index={i}
+                  dimmed={hover !== null && hover !== i}
+                  active={hover === i}
+                  onHover={() => setHover(i)}
+                  onLeave={() => setHover(null)}
+                />
+              ))}
+            </div>
+
+            {/*
+              One shared line rather than one reserved under every row. Still
+              always laid out, so fading it in cannot shift anything — but it
+              costs the card 32px instead of 112px, which is most of what the
+              bars needed to fit, and it gives the hint the card's full width so
+              it stays on one line.
+            */}
+            <p
+              aria-live="polite"
+              className={`mt-1 h-8 shrink-0 border-t border-slate-100 pt-2 text-[11px] leading-[14px] text-slate-500 transition-opacity duration-200 motion-reduce:transition-none ${
+                hover === null ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              {hover === null ? "" : rows[hover].hint}
+            </p>
+          </>
         )}
       </div>
     </>
@@ -667,14 +699,13 @@ function Meter({
   onHover: () => void;
   onLeave: () => void;
 }) {
-  const { label, hint, allowance, format } = row;
+  const { label, allowance, format } = row;
 
   if (!allowance) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col justify-center gap-2.5 px-2 py-3">
+      <div className="flex min-h-fit flex-1 flex-col justify-center gap-2 px-2 py-2.5">
         <Skeleton className="h-3.5 w-28" />
         <Skeleton className="h-2.5 w-full rounded-full" />
-        <Skeleton className="h-3 w-40" />
       </div>
     );
   }
@@ -684,36 +715,54 @@ function Meter({
   // Read the other way up from the quiz score ring: a full allowance is the bad
   // end, so it warms towards red as it fills rather than cooling to green.
   const tone = share >= 1 ? "bg-red-500" : share >= 0.66 ? "bg-amber-500" : "bg-brand-500";
-  const left = limit === null ? null : Math.max(0, limit - used);
 
   return (
-    <button
-      type="button"
+    <Link
+      href="/plans"
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       onFocus={onHover}
       onBlur={onLeave}
-      className={`flex min-h-0 flex-1 cursor-default flex-col justify-center rounded-xl px-2 py-3 text-left outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-brand-200 ${
+      className={`flex min-h-fit flex-1 flex-col justify-center rounded-xl px-2 py-2.5 text-left outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-brand-200 ${
         active ? "bg-slate-50" : ""
       } ${dimmed ? "opacity-40" : "opacity-100"}`}
     >
+      {/*
+        One line of figures rather than a count above the bar and a second line
+        under it. The share spent and what is left are the two things worth
+        reading; the raw total they are out of is a click away on /plans, and
+        the bar is already drawing the proportion. Three lines a row did not
+        leave four allowances room to sit on a laptop without the card
+        scrolling, and a meter behind a scroll is one the student never sees.
+      */}
       <div className="flex items-baseline justify-between gap-3">
         <span className="truncate text-sm font-semibold text-ink">{label}</span>
-        <span className="shrink-0 text-sm tabular-nums text-slate-500">
+        <span className="flex shrink-0 items-baseline gap-1.5 text-sm tabular-nums text-slate-500">
           {limit === null ? (
             <>
-              {format(used, false)} used · <span className="font-semibold text-ink">Unlimited</span>
+              {format(used, true)} used · <span className="font-semibold text-ink">Unlimited</span>
             </>
           ) : (
             <>
-              <span className="font-semibold text-ink">{format(Math.min(used, limit), false)}</span>{" "}
-              of {format(limit, true)}
+              <span className="font-semibold text-ink">{Math.round(share * 100)}% used</span> ·{" "}
+              {used >= limit ? "none left" : `${format(limit - used, true)} left`}
             </>
           )}
+          {/* The row goes somewhere; nothing else on the card would say so. */}
+          <ArrowRightIcon
+            aria-hidden="true"
+            className={`h-3.5 w-3.5 self-center transition-opacity duration-200 ${
+              active ? "opacity-100" : "opacity-0"
+            }`}
+          />
         </span>
       </div>
 
-      <span className="mt-2.5 block h-2.5 overflow-hidden rounded-full bg-slate-100">
+      {/* shrink-0, with min-h-fit on the row: as a shrinkable child of a flex
+          column that could shrink, the bar was the thing the browser squeezed
+          away on any window the card did not fit — leaving the card with no
+          bars at all and nothing to say why. */}
+      <span className="mt-2 block h-2.5 shrink-0 overflow-hidden rounded-full bg-slate-100">
         <span
           className={`block h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none ${tone}`}
           style={{
@@ -722,24 +771,7 @@ function Meter({
           }}
         />
       </span>
-
-      <p className="mt-2 text-xs font-medium text-slate-600">
-        {left === null
-          ? "No limit this week"
-          : left === 0
-            ? "None left this week"
-            : `${format(left, false)} left this week`}
-      </p>
-
-      {/* Always laid out, so fading it in cannot shift the rows below. */}
-      <p
-        className={`h-7 overflow-hidden text-[11px] leading-[14px] text-slate-500 transition-opacity duration-200 motion-reduce:transition-none ${
-          active ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        {hint}
-      </p>
-    </button>
+    </Link>
   );
 }
 
