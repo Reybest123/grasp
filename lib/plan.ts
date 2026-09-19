@@ -36,7 +36,7 @@ export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max" };
  * actually pays. Every plan gives every student the same allowances, so there
  * is one budget, in one currency, and it is this one.
  */
-export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 7.99, max: 16.99 };
+export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 6.99, max: 14.49 };
 
 /**
  * What each plan costs in each currency a student can be charged in — the
@@ -48,14 +48,15 @@ export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 7.99, max: 16.99 };
  * same plan. They are chosen to sit near the anchor converted at the rate of
  * the day, and re-checked by hand when that drifts far enough to matter.
  *
- * At AUD 0.65 to the dollar the AUD prices come to about $7.48 and $15.59 —
- * a little under the anchor, so an Australian student is marginally the better
- * deal. Worth knowing when the rate moves: the allowances do not shrink with
- * it, so a falling AUD eats margin rather than service.
+ * At AUD 0.65 to the dollar the AUD prices come to about $6.49 and $13.00 —
+ * under the anchor by roughly 7% on Pro and 10% on Max, so an Australian
+ * student is the better deal. Worth knowing when the rate moves: the
+ * allowances do not shrink with it, so a falling AUD eats margin rather than
+ * service.
  */
 export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<Plan, number>> = {
   usd: PLAN_PRICE_USD,
-  aud: { pro: 11.5, max: 23.99 },
+  aud: { pro: 9.99, max: 19.99 },
 };
 
 /** How often a plan is billed, as it reads after "/" and "a". */
@@ -75,8 +76,18 @@ export function planAmountCents(plan: Plan, currency: Currency): number {
  * The most a plan's AI can cost Grasp in a week, as a share of its price, with
  * every allowance used to the full at its worst case (lib/costModel.ts). The AI
  * token allowance is whatever this leaves once the fixed allowances are paid for.
+ *
+ * Raised from 0.5 to 0.59 on 2026-09-19, deliberately and at the user's
+ * request, when the prices came down: the allowances are derived from the
+ * price, so holding this at a half would have cut Max from 19,000 tokens to
+ * 6,000 — fewer than Pro's, on a plan costing twice as much, which stops the
+ * tier making sense at all. The choice was a thinner worst case over a worse
+ * product. A maxed-out plan now costs Grasp about 58% of its price rather than
+ * 49%, which is still the right side of profitable, and the worst case is
+ * deliberately pessimistic: every figure in lib/costModel.ts prices output at
+ * its cap, and the costs measured against the real prompts sit far below it.
  */
-export const AI_BUDGET_SHARE = 0.5;
+export const AI_BUDGET_SHARE = 0.59;
 
 export const PLAN_TAGLINE: Record<Plan, string> = {
   pro: "Everything you need to study from your own notes.",
