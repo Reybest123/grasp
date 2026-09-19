@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { PLAN_LABEL, PLANS, type Plan } from "@/lib/plan";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
+import { useCurrency } from "@/lib/currencyStore";
 import { PasswordInput } from "@/components/PasswordInput";
 import { ErrorNote } from "@/components/ErrorNote";
 import { LockIcon } from "@/components/icons";
@@ -138,6 +139,7 @@ function Controls({
   setState: (state: AdminState | null) => void;
   email: string | null;
 }) {
+  const currency = useCurrency();
   const [error, setError] = useState("");
 
   async function change(next: AdminState) {
@@ -234,7 +236,7 @@ function Controls({
         {PLANS.map((plan) => {
           const active = state.plan === plan;
           return (
-            <PlanCard key={plan} plan={plan} compact>
+            <PlanCard key={plan} plan={plan} currency={currency} compact>
               <button
                 onClick={() => change({ ...state, plan })}
                 aria-pressed={active}

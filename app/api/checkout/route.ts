@@ -22,6 +22,7 @@ import { parseAnswers } from "@/lib/onboarding";
 import { isExpired, changePlan, createCheckoutSession, readBillingRow } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
 import { isPlan } from "@/lib/plan";
+import { resolveCurrency } from "@/lib/currencyServer";
 
 export async function POST(req: NextRequest) {
   const guard = await requireUser({ allowNoPlan: true });
@@ -69,6 +70,9 @@ export async function POST(req: NextRequest) {
     email: guard.user.email,
     name: guard.user.name,
     plan,
+    // The account's own currency once it has one, otherwise where this request
+    // looks like it came from — the same answer the plan cards were drawn with.
+    currency: await resolveCurrency(guard.user),
     successUrl: `${origin}/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}&to=${returnTo}`,
     cancelUrl: returnTo === "onboarding" ? `${origin}/onboarding` : `${origin}/plans`,
   });

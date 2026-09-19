@@ -11,6 +11,7 @@
 // from here rather than hard-coding a number. No server-only imports: the
 // client reads these figures too.
 
+import { formatMoney, type Currency } from "@/lib/currency";
 import {
   LIMITS,
   RESOURCE_READ_WORST_USD,
@@ -26,16 +27,49 @@ export const PLANS: Plan[] = ["pro", "max"];
 
 export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max" };
 
-/** Weekly price in USD. Charged for real through Stripe (lib/billing.ts), in test mode. */
+/**
+ * Weekly price in USD, and the anchor everything else is measured against.
+ *
+ * This is not just "the American price": the cost model (lib/costModel.ts) is
+ * written in USD because that is what OpenAI, Whisper and Stripe bill Grasp in,
+ * so the AI allowances below are derived from *this* figure whatever a student
+ * actually pays. Every plan gives every student the same allowances, so there
+ * is one budget, in one currency, and it is this one.
+ */
 export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 7.99, max: 16.99 };
+
+/**
+ * What each plan costs in each currency a student can be charged in — the
+ * presentment price, as opposed to the anchor above.
+ *
+ * These are set by hand rather than converted at a live rate, because a Stripe
+ * Price is immutable and a subscription keeps the amount it was opened at: a
+ * rate that moved would silently split students onto different prices for the
+ * same plan. They are chosen to sit near the anchor converted at the rate of
+ * the day, and re-checked by hand when that drifts far enough to matter.
+ *
+ * At AUD 0.65 to the dollar the AUD prices come to about $7.48 and $15.59 —
+ * a little under the anchor, so an Australian student is marginally the better
+ * deal. Worth knowing when the rate moves: the allowances do not shrink with
+ * it, so a falling AUD eats margin rather than service.
+ */
+export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<Plan, number>> = {
+  usd: PLAN_PRICE_USD,
+  aud: { pro: 11.5, max: 23.99 },
+};
 
 /** How often a plan is billed, as it reads after "/" and "a". */
 export const BILLING_PERIOD = "week";
 
-export const PLAN_PRICE: Record<Plan, string> = {
-  pro: `$${PLAN_PRICE_USD.pro.toFixed(2)}`,
-  max: `$${PLAN_PRICE_USD.max.toFixed(2)}`,
-};
+/** "A$11.50" / "$7.99" — what a plan costs, written for the student paying it. */
+export function planPrice(plan: Plan, currency: Currency): string {
+  return formatMoney(PLAN_PRICE_BY_CURRENCY[currency][plan], currency);
+}
+
+/** The amount in cents Stripe charges for a plan in a currency. */
+export function planAmountCents(plan: Plan, currency: Currency): number {
+  return Math.round(PLAN_PRICE_BY_CURRENCY[currency][plan] * 100);
+}
 
 /**
  * The most a plan's AI can cost Grasp in a week, as a share of its price, with

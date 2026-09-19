@@ -82,6 +82,14 @@ alter table users add column if not exists stripe_subscription_id text;
 alter table users add column if not exists subscription_status text;
 alter table users add column if not exists current_period_end timestamptz;
 
+-- Which currency the account is billed in ("usd" / "aud", lib/currency.ts).
+-- Written once, when the Stripe Customer is created, and read in preference to
+-- guessing from the request ever after: a Stripe subscription cannot change
+-- currency once it exists, so this is the only figure the account can actually
+-- be charged. Null until the student first reaches Checkout. Read by the
+-- session lookup, so a database without it signs everyone out.
+alter table users add column if not exists currency text;
+
 -- A customer or subscription id is looked up by its Stripe id in the webhook
 -- and the checkout-complete redirect, both of which run before they know which
 -- user they are for. Partial: most rows have neither yet.

@@ -8,8 +8,18 @@
 
 import { guardAppPage } from "@/lib/session";
 import { AppProviders } from "@/components/app/AppProviders";
+import { CurrencyProvider } from "@/lib/currencyStore";
+import { resolveCurrency } from "@/lib/currencyServer";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  await guardAppPage();
-  return <AppProviders>{children}</AppProviders>;
+  const user = await guardAppPage();
+  // Resolved here, in the one server component every page in the group renders
+  // inside, so /plans draws its prices in the right currency on first paint
+  // rather than fetching it and correcting itself.
+  const currency = await resolveCurrency(user);
+  return (
+    <CurrencyProvider currency={currency}>
+      <AppProviders>{children}</AppProviders>
+    </CurrencyProvider>
+  );
 }

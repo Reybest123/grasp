@@ -12,8 +12,9 @@ import { useSearchParams } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useNow } from "@/lib/subjectsStore";
 import { usePlanStatus } from "@/lib/usePlanStatus";
-import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, PLAN_PRICE, planName, trialDaysLeft, type Plan } from "@/lib/plan";
+import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, planName, planPrice, trialDaysLeft, type Plan } from "@/lib/plan";
 import { PlanCard } from "@/components/PlanCard";
+import { useCurrency } from "@/lib/currencyStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorNote } from "@/components/ErrorNote";
 import { Skeleton } from "@/components/Skeleton";
@@ -113,6 +114,7 @@ function CurrentPlan({
   heading?: string;
 }) {
   const { profile } = useProfile();
+  const currency = useCurrency();
   const now = useNow();
   const plan = profile.plan ?? DEFAULT_PLAN;
   const trialLeft = now ? trialDaysLeft(profile.trialEndsAt, now) : null;
@@ -181,14 +183,14 @@ function CurrentPlan({
             <p className="text-lg font-bold text-ink">{planName(plan, profile.trialEndsAt)}</p>
             <p className="mt-1 text-sm text-slate-500">
               {!trialEnds
-                ? `${PLAN_PRICE[plan]} a ${BILLING_PERIOD}${renewsOn && !cancelledOn ? `, renews ${renewsOn}` : ""}.`
+                ? `${planPrice(plan, currency)} a ${BILLING_PERIOD}${renewsOn && !cancelledOn ? `, renews ${renewsOn}` : ""}.`
                 : trialLeft === 0
                   ? `Your free trial ended on ${trialEnds}.`
                   : `Your free trial ends on ${trialEnds}${
                       trialLeft !== null
                         ? `, ${trialLeft} day${trialLeft === 1 ? "" : "s"} from now`
                         : ""
-                    }, then ${PLAN_PRICE[plan]} a ${BILLING_PERIOD}.`}
+                    }, then ${planPrice(plan, currency)} a ${BILLING_PERIOD}.`}
             </p>
             {profile.unlimited && (
               <p className="mt-2 text-xs font-semibold text-ink">
@@ -239,6 +241,7 @@ function CurrentPlan({
 
 function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   const { profile } = useProfile();
+  const currency = useCurrency();
   const current = profile.plan ?? DEFAULT_PLAN;
   const [busyPlan, setBusyPlan] = useState<Plan | null>(null);
   const [error, setError] = useState("");
@@ -291,7 +294,7 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
             // has already been offered the trial at the end of onboarding and
             // taken or declined it, and a trial is once per student — so
             // advertising it back to them is an offer Grasp would not honour.
-            <PlanCard key={plan} plan={plan} compact trialBadge={false}>
+            <PlanCard key={plan} plan={plan} currency={currency} compact trialBadge={false}>
               <button
                 onClick={() => choose(plan)}
                 disabled={isCurrent || busyPlan !== null}

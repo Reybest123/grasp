@@ -9,6 +9,7 @@ import {
 } from "@/components/icons";
 import type { JSX } from "react";
 import { PlanCard } from "@/components/PlanCard";
+import { resolveCurrency } from "@/lib/currencyServer";
 import { PLANS, TRIAL_DAYS } from "@/lib/plan";
 
 const FEATURES: { icon: JSX.Element; title: string; body: string }[] = [
@@ -70,7 +71,9 @@ function Mark({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const currency = await resolveCurrency();
+
   return (
     <main className="min-h-screen bg-slate-50">
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/85 backdrop-blur">
@@ -228,7 +231,7 @@ export default function Home() {
             plan can be chosen and paid for, which happens in onboarding. */}
         <div className="mx-auto mt-14 grid max-w-3xl gap-6 sm:grid-cols-2">
           {PLANS.map((plan) => (
-            <PlanCard key={plan} plan={plan} />
+            <PlanCard key={plan} plan={plan} currency={currency} />
           ))}
         </div>
         <p className="mt-8 text-center text-xs text-slate-400">

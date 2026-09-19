@@ -3,14 +3,21 @@
 //
 //   npm run billing:setup
 //
+// One Price per plan, carrying *both* currencies through Stripe's own
+// `currency_options` rather than a separate Price per currency. That is what
+// keeps the rest of billing currency-blind: lib/billing.ts still looks a plan
+// up to exactly one Price id, a subscription keeps whichever currency it was
+// opened in, and switching Pro <-> Max on an existing subscription lands on
+// that same currency's amount without anything having to choose again.
+//
 // Idempotent by `lookup_key`, the same spirit as db/setup.mjs is idempotent by
 // `if not exists`: running this again finds the Price it already made rather
-// than making a second one. A Stripe Price is immutable, though — if
-// lib/plan.ts's PLAN_PRICE_USD below changes, this script cannot update the
-// existing one in place. It creates a *new* Price under the same Product, and
-// the printed env var has to be updated to point at it; the old Price is left
-// alone (Stripe never deletes one, only lets you archive it) so subscriptions
-// already on it keep working until they are next changed.
+// than making a second one. A Stripe Price is immutable, though — if the
+// amounts below change, this script cannot update the existing one in place.
+// It archives it and creates a new Price under the same Product, and the
+// printed env var has to be updated to point at it; the old Price is left in
+// Stripe (Stripe never deletes one) so subscriptions already on it keep
+// working until they are next changed.
 //
 // This is a setup script, not a pricing sync system: it is meant to be run by
 // hand, once, when a price is first decided or deliberately changed — never
@@ -57,46 +64,94 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // Kept independent of lib/plan.ts on purpose, the same way this script does
 // not import db/schema.sql: it is a plain node script, and lib/plan.ts pulls
 // in path-aliased TypeScript this runtime cannot resolve. If the prices here
-// and PLAN_PRICE_USD in lib/plan.ts drift apart, the Plans page and what
-// Stripe actually charges will disagree — keep them in step by hand.
+// and PLAN_PRICE_BY_CURRENCY in lib/plan.ts drift apart, the Plans page and
+// what Stripe actually charges will disagree — keep them in step by hand.
+//
+// `base` is the Price's own currency and the one anything that does not ask
+// for another gets; the rest are alternatives Stripe holds on the same Price.
+// USD is the base because it is what the cost model is written in.
+const BASE_CURRENCY = "usd";
+
 const PLANS = [
-  { plan: "pro", label: "Grasp Pro", usd: 7.99, lookupKey: "grasp_pro_weekly" },
-  { plan: "max", label: "Grasp Max", usd: 16.99, lookupKey: "grasp_max_weekly" },
+  {
+    plan: "pro",
+    label: "Grasp Pro",
+    lookupKey: "grasp_pro_weekly",
+    amounts: { usd: 7.99, aud: 11.5 },
+  },
+  {
+    plan: "max",
+    label: "Grasp Max",
+    lookupKey: "grasp_max_weekly",
+    amounts: { usd: 16.99, aud: 23.99 },
+  },
 ];
 
-console.log(`Setting up ${PLANS.length} Stripe prices (weekly, USD).\n`);
+const cents = (n) => Math.round(n * 100);
+
+/** Whether a Price already carries exactly the amounts wanted, in every currency. */
+function matches(price, amounts) {
+  if (price.recurring?.interval !== "week") return false;
+  if (price.currency !== BASE_CURRENCY) return false;
+  if (price.unit_amount !== cents(amounts[BASE_CURRENCY])) return false;
+  for (const [currency, amount] of Object.entries(amounts)) {
+    if (currency === BASE_CURRENCY) continue;
+    if (price.currency_options?.[currency]?.unit_amount !== cents(amount)) return false;
+  }
+  return true;
+}
+
+console.log(`Setting up ${PLANS.length} weekly Stripe prices.\n`);
 
 const envLines = [];
 
-for (const { plan, label, usd, lookupKey } of PLANS) {
-  const existing = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1, active: true });
-  const found = existing.data[0];
-  const wantCents = Math.round(usd * 100);
+for (const { plan, label, amounts, lookupKey } of PLANS) {
+  const written = Object.entries(amounts)
+    .map(([currency, amount]) => `${amount} ${currency.toUpperCase()}`)
+    .join(" / ");
 
-  if (found && found.unit_amount === wantCents && found.recurring?.interval === "week") {
-    console.log(`  ${label}: reusing ${found.id} ($${usd}/week)`);
+  // `currency_options` is not returned unless it is asked for, and without it
+  // every existing Price would look like it was missing its other currencies,
+  // and be archived and rebuilt on every run.
+  const existing = await stripe.prices.list({
+    lookup_keys: [lookupKey],
+    limit: 1,
+    active: true,
+    expand: ["data.currency_options"],
+  });
+  const found = existing.data[0];
+
+  if (found && matches(found, amounts)) {
+    console.log(`  ${label}: reusing ${found.id} (${written} a week)`);
     envLines.push([plan, found.id]);
     continue;
   }
 
   if (found) {
     console.log(
-      `  ${label}: existing price ${found.id} is $${(found.unit_amount ?? 0) / 100}/week, ` +
-        `not $${usd} — creating a new one under the same lookup key cannot work (Stripe requires ` +
-        `lookup keys to be unique), so archiving it and making a fresh one.`
+      `  ${label}: existing price ${found.id} does not match ${written} a week — a Price cannot ` +
+        `be repriced and a lookup key has to be unique, so archiving it and making a fresh one. ` +
+        `Subscriptions already on it keep their amount until they are next changed.`
     );
     await stripe.prices.update(found.id, { lookup_key: null, active: false });
   }
 
   const product = await findOrCreateProduct(label);
+  const currencyOptions = {};
+  for (const [currency, amount] of Object.entries(amounts)) {
+    if (currency === BASE_CURRENCY) continue;
+    currencyOptions[currency] = { unit_amount: cents(amount) };
+  }
+
   const price = await stripe.prices.create({
     product: product.id,
-    currency: "usd",
-    unit_amount: wantCents,
+    currency: BASE_CURRENCY,
+    unit_amount: cents(amounts[BASE_CURRENCY]),
     recurring: { interval: "week" },
+    currency_options: currencyOptions,
     lookup_key: lookupKey,
   });
-  console.log(`  ${label}: created ${price.id} ($${usd}/week)`);
+  console.log(`  ${label}: created ${price.id} (${written} a week)`);
   envLines.push([plan, price.id]);
 }
 

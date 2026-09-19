@@ -17,6 +17,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/sessionCookie";
 import { isPlan, type Plan } from "@/lib/plan";
+import { isCurrency, type Currency } from "@/lib/currency";
 import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 import { readAdmin } from "@/lib/admin";
 
@@ -49,6 +50,8 @@ export type SessionUser = {
   trialEndsAt: string | null;
   /** admin override (lib/admin.ts): no weekly allowances or Resource Bank cap */
   unlimited: boolean;
+  /** what the account is billed in; null until it first reaches Stripe Checkout */
+  currency: Currency | null;
 };
 
 /** The cookie holds the token; the database holds this. Email links too. */
@@ -143,7 +146,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
   try {
     const rows = (await sql`
       select u.id, u.email, u.name, u.email_verified_at, u.plan, u.trial_ends_at,
-             s.expires_at, s.last_seen_at
+             u.currency, s.expires_at, s.last_seen_at
       from sessions s
       join users u on u.id = s.user_id
       where s.token_hash = ${hash}
@@ -154,6 +157,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       email_verified_at: string | null;
       plan: string | null;
       trial_ends_at: string | Date | null;
+      currency: string | null;
       expires_at: string | Date;
       last_seen_at: string | Date;
     }[];
@@ -188,6 +192,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       trialEndsAt:
         forced || !row.trial_ends_at ? null : new Date(row.trial_ends_at).toISOString(),
       unlimited: admin?.unlimited === true,
+      currency: isCurrency(row.currency) ? row.currency : null,
     };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);
@@ -256,19 +261,23 @@ export async function requireUser({
  * straight back to /home. A lookup that fails because the database is down is
  * left alone, so it does not bounce a student who is fine.
  */
-export async function guardAppPage(): Promise<void> {
+export async function guardAppPage(): Promise<SessionUser | null> {
   const user = await lookupSession();
-  if (user === "error") return;
+  // Null rather than a throw when the database is down: the layout still
+  // renders, and whatever it needed the user for falls back on its own.
+  if (user === "error") return null;
   if (user === "none") redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
   if (!user.plan) redirect("/onboarding");
+  return user;
 }
 
 /** Onboarding runs once: after the email is confirmed, and never again once a plan is chosen. */
-export async function guardOnboardingPage(): Promise<void> {
+export async function guardOnboardingPage(): Promise<SessionUser | null> {
   const user = await lookupSession();
-  if (user === "error") return;
+  if (user === "error") return null;
   if (user === "none") redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
   if (user.plan) redirect("/home");
+  return user;
 }

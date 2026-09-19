@@ -18,6 +18,7 @@ import Stripe from "stripe";
 import { query, sql } from "@/lib/db";
 import { PLAN_AVAILABLE, TRIAL_DAYS, isPlan, type Plan } from "@/lib/plan";
 import { claimOrOwnTrial } from "@/lib/trialClaims";
+import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/currency";
 
 // Built on first use, not at module load, for the same reason lib/db.ts's pool
 // is: this module is imported while Next collects page data at build time,
@@ -71,13 +72,15 @@ export type BillingRow = {
   currentPeriodEnd: string | null;
   cancelledAt: string | null;
   trialEndsAt: string | null;
+  /** what the account is billed in; null until it first reaches Checkout */
+  currency: Currency | null;
 };
 
 async function readBillingRow(userId: string) {
   return query(async () => {
     const rows = (await sql`
       select plan, stripe_customer_id, stripe_subscription_id, subscription_status,
-             current_period_end, plan_cancelled_at, trial_ends_at
+             current_period_end, plan_cancelled_at, trial_ends_at, currency
       from users where id = ${userId}
     `) as {
       plan: string | null;
@@ -87,6 +90,7 @@ async function readBillingRow(userId: string) {
       current_period_end: string | Date | null;
       plan_cancelled_at: string | Date | null;
       trial_ends_at: string | Date | null;
+      currency: string | null;
     }[];
     const row = rows[0];
     if (!row) return null;
@@ -98,6 +102,7 @@ async function readBillingRow(userId: string) {
       currentPeriodEnd: row.current_period_end ? new Date(row.current_period_end).toISOString() : null,
       cancelledAt: row.plan_cancelled_at ? new Date(row.plan_cancelled_at).toISOString() : null,
       trialEndsAt: row.trial_ends_at ? new Date(row.trial_ends_at).toISOString() : null,
+      currency: isCurrency(row.currency) ? row.currency : null,
     };
     return out;
   });
@@ -119,7 +124,12 @@ export function isExpired(status: string | null): boolean {
  * Stripe call can throw, and this deliberately does not swallow either — the
  * caller is what knows how to turn a failure into the right response.
  */
-async function ensureCustomer(userId: string, email: string, name: string): Promise<string> {
+async function ensureCustomer(
+  userId: string,
+  email: string,
+  name: string,
+  currency: Currency
+): Promise<string> {
   const existing = await readBillingRow(userId);
   if (!existing.ok) throw new Error(existing.error);
   if (existing.data?.stripeCustomerId) return existing.data.stripeCustomerId;
@@ -129,7 +139,15 @@ async function ensureCustomer(userId: string, email: string, name: string): Prom
     name: name || undefined,
     metadata: { userId },
   });
-  await sql`update users set stripe_customer_id = ${customer.id} where id = ${userId}`;
+  // The currency is written beside the customer id and never rewritten. Stripe
+  // fixes a customer's currency on its first invoice and will not change it
+  // afterwards, so this is the only currency the account can ever be charged —
+  // which is why everything else reads it from here rather than guessing again
+  // from a request that may now be coming from somewhere else.
+  await sql`
+    update users set stripe_customer_id = ${customer.id}, currency = ${currency}
+    where id = ${userId}
+  `;
   return customer.id;
 }
 
@@ -150,6 +168,7 @@ export async function createCheckoutSession({
   email,
   name,
   plan,
+  currency,
   successUrl,
   cancelUrl,
 }: {
@@ -157,6 +176,13 @@ export async function createCheckoutSession({
   email: string;
   name: string;
   plan: Plan;
+  /**
+   * What to charge in (lib/currency.ts). Only a suggestion for an account that
+   * has never checked out: one that already has a Stripe customer keeps the
+   * currency stored against it, because Stripe will not let a customer's
+   * currency change and a Checkout Session that disagreed would be refused.
+   */
+  currency: Currency;
   successUrl: string;
   cancelUrl: string;
 }): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
@@ -166,12 +192,18 @@ export async function createCheckoutSession({
   const billing = await readBillingRow(userId);
   if (!billing.ok) return { ok: false, error: billing.error };
   const neverHadTrial = !billing.data?.trialEndsAt;
+  const charged = billing.data?.currency ?? currency;
 
   try {
-    const customerId = await ensureCustomer(userId, email, name);
+    const customerId = await ensureCustomer(userId, email, name, charged);
     const session = await stripe().checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
+      // One Price per plan holds every currency (scripts/stripe-setup.mjs), so
+      // this picks the amount rather than the Price — which is what lets
+      // `changePlan` swap plans later without having to choose a currency at
+      // all, since the subscription already has one.
+      currency: charged,
       line_items: [{ price: priceId(plan), quantity: 1 }],
       // A card is always collected, trial or not — the whole point of asking
       // for one up front is that the trial converts to a real charge on its

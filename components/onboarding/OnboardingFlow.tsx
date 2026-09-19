@@ -15,8 +15,9 @@
 import { useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
+import { useCurrency } from "@/lib/currencyStore";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
-import { BILLING_PERIOD, PLANS, PLAN_LABEL, PLAN_PRICE, TRIAL_DAYS, type Plan } from "@/lib/plan";
+import { BILLING_PERIOD, PLANS, PLAN_LABEL, TRIAL_DAYS, planPrice, type Plan } from "@/lib/plan";
 import { ArrowRightIcon, BackIcon, CheckIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
 
@@ -34,6 +35,7 @@ export function OnboardingFlow({
   onFinish: (answers: OnboardingAnswers, plan: Plan) => Promise<string | null>;
   onLogOut: () => void;
 }) {
+  const currency = useCurrency();
   const [step, setStep] = useState(0);
   const [picked, setPicked] = useState<Record<Question["id"], string[]>>({
     yearLevel: [],
@@ -182,7 +184,7 @@ export function OnboardingFlow({
             <div className="text-center">
               <h1 className="text-3xl font-extrabold tracking-tight text-ink">Choose your plan</h1>
               <p className="mx-auto mt-2 max-w-md text-slate-600">
-                Start with {TRIAL_DAYS} days of Pro, free, then {PLAN_PRICE.pro} a {BILLING_PERIOD} unless
+                Start with {TRIAL_DAYS} days of Pro, free, then {planPrice("pro", currency)} a {BILLING_PERIOD} unless
                 you cancel. A card is needed to start, but nothing is charged during the trial.
               </p>
             </div>
@@ -191,7 +193,7 @@ export function OnboardingFlow({
 
             <div className="mx-auto mt-7 grid max-w-4xl gap-5 sm:grid-cols-2">
               {PLANS.map((plan) => (
-                <PlanCard key={plan} plan={plan} compact>
+                <PlanCard key={plan} plan={plan} currency={currency} compact>
                   <button
                     type="button"
                     onClick={() => start(plan)}

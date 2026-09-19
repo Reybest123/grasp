@@ -6,20 +6,28 @@ import {
   BILLING_PERIOD,
   PLAN_LABEL,
   PLAN_PERKS,
-  PLAN_PRICE,
   PLAN_TAGLINE,
   TRIAL_DAYS,
+  planPrice,
   type Plan,
 } from "@/lib/plan";
+import { type Currency } from "@/lib/currency";
 import { CheckIcon } from "@/components/icons";
 
 export function PlanCard({
   plan,
+  currency,
   compact = false,
   trialBadge = true,
   children,
 }: {
   plan: Plan;
+  /**
+   * What the student is charged in (lib/currency.ts). Passed in rather than
+   * read from context so this stays usable from the landing page, which is a
+   * server component and works it out from the request's own headers.
+   */
+  currency: Currency;
   /** tighter spacing, for onboarding's plan step, which has to fit the screen */
   compact?: boolean;
   /**
@@ -35,6 +43,7 @@ export function PlanCard({
   // today, and the one picked out.
   const featured = plan === "pro";
   const showTrial = featured && trialBadge;
+  const price = planPrice(plan, currency);
 
   return (
     <div
@@ -61,7 +70,7 @@ export function PlanCard({
           </div>
           <div className="flex shrink-0 items-baseline gap-1">
             <span className="font-display text-3xl font-extrabold tracking-tight text-ink">
-              {PLAN_PRICE[plan]}
+              {price}
             </span>
             <span className="text-xs text-slate-500">/ {BILLING_PERIOD}</span>
           </div>
@@ -72,7 +81,7 @@ export function PlanCard({
           <p className="mt-1 text-sm text-slate-500">{PLAN_TAGLINE[plan]}</p>
           <div className="mt-6 flex items-baseline gap-1.5">
             <span className="font-display text-5xl font-extrabold tracking-tight text-ink">
-              {PLAN_PRICE[plan]}
+              {price}
             </span>
             <span className="text-sm text-slate-500">/ {BILLING_PERIOD}</span>
           </div>
