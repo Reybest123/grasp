@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "check:scoping": "node scripts/check-scoping.mjs",
+    "check": "npm run typecheck && npm run check:scoping",
     "db:setup": "node db/setup.mjs",
     "billing:setup": "node scripts/stripe-setup.mjs"
   },

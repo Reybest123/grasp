@@ -26,7 +26,7 @@ export const PLANS: Plan[] = ["pro", "max"];
 
 export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max" };
 
-/** Weekly price in USD. Nothing is charged yet. */
+/** Weekly price in USD. Charged for real through Stripe (lib/billing.ts), in test mode. */
 export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 7.99, max: 16.99 };
 
 /** How often a plan is billed, as it reads after "/" and "a". */

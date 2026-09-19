@@ -6,7 +6,8 @@ Grasp turns a screenshot of your school timetable into a notebook for every subj
 live while you record a lecture, explains anything you highlight right inside your notes, and
 quizzes you from your own notes and assessment criteria rather than a generic question bank.
 
-Live at [grasp-indol.vercel.app](https://grasp-indol.vercel.app). The full product spec, design
+**Still being built — Grasp has not launched and has no users yet.** It deploys to Railway for
+testing, Stripe runs in test mode, and no real card has been charged. The full product spec, design
 conventions and a detailed changelog of how everything is built live in [`CLAUDE.md`](./CLAUDE.md).
 
 ---
@@ -117,6 +118,8 @@ replace a variable that is already set.
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` | TypeScript check with no output files |
+| `npm run check:scoping` | Fails if a query against a student-owned table has no `user_id`/`subject_id` scope |
+| `npm run check` | Both of the above |
 | `npm run db:setup` | Apply `db/schema.sql` to the database in `DATABASE_URL` |
 | `npm run billing:setup` | Create (or reuse) the two weekly Stripe prices; prints the env lines to add |
 
@@ -131,7 +134,7 @@ a domain verified in Resend) and `APP_URL` (the site's public address) once it h
 `ADMIN_PASSWORD` for `/admin`.
 
 Billing needs three more: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO` and `STRIPE_PRICE_MAX` (from
-`npm run billing:setup`, run once against production — see below), and `STRIPE_WEBHOOK_SECRET` for
+`npm run billing:setup`, run once against the deployment — see below), and `STRIPE_WEBHOOK_SECRET` for
 an endpoint you add in the Stripe dashboard pointed at
 `https://<your domain>/api/webhooks/stripe`, subscribed to `checkout.session.completed`,
 `customer.subscription.updated` and `customer.subscription.deleted`. Start in Stripe's test mode
@@ -139,7 +142,7 @@ an endpoint you add in the Stripe dashboard pointed at
 webhook endpoint in live mode — test and live mode each need their own prices and their own webhook
 secret, since they are entirely separate Stripe environments.
 
-When `db/schema.sql` changes, run `npm run db:setup` against the production database (its
+When `db/schema.sql` changes, run `npm run db:setup` against the deployed database (its
 `DATABASE_PUBLIC_URL`, from your machine) before the new code needs it. If a deployed page says "Grasp's database has not been set up yet",
 this is what was missed. `npm run billing:setup` is the same idea for Stripe: run it once (pointed
 at the right `STRIPE_SECRET_KEY` — test or live) before the prices it creates are needed, and again
