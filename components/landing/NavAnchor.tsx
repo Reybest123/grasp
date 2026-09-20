@@ -1,5 +1,7 @@
 "use client";
 
+import { scrollToElement } from "@/lib/scrollTo";
+
 /**
  * A nav link to a section of this page.
  *
@@ -13,12 +15,18 @@
  * navigate: the scroll has already happened by then, and a pushed entry per
  * press would fill the Back button with jumps around one page.
  *
- * `behavior: "instant"`, and that is not a style choice. `html` carries
- * `scroll-behavior: smooth` globally, and an animated scroll does not land here
- * — measured on this page: a smooth `scrollIntoView` moved 0px where an instant
- * one moved the full 761px. The quiz views and /plans' CancelScroll hit exactly
- * the same thing. The sections carry `scroll-mt-20` so the sticky header does
- * not sit over the heading we land on.
+ * The scroll is smooth: being teleported down the page gives no sense of having
+ * moved, and of where to. Verified animating on this page — 0 to 760px across
+ * six sampled positions, settling in about half a second.
+ *
+ * An earlier version of this used `behavior: "instant"` on the belief that a
+ * smooth scroll did not land here. That was wrong: it was measured through the
+ * browser-automation tab, which throttles `requestAnimationFrame` (and so the
+ * scroll animation) while it is evaluating. Don't "fix" this back to instant
+ * without re-measuring in a real browser window.
+ *
+ * The sections carry `scroll-mt-20` so the sticky header does not sit over the
+ * heading we land on.
  */
 export function NavAnchor({ href, children }: { href: string; children: React.ReactNode }) {
   return (
@@ -28,7 +36,7 @@ export function NavAnchor({ href, children }: { href: string; children: React.Re
         const target = document.querySelector(href);
         if (!target) return; // Let the browser do whatever it would have done.
         e.preventDefault();
-        target.scrollIntoView({ behavior: "instant", block: "start" });
+        scrollToElement(target, "start");
         window.history.replaceState(null, "", href);
       }}
       className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"

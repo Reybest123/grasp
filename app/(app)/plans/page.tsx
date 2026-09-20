@@ -18,6 +18,7 @@ import { useCurrency } from "@/lib/currencyStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorNote } from "@/components/ErrorNote";
 import { Skeleton } from "@/components/Skeleton";
+import { scrollToElement } from "@/lib/scrollTo";
 
 const LONG_DATE: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" };
 
@@ -53,9 +54,15 @@ function CancelScroll() {
     // cleanup that ran with it cancelled the frame before it ever fired —
     // measured, the scroll simply never happened. The effect only runs once the
     // page has its data, so the section is already in the DOM to scroll to.
-    document
-      .getElementById(CANCEL_ANCHOR)
-      ?.scrollIntoView({ block: "center", behavior: "instant" });
+    //
+    // Smooth, not instant (2026-09-20, at the user's request): arriving from
+    // Settings' Delete account notice and being teleported to the bottom of a
+    // page you did not choose to scroll gives no sense of having moved, or of
+    // what you moved past. The note that used to sit here claiming a smooth
+    // scroll would not land was mistaken — it came from measuring through the
+    // browser-automation tab, which throttles the animation while it evaluates.
+    const target = document.getElementById(CANCEL_ANCHOR);
+    if (target) scrollToElement(target, "center");
     window.history.replaceState(window.history.state, "", "/plans");
   }, [wanted]);
 
