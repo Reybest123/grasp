@@ -5,10 +5,11 @@ import { SceneView } from "@/components/landing/SceneView";
 import { ShowcaseFrame } from "@/components/landing/ShowcaseFrame";
 import { SCENES } from "@/components/landing/scenes/registry";
 
-/** How long each scene holds before the next one takes over. Long enough for
- *  the slowest scene's last step (the Record scene's closing line, at 1.6s) to
- *  land and then be read. */
-const DWELL_MS = 5200;
+/** How long each scene holds before the next one takes over. The slowest scene
+ *  finishes its last step at about 1.3s, so this leaves roughly a second and a
+ *  half to read it before the next one arrives. Shorten the scene delays too if
+ *  this goes much lower, or a scene will be replaced mid-build. */
+const DWELL_MS = 2800;
 
 /**
  * The hero's right-hand side: one notebook, cycling through the four things
@@ -20,7 +21,6 @@ const DWELL_MS = 5200;
  */
 export function HeroShowcase() {
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
@@ -31,28 +31,25 @@ export function HeroShowcase() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Reduced motion stops the carousel outright rather than speeding it up: a
-  // panel that changes under you on a timer is exactly the movement the
-  // preference is asking not to see. The pills still work, so every scene is
-  // still reachable — by choice instead of by waiting.
+  // The cycle never pauses — not on hover, not on focus (at the user's
+  // request). Clicking a pill still jumps straight to that scene, and because
+  // this effect depends on `index`, doing so restarts the clock rather than
+  // leaving the picked scene to be replaced a moment later.
+  //
+  // Reduced motion is the one thing that stops it, and it stops it outright
+  // rather than slowing it down: a panel that changes under you on a timer is
+  // exactly the movement the preference is asking not to see. The pills still
+  // work, so every scene stays reachable by choice instead of by waiting.
   useEffect(() => {
-    if (paused || reduced) return;
+    if (reduced) return;
     const id = window.setTimeout(() => setIndex((i) => (i + 1) % SCENES.length), DWELL_MS);
     return () => window.clearTimeout(id);
-  }, [index, paused, reduced]);
+  }, [index, reduced]);
 
   const scene = SCENES[index];
 
   return (
-    <div
-      className="rise relative [animation-delay:120ms]"
-      // Pausing on hover and on keyboard focus, because reading the scene and
-      // having it swap out from under you is the one way this pattern annoys.
-      onPointerEnter={() => setPaused(true)}
-      onPointerLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={() => setPaused(false)}
-    >
+    <div className="rise relative [animation-delay:120ms]">
       <ShowcaseFrame
         subject={scene.subject}
         monogram={scene.monogram}
@@ -86,7 +83,7 @@ export function HeroShowcase() {
                 {s.label}
               </span>
 
-              {active && !reduced && !paused && (
+              {active && !reduced && (
                 <span
                   aria-hidden="true"
                   // Keyed on the index so the bar restarts with each scene

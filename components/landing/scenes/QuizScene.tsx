@@ -24,7 +24,7 @@ export function QuizScene() {
         </span>
       </div>
 
-      <p className="step-in mt-3 text-[15px] font-semibold leading-6 text-ink [animation-delay:120ms]">
+      <p className="step-in mt-3 text-[15px] font-semibold leading-6 text-ink [animation-delay:80ms]">
         Where do the light-dependent reactions take place?
       </p>
 
@@ -37,7 +37,7 @@ export function QuizScene() {
                 ? "border-emerald-300 bg-emerald-50 text-ink"
                 : "border-slate-200 bg-white text-slate-600"
             }`}
-            style={{ animationDelay: `${260 + i * 110}ms` }}
+            style={{ animationDelay: `${160 + i * 70}ms` }}
           >
             <span
               className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg text-[11px] font-bold ${
@@ -48,7 +48,7 @@ export function QuizScene() {
             </span>
             <span className={o.correct ? "font-semibold" : ""}>{o.text}</span>
             {o.correct && (
-              <span className="step-in ml-auto text-emerald-600 [animation-delay:900ms]">
+              <span className="step-in ml-auto text-emerald-600 [animation-delay:560ms]">
                 <CheckIcon className="h-4 w-4" />
               </span>
             )}
@@ -56,7 +56,7 @@ export function QuizScene() {
         ))}
       </ul>
 
-      <div className="step-in mt-auto flex items-center gap-3 pt-3 [animation-delay:1180ms]">
+      <div className="step-in mt-auto flex items-center gap-3 pt-3 [animation-delay:740ms]">
         <span className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold tabular-nums text-emerald-700">
           8.5 / 10
         </span>

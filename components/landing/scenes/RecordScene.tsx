@@ -36,7 +36,7 @@ export function RecordScene() {
         </span>
       </div>
 
-      <p className="step-in mt-4 text-xs font-bold uppercase tracking-wide text-slate-500 [animation-delay:200ms]">
+      <p className="step-in mt-4 text-xs font-bold uppercase tracking-wide text-slate-500 [animation-delay:120ms]">
         Notes so far
       </p>
 
@@ -45,7 +45,7 @@ export function RecordScene() {
           <li
             key={line}
             className="step-in flex gap-2.5 text-[15px] leading-6 text-slate-700"
-            style={{ animationDelay: `${420 + i * 380}ms` }}
+            style={{ animationDelay: `${260 + i * 240}ms` }}
           >
             <span
               aria-hidden="true"
@@ -56,7 +56,7 @@ export function RecordScene() {
         ))}
       </ul>
 
-      <div className="step-in mt-auto rounded-xl bg-white px-3.5 py-2.5 text-xs text-slate-500 shadow-ring [animation-delay:1600ms]">
+      <div className="step-in mt-auto rounded-xl bg-white px-3.5 py-2.5 text-xs text-slate-500 shadow-ring [animation-delay:1000ms]">
         Audio is never stored. Stop, name it, and the notes save into Biology.
       </div>
     </div>

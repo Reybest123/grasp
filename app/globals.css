@@ -225,7 +225,7 @@ select[class~="border-slate-200"] {
 }
 
 .scene-in {
-  animation: sceneIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: sceneIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* One step inside a scene. Call sites set their own [animation-delay:*] to
@@ -242,7 +242,7 @@ select[class~="border-slate-200"] {
 }
 
 .step-in {
-  animation: stepIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: stepIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* The highlighter swipe, drawn left to right — the product's own gesture, so
@@ -259,7 +259,7 @@ select[class~="border-slate-200"] {
 
 .sweep-in {
   transform-origin: left center;
-  animation: sweepIn 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: sweepIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* A live microphone level. Infinite, because a recording in progress is the
@@ -276,7 +276,7 @@ select[class~="border-slate-200"] {
 
 .wave-bar {
   transform-origin: center;
-  animation: waveBar 900ms ease-in-out infinite;
+  animation: waveBar 650ms ease-in-out infinite;
 }
 
 /* The timetable read: a band travelling down the sheet while it is scanned. */
@@ -296,7 +296,7 @@ select[class~="border-slate-200"] {
 }
 
 .scan-down {
-  animation: scanDown 2.4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  animation: scanDown 1.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
 }
 
 /* The bar under the active pill in the hero's showcase, counting out that

@@ -72,7 +72,7 @@ export function TimetableScene() {
 
       {/* What came out of it. */}
       <div className="flex h-full flex-col">
-        <p className="step-in text-[11px] font-bold uppercase tracking-wide text-slate-500 [animation-delay:900ms]">
+        <p className="step-in text-[11px] font-bold uppercase tracking-wide text-slate-500 [animation-delay:540ms]">
           Notebooks created
         </p>
 
@@ -81,7 +81,7 @@ export function TimetableScene() {
             <li
               key={s.name}
               className="step-in flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-ring"
-              style={{ animationDelay: `${1080 + i * 220}ms` }}
+              style={{ animationDelay: `${640 + i * 140}ms` }}
             >
               <span
                 className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br text-[11px] font-bold text-white ${s.tint}`}
@@ -96,7 +96,7 @@ export function TimetableScene() {
           ))}
         </ul>
 
-        <p className="step-in mt-auto pt-3 text-xs text-slate-500 [animation-delay:2000ms]">
+        <p className="step-in mt-auto pt-3 text-xs text-slate-500 [animation-delay:1200ms]">
           Class times and teachers picked up too.
         </p>
       </div>

@@ -5,6 +5,7 @@ import { HeroShowcase } from "@/components/landing/HeroShowcase";
 import { FeatureSpotlight } from "@/components/landing/FeatureSpotlight";
 import { TimetableFlow } from "@/components/landing/TimetableFlow";
 import { Mark } from "@/components/landing/Mark";
+import { NavAnchor } from "@/components/landing/NavAnchor";
 import { Reveal } from "@/components/landing/Reveal";
 import { SCENES } from "@/components/landing/scenes/registry";
 
@@ -17,7 +18,7 @@ const STEPS: { n: string; title: string; body: string }[] = [
   {
     n: "02",
     title: "Grasp reads it",
-    body: "Subjects, class times and teachers are pulled off the sheet automatically.",
+    body: "It pulls out your subjects, your class times and your teachers.",
   },
   {
     n: "03",
@@ -56,13 +57,9 @@ export default function Home() {
               ["How it works", "#how-it-works"],
               ["Features", "#features"],
             ].map(([label, href]) => (
-              <Link
-                key={href}
-                href={href}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
-              >
+              <NavAnchor key={href} href={href}>
                 {label}
-              </Link>
+              </NavAnchor>
             ))}
           </nav>
           <div className="flex items-center gap-1 sm:gap-2">
@@ -96,10 +93,9 @@ export default function Home() {
               AI notes that actually <Mark>understand school</Mark>
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-600">
-              Grasp turns your timetable into ready-to-use subject notebooks, explains anything you
-              highlight, and quizzes you from your{" "}
-              <span className="font-semibold text-ink">own</span> notes and assessment criteria —
-              not a generic question bank.
+              Upload your timetable and Grasp builds a notebook for every subject. Highlight
+              anything you do not understand and it explains it. Then it quizzes you on your{" "}
+              <span className="font-semibold text-ink">own</span> notes.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link
@@ -128,9 +124,9 @@ export default function Home() {
       <section className="border-y border-slate-200 bg-white">
         <div className="mx-auto grid max-w-6xl divide-y divide-slate-200 px-6 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {[
-            ["Subjects, not meetings", "Structured around your timetable and syllabus."],
-            ["Assessment-aware", "Notes and quizzes align to your marking criteria."],
-            ["Zero-friction start", "One screenshot and you are set up."],
+            ["Built for school", "Your timetable, your subjects, your exams."],
+            ["Knows your marking criteria", "Quizzes aimed at what your teacher actually marks."],
+            ["Set up in one screenshot", "No forms, no folders, nothing to name."],
           ].map(([title, body], i) => (
             <Reveal key={title} delay={i * 90} className="px-2 py-7 sm:px-8">
               <p className="font-display text-xl font-bold text-ink">{title}</p>
@@ -142,12 +138,12 @@ export default function Home() {
 
       {/* How it works — the first thing a student ever does, shown happening
           rather than described. */}
-      <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-24">
+      <section id="how-it-works" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-24">
         <Reveal>
           <SectionHead
             eyebrow="How it works"
-            title="One screenshot, and school is set up"
-            body="You do the first step on purpose. Grasp does the rest before you have put your phone down."
+            title="One screenshot and your notebooks are set up"
+            body="Upload your timetable. Grasp reads it and builds a notebook for every subject. That is the whole setup."
           />
         </Reveal>
 
@@ -179,13 +175,13 @@ export default function Home() {
 
       {/* Features — one section each, so a scene the hero cycles past in five
           seconds gets the room to actually be watched. */}
-      <section id="features" className="border-y border-slate-200 bg-white">
+      <section id="features" className="scroll-mt-20 border-y border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <Reveal>
             <SectionHead
               eyebrow="Features"
               title="Everything a student actually needs"
-              body="Built around the four things you do with a subject: capture it, understand it, get tested on it, and aim all of that at what is actually being marked."
+              body="Four things you do with every subject. Grasp does all four, using your own notes."
             />
           </Reveal>
 
@@ -201,25 +197,20 @@ export default function Home() {
 
       <section className="mx-auto max-w-6xl px-6 py-24">
         <Reveal>
-          <div className="relative overflow-hidden rounded-3xl bg-ink px-8 py-16 text-center">
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 opacity-[0.09]"
-              style={{
-                backgroundImage: "linear-gradient(to bottom, #fff 0 1px, transparent 1px 28px)",
-                backgroundSize: "100% 28px",
-              }}
-            />
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-8 py-16 text-center shadow-soft">
+            {/* Ruled paper, like the rest of the page. The navy block that used
+                to sit here read as a foreign object dropped on the page. */}
+            <div aria-hidden="true" className="ruled fade-out-b absolute inset-0 opacity-70" />
             <div className="relative">
-              <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-                Ready to study smarter?
+              <h2 className="text-3xl font-extrabold text-ink sm:text-4xl">
+                Get your notebooks <Mark>set up now</Mark>
               </h2>
-              <p className="mx-auto mt-4 max-w-md text-slate-300">
-                Upload your timetable and get a notebook for every subject in seconds.
+              <p className="mx-auto mt-4 max-w-md text-slate-600">
+                Upload your timetable and Grasp builds a notebook for every subject.
               </p>
               <Link
                 href="/signup"
-                className="group mt-9 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-3.5 font-semibold text-white transition hover:bg-brand-400"
+                className="group mt-9 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 font-semibold text-white shadow-soft transition hover:bg-brand-700"
               >
                 Start with your timetable
                 <ArrowRightIcon className="h-5 w-5 transition group-hover:translate-x-0.5" />

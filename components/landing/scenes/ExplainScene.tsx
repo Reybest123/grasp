@@ -12,7 +12,7 @@ export function ExplainScene() {
     <div className="scene-in flex h-full flex-col">
       <h3 className="step-in text-lg font-bold text-ink">Photosynthesis</h3>
 
-      <p className="step-in mt-3 text-[15px] leading-7 text-slate-700 [animation-delay:90ms]">
+      <p className="step-in mt-3 text-[15px] leading-7 text-slate-700 [animation-delay:60ms]">
         Plants convert light energy into chemical energy stored as glucose.
       </p>
 
@@ -20,16 +20,16 @@ export function ExplainScene() {
         <span className="relative inline-block">
           <span
             aria-hidden="true"
-            className="sweep-in absolute inset-x-[-4px] inset-y-[0.1em] rounded-[3px] bg-brand-300/60 [animation-delay:620ms]"
+            className="sweep-in absolute inset-x-[-4px] inset-y-[0.1em] rounded-[3px] bg-brand-300/60 [animation-delay:380ms]"
           />
-          <span className="step-in relative [animation-delay:200ms]">
+          <span className="step-in relative [animation-delay:120ms]">
             The light-dependent reactions occur in the thylakoid membrane
           </span>
         </span>{" "}
-        <span className="step-in [animation-delay:200ms]">and produce ATP and NADPH.</span>
+        <span className="step-in [animation-delay:120ms]">and produce ATP and NADPH.</span>
       </p>
 
-      <div className="step-in mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-ring [animation-delay:1080ms]">
+      <div className="step-in mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-ring [animation-delay:640ms]">
         <div className="flex items-center gap-2">
           <span className="grid h-6 w-6 place-items-center rounded-lg bg-brand-50 text-brand-600">
             <SparkleIcon className="h-3.5 w-3.5" />
@@ -44,7 +44,7 @@ export function ExplainScene() {
         </p>
       </div>
 
-      <div className="step-in mt-auto flex items-center gap-2 pt-3 [animation-delay:1400ms]">
+      <div className="step-in mt-auto flex items-center gap-2 pt-3 [animation-delay:900ms]">
         <span className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 shadow-ring">
           Ask a follow-up
         </span>

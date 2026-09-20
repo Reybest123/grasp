@@ -28,7 +28,7 @@ export function ResourceScene() {
           <li
             key={d.name}
             className="step-in flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-ring"
-            style={{ animationDelay: `${160 + i * 160}ms` }}
+            style={{ animationDelay: `${100 + i * 100}ms` }}
           >
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
               <FileIcon className="h-4 w-4" />
@@ -41,7 +41,7 @@ export function ResourceScene() {
         ))}
       </ul>
 
-      <div className="step-in mt-4 rounded-2xl border border-brand-200 bg-brand-50/60 p-3.5 [animation-delay:860ms]">
+      <div className="step-in mt-4 rounded-2xl border border-brand-200 bg-brand-50/60 p-3.5 [animation-delay:540ms]">
         <div className="flex items-center gap-2">
           <span className="grid h-6 w-6 place-items-center rounded-lg bg-white text-brand-600">
             <SparkleIcon className="h-3.5 w-3.5" />
@@ -55,7 +55,7 @@ export function ResourceScene() {
         </p>
       </div>
 
-      <p className="step-in mt-auto pt-3 text-xs text-slate-500 [animation-delay:1180ms]">
+      <p className="step-in mt-auto pt-3 text-xs text-slate-500 [animation-delay:760ms]">
         Your files are read once, then never stored.
       </p>
     </div>
