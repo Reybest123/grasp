@@ -1,79 +1,51 @@
 import Link from "next/link";
 import { Logo, LogoMark } from "@/components/Logo";
-import {
-  FileIcon,
-  MicIcon,
-  SparkleIcon,
-  QuizIcon,
-  ArrowRightIcon,
-} from "@/components/icons";
-import type { JSX } from "react";
-import { PlanCard } from "@/components/PlanCard";
-import { resolveCurrency } from "@/lib/currencyServer";
-import { PLANS, TRIAL_DAYS } from "@/lib/plan";
-
-const FEATURES: { icon: JSX.Element; title: string; body: string }[] = [
-  {
-    icon: <FileIcon className="h-5 w-5" />,
-    title: "Upload your timetable, get set up",
-    body: "Screenshot your school timetable. Grasp reads it and auto-creates a notebook for every subject — zero manual setup.",
-  },
-  {
-    icon: <MicIcon className="h-5 w-5" />,
-    title: "Record a lecture, get structured notes",
-    body: "Hit record in class. Grasp transcribes and turns it into clean, organised notes you can actually study from.",
-  },
-  {
-    icon: <SparkleIcon className="h-5 w-5" />,
-    title: "Highlight anything to understand it",
-    body: "Confused by a line? Highlight it right in your notes and Grasp explains it in a side panel — no separate chatbot.",
-  },
-  {
-    icon: <QuizIcon className="h-5 w-5" />,
-    title: "Quizzes from your own notes",
-    body: "Get quizzed on your material, weighted toward what your assessment criteria actually reward.",
-  },
-];
+import { ArrowRightIcon } from "@/components/icons";
+import { HeroShowcase } from "@/components/landing/HeroShowcase";
+import { FeatureSpotlight } from "@/components/landing/FeatureSpotlight";
+import { TimetableFlow } from "@/components/landing/TimetableFlow";
+import { Mark } from "@/components/landing/Mark";
+import { Reveal } from "@/components/landing/Reveal";
+import { SCENES } from "@/components/landing/scenes/registry";
 
 const STEPS: { n: string; title: string; body: string }[] = [
   {
     n: "01",
-    title: "Upload your timetable",
-    body: "Drop in a screenshot. Grasp reads your subjects and class times and builds a notebook for each one automatically.",
+    title: "Screenshot your timetable",
+    body: "Drop in a photo or screenshot from whatever your school uses. Nothing to type in.",
   },
   {
     n: "02",
-    title: "Take or record your notes",
-    body: "Type notes, or record a lecture and let Grasp transcribe and structure them for you.",
+    title: "Grasp reads it",
+    body: "Subjects, class times and teachers are pulled off the sheet automatically.",
   },
   {
     n: "03",
-    title: "Understand as you go",
-    body: "Highlight any confusing line to get it explained instantly — right where you are reading.",
+    title: "Your notebooks appear",
+    body: "One notebook per subject, already set up and ready to write in.",
   },
   {
     n: "04",
-    title: "Quiz yourself before the exam",
-    body: "Generate quizzes from your own notes, weighted toward what your assessment criteria reward.",
+    title: "Start studying",
+    body: "Take notes, record the lesson, highlight anything confusing, and quiz yourself.",
   },
 ];
 
-/** A highlighter swipe behind a phrase — the product's signature gesture. */
-function Mark({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="relative inline-block whitespace-nowrap">
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-[-6px] bottom-[0.1em] top-[0.24em] -rotate-[0.6deg] rounded-[3px] bg-brand-300/55"
-      />
-      <span className="relative">{children}</span>
-    </span>
-  );
-}
-
-export default async function Home() {
-  const currency = await resolveCurrency();
-
+/**
+ * The landing page.
+ *
+ * Deliberately says nothing about price. A student who has not made an account
+ * yet has no way to buy anything — plans are chosen at the end of onboarding,
+ * once Grasp has already read their timetable and built their notebooks.
+ * Leading with a price asks for a decision before the product has earned it, so
+ * every call to action here goes to /signup and nowhere else. Keep it that way:
+ * don't reintroduce a pricing section, a plan card, or a trial mention here.
+ *
+ * That also keeps this page static. It was a dynamic server component only
+ * because PlanCard needed the request's currency, and with the pricing gone
+ * nothing on it varies by request.
+ */
+export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50">
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/85 backdrop-blur">
@@ -83,7 +55,6 @@ export default async function Home() {
             {[
               ["How it works", "#how-it-works"],
               ["Features", "#features"],
-              ["Pricing", "#pricing"],
             ].map(([label, href]) => (
               <Link
                 key={href}
@@ -111,19 +82,16 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* Hero — left-weighted, with the product's own signature moment beside it
-          rather than another paragraph of centred text. */}
+      {/* Hero — the product doing its four things beside the pitch, rather than
+          another paragraph of centred text. */}
       <section className="relative overflow-hidden">
         <div aria-hidden="true" className="ruled fade-out-b absolute inset-0 opacity-70" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pb-24 pt-16 lg:grid-cols-[1.1fr_1fr] lg:pt-24">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pb-24 pt-16 lg:grid-cols-[1fr_1fr] lg:pt-20">
           <div className="rise">
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold tracking-wide text-slate-600 shadow-ring">
               <LogoMark className="h-3.5 w-3.5 text-brand-600" />
               Built for lectures, not boardrooms
             </span>
-            {/* Sized so "AI notes that actually" sits on one line above the
-                highlighted phrase — at 6xl it broke after "that", leaving a
-                one-word line in the middle of the headline. */}
             <h1 className="mt-6 max-w-xl text-[2.6rem] font-extrabold leading-[1.05] text-ink sm:text-[3.1rem]">
               AI notes that actually <Mark>understand school</Mark>
             </h1>
@@ -149,11 +117,11 @@ export default async function Home() {
               </Link>
             </div>
             <p className="mt-5 text-sm text-slate-500">
-              {TRIAL_DAYS}-day free trial · cancel any time · set up in one screenshot
+              Set up in one screenshot · Your notes, your quizzes · Cancel any time
             </p>
           </div>
 
-          <NotePreview />
+          <HeroShowcase />
         </div>
       </section>
 
@@ -163,107 +131,102 @@ export default async function Home() {
             ["Subjects, not meetings", "Structured around your timetable and syllabus."],
             ["Assessment-aware", "Notes and quizzes align to your marking criteria."],
             ["Zero-friction start", "One screenshot and you are set up."],
-          ].map(([title, body]) => (
-            <div key={title} className="px-2 py-7 sm:px-8">
+          ].map(([title, body], i) => (
+            <Reveal key={title} delay={i * 90} className="px-2 py-7 sm:px-8">
               <p className="font-display text-xl font-bold text-ink">{title}</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-500">{body}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
-      {/* How it works — a real sequence, which is what earns the numbering. */}
+      {/* How it works — the first thing a student ever does, shown happening
+          rather than described. */}
       <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-24">
-        <SectionHead
-          eyebrow="How it works"
-          title="Timetable screenshot to exam-ready"
-          body="Four steps, and you only do the first one on purpose."
-        />
-        <ol className="mt-14 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s) => (
-            <li key={s.n} className="relative pt-5">
-              <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-slate-200" />
-              <span aria-hidden="true" className="absolute left-0 top-0 h-px w-10 bg-brand-500" />
-              <span className="font-display text-sm font-bold tabular-nums text-brand-600">
-                {s.n}
-              </span>
-              <h3 className="mt-2.5 text-lg font-bold leading-snug text-ink">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.body}</p>
-            </li>
-          ))}
-        </ol>
+        <Reveal>
+          <SectionHead
+            eyebrow="How it works"
+            title="One screenshot, and school is set up"
+            body="You do the first step on purpose. Grasp does the rest before you have put your phone down."
+          />
+        </Reveal>
+
+        <div className="mt-14 grid items-center gap-12 lg:grid-cols-[0.85fr_1fr]">
+          <ol className="space-y-7">
+            {STEPS.map((s, i) => (
+              <Reveal key={s.n} delay={i * 110}>
+                <li className="relative pt-4">
+                  <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-slate-200" />
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-0 top-0 h-px w-10 bg-brand-500"
+                  />
+                  <span className="font-display text-sm font-bold tabular-nums text-brand-600">
+                    {s.n}
+                  </span>
+                  <h3 className="mt-1.5 text-lg font-bold leading-snug text-ink">{s.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{s.body}</p>
+                </li>
+              </Reveal>
+            ))}
+          </ol>
+
+          <Reveal delay={140}>
+            <TimetableFlow />
+          </Reveal>
+        </div>
       </section>
 
-      {/* Features — cells in one ruled grid rather than four floating cards. */}
+      {/* Features — one section each, so a scene the hero cycles past in five
+          seconds gets the room to actually be watched. */}
       <section id="features" className="border-y border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-6 py-24">
-          <SectionHead
-            eyebrow="Features"
-            title="Everything a student actually needs"
-            body="Built around the four things you do with a subject: set it up, capture it, understand it, and get tested on it."
-          />
-          <div className="mt-14 grid overflow-hidden rounded-3xl border border-slate-200 sm:grid-cols-2">
-            {FEATURES.map((f, i) => (
-              <div
-                key={f.title}
-                className={`group p-8 transition hover:bg-slate-50 ${
-                  i % 2 === 0 ? "sm:border-r sm:border-slate-200" : ""
-                } ${i < 2 ? "border-b border-slate-200" : ""}`}
-              >
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-100">
-                  {f.icon}
-                </span>
-                <h3 className="mt-5 text-lg font-bold text-ink">{f.title}</h3>
-                <p className="mt-2 max-w-md leading-relaxed text-slate-600">{f.body}</p>
-              </div>
+          <Reveal>
+            <SectionHead
+              eyebrow="Features"
+              title="Everything a student actually needs"
+              body="Built around the four things you do with a subject: capture it, understand it, get tested on it, and aim all of that at what is actually being marked."
+            />
+          </Reveal>
+
+          <div className="mt-20 space-y-24">
+            {SCENES.map((scene, i) => (
+              <Reveal key={scene.id}>
+                <FeatureSpotlight scene={scene} flip={i % 2 === 1} />
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="pricing" className="mx-auto max-w-6xl px-6 py-24">
-        <SectionHead
-          eyebrow="Pricing"
-          title="Simple pricing for students"
-          body={`Try Pro free for ${TRIAL_DAYS} days. Go Max if you record every lesson.`}
-        />
-        {/* Information only, with no buttons: an account has to exist before a
-            plan can be chosen and paid for, which happens in onboarding. */}
-        <div className="mx-auto mt-14 grid max-w-3xl gap-6 sm:grid-cols-2">
-          {PLANS.map((plan) => (
-            <PlanCard key={plan} plan={plan} currency={currency} />
-          ))}
-        </div>
-        <p className="mt-8 text-center text-xs text-slate-400">
-          Billed weekly. Cancel any time from the Plans page.
-        </p>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="relative overflow-hidden rounded-3xl bg-ink px-8 py-16 text-center">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 opacity-[0.09]"
-            style={{
-              backgroundImage: "linear-gradient(to bottom, #fff 0 1px, transparent 1px 28px)",
-              backgroundSize: "100% 28px",
-            }}
-          />
-          <div className="relative">
-            <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-              Ready to study smarter?
-            </h2>
-            <p className="mx-auto mt-4 max-w-md text-slate-300">
-              Upload your timetable and get a notebook for every subject in seconds.
-            </p>
-            <Link
-              href="/signup"
-              className="mt-9 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-3.5 font-semibold text-white transition hover:bg-brand-400"
-            >
-              Start your free trial <ArrowRightIcon className="h-5 w-5" />
-            </Link>
+      <section className="mx-auto max-w-6xl px-6 py-24">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-3xl bg-ink px-8 py-16 text-center">
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 opacity-[0.09]"
+              style={{
+                backgroundImage: "linear-gradient(to bottom, #fff 0 1px, transparent 1px 28px)",
+                backgroundSize: "100% 28px",
+              }}
+            />
+            <div className="relative">
+              <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
+                Ready to study smarter?
+              </h2>
+              <p className="mx-auto mt-4 max-w-md text-slate-300">
+                Upload your timetable and get a notebook for every subject in seconds.
+              </p>
+              <Link
+                href="/signup"
+                className="group mt-9 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-3.5 font-semibold text-white transition hover:bg-brand-400"
+              >
+                Start with your timetable
+                <ArrowRightIcon className="h-5 w-5 transition group-hover:translate-x-0.5" />
+              </Link>
+            </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <footer className="border-t border-slate-200 bg-white">
@@ -300,80 +263,6 @@ function SectionHead({
         {title}
       </h2>
       <p className="mt-4 leading-relaxed text-slate-600">{body}</p>
-    </div>
-  );
-}
-
-/**
- * The hero's right-hand side: a real note with a highlighted line and the
- * explanation anchored to it. This is the most characteristic thing the product
- * does, so it opens the page instead of a stock illustration.
- *
- * Static markup by design — it renders complete in the first frame, which is
- * what a shared link and a page thumbnail actually get.
- */
-function NotePreview() {
-  return (
-    <div className="rise relative [animation-delay:120ms]">
-      <div className="rounded-3xl border border-slate-200 bg-white p-2 shadow-lift">
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 text-[11px] font-bold text-white">
-            B
-          </span>
-          <span className="text-sm font-semibold text-ink">Biology</span>
-          <span className="ml-auto text-xs text-slate-400">Edited just now</span>
-        </div>
-
-        <div className="relative overflow-hidden rounded-2xl bg-slate-50 px-6 py-6">
-          <div aria-hidden="true" className="ruled absolute inset-0 opacity-60" />
-          <div className="relative">
-            <h3 className="text-lg font-bold text-ink">Photosynthesis</h3>
-            <p className="mt-3 text-[15px] leading-7 text-slate-700">
-              Plants convert light energy into chemical energy stored as glucose.
-            </p>
-            <p className="mt-1 text-[15px] leading-7 text-slate-700">
-              <span className="rounded-[3px] bg-brand-300/60 px-1 py-0.5 text-ink">
-                The light-dependent reactions occur in the thylakoid membrane
-              </span>{" "}
-              and produce ATP and NADPH.
-            </p>
-
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-ring">
-              <div className="flex items-center gap-2">
-                <span className="grid h-6 w-6 place-items-center rounded-lg bg-brand-50 text-brand-600">
-                  <SparkleIcon className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Grasp explains
-                </span>
-              </div>
-              <p className="mt-2.5 text-sm leading-6 text-slate-600">
-                The thylakoid membrane holds the chlorophyll, so it is where light is actually
-                captured. ATP and NADPH are the energy carriers the next stage spends.
-              </p>
-              <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-400">
-                Using your{" "}
-                <span className="font-semibold text-slate-500">Unit 3 assessment criteria</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* A marked quiz peeking out from behind — says what the notes are *for*
-          without needing a second panel to explain it. */}
-      <div className="absolute -bottom-5 -left-4 hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lift sm:flex">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
-          <QuizIcon className="h-[18px] w-[18px]" />
-        </span>
-        <div>
-          <p className="text-sm font-bold leading-tight text-ink">Quiz marked</p>
-          <p className="text-xs text-slate-500">
-            <span className="font-semibold tabular-nums text-emerald-600">8.5 / 10</span> from your
-            own notes
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

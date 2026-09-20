@@ -199,3 +199,129 @@ select[class~="border-slate-200"] {
     animation: none;
   }
 }
+
+/* --------------------------- landing showcases ---------------------------- */
+
+/* The landing page's animated scenes. Each scene is remounted (React keys it on
+   the active feature) rather than toggled, which is what replays a CSS
+   animation — the same mechanism PageTransition relies on. So everything below
+   runs once per mount and nothing has to be reset by hand.
+
+   Every one of these is `both`-filled, so a step is invisible until its delay
+   elapses. That is only safe because a scene is mounted at the moment it is
+   meant to play. Don't reach for these on content that sits on the page
+   waiting — it would park it invisible for anyone whose animations never run. */
+
+/* A scene as a whole, arriving in the window. */
+@keyframes sceneIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scene-in {
+  animation: sceneIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* One step inside a scene. Call sites set their own [animation-delay:*] to
+   stagger, the way the hero's NotePreview already does. */
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-in {
+  animation: stepIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The highlighter swipe, drawn left to right — the product's own gesture, so
+   it is the one thing in the Explain scene that is worth animating as a
+   movement rather than a fade. */
+@keyframes sweepIn {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.sweep-in {
+  transform-origin: left center;
+  animation: sweepIn 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* A live microphone level. Infinite, because a recording in progress is the
+   one thing on the page that genuinely has no end state. */
+@keyframes waveBar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.wave-bar {
+  transform-origin: center;
+  animation: waveBar 900ms ease-in-out infinite;
+}
+
+/* The timetable read: a band travelling down the sheet while it is scanned. */
+@keyframes scanDown {
+  0% {
+    transform: translateY(-10%);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(560%);
+    opacity: 0;
+  }
+}
+
+.scan-down {
+  animation: scanDown 2.4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+/* The bar under the active pill in the hero's showcase, counting out that
+   scene's turn. Keyed on the active index so it restarts with each scene. */
+@keyframes pillProgress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.pill-progress {
+  transform-origin: left center;
+  animation: pillProgress linear both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-in,
+  .step-in,
+  .sweep-in,
+  .wave-bar,
+  .scan-down,
+  .pill-progress {
+    animation: none;
+  }
+}
