@@ -86,7 +86,10 @@ export function SubjectWorkspace({
   const updateNote = useCallback(
     (id: string, patch: Partial<Note>) => {
       updateSubject(subject.id, {
-        notes: subject.notes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+        // Every edit, a rename included, is what "3 days ago" counts from.
+        notes: subject.notes.map((n) =>
+          n.id === id ? { ...n, ...patch, updated: patch.updated ?? new Date().toISOString() } : n
+        ),
       });
     },
     [subject.id, subject.notes, updateSubject]

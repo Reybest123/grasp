@@ -49,6 +49,18 @@ function isoStamp(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+/**
+ * A note's own last-edit time, kept across saves. Every save rewrites every
+ * note in the subject, so stamping `now()` here reset "3 days ago" on all of
+ * them the moment any one was touched. The value comes from the client, so an
+ * unreadable or future time falls back to now rather than failing the save.
+ */
+function noteStamp(value: unknown): string {
+  const t = typeof value === "string" ? Date.parse(value) : NaN;
+  const now = Date.now();
+  return new Date(Number.isNaN(t) || t > now + 60_000 ? now : t).toISOString();
+}
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -211,7 +223,7 @@ export async function saveSubject(userId: string, subject: Subject): Promise<boo
     ...subject.notes.map(
       (n, i) => sql`
         insert into notes (id, subject_id, title, body, position, updated_at, recorded)
-        values (${n.id}, ${subject.id}, ${n.title}, ${n.body}, ${i}, now(), ${n.recorded ?? false})
+        values (${n.id}, ${subject.id}, ${n.title}, ${n.body}, ${i}, ${noteStamp(n.updated)}, ${n.recorded ?? false})
       `
     ),
     ...subject.resources.map(
