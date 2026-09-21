@@ -348,7 +348,20 @@ export function blocksInRange(editorEl: HTMLElement, range: Range): HTMLElement[
   }
 
   const block = closestOwnBlock(editorEl, range.startContainer);
-  return block ? [block] : [];
+  if (block) return [block];
+
+  // A caret parked on the editor element itself (between its children, which
+  // Chrome does after a list is built on an empty line) belongs to no block by
+  // ancestry, so resolve it by position instead: the child it sits before, or
+  // the last one when it sits at the very end. Without this the list buttons
+  // silently did nothing on an empty note once a bullet had been pressed.
+  if (range.startContainer === editorEl) {
+    const kids = editorEl.childNodes;
+    const child = kids[range.startOffset] ?? kids[kids.length - 1];
+    const own = child && ownBlocks(editorEl).find((b) => b === child || child.contains(b));
+    if (own) return [own];
+  }
+  return [];
 }
 
 /** True when `range`'s caret sits at the very start of `block`'s content. */
@@ -582,8 +595,11 @@ export function caretOffset(editorEl: HTMLElement): number {
 
 /* ---------------------------- shared constants ----------------------------- */
 
-/** The "Default" swatch's own value — untouched text reports this colour. */
-export const DEFAULT_TEXT_COLOR = "#334155";
+/** The "Default" swatch's own value, and what untouched text reports: the
+ *  editor's text-slate-700 under the warm neutral scale (tailwind.config.ts).
+ *  It was Tailwind's stock #334155, which untouched text never matched, so
+ *  every toolbar press on an empty line armed a colour nobody had picked. */
+export const DEFAULT_TEXT_COLOR = "#4a453f";
 
 /** queryCommandValue("foreColor") reports rgb(...) in Chrome; swatches are hex. */
 export function toHex(value: string): string {

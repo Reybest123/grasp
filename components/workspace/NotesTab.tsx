@@ -203,7 +203,11 @@ export function NotesTab({
     const el = editorRef.current;
     if (!el) return;
     const html = ensureHtml(active?.body ?? "") || EMPTY_BODY;
-    if (el.innerHTML !== html) el.innerHTML = html;
+    // Compared without caret marks: a live mark is never in the stored body, so
+    // a plain comparison read it as a change and rewrote the editor straight
+    // after a toolbar press, which threw the caret out of the block onto the
+    // editor itself and left the next list button with nothing to act on.
+    if (stripCaretMark(el.innerHTML) !== html) el.innerHTML = html;
   }, [active?.id, active?.body]);
 
   const syncHistory = useCallback(() => {
@@ -410,29 +414,18 @@ export function NotesTab({
   /* ------------------------------- placeholder ------------------------------ */
 
   /**
-   * The placeholder is measured rather than drawn by CSS, for two reasons the
-   * old `.editor::before` could not solve: it has to sit exactly where the
-   * first character would land (which moves with a bullet, a checkbox, or a
-   * centred line), and it has to show the formatting the student has armed but
-   * not yet typed with. That formatting only exists as pending browser state —
-   * `queryCommandState` can see it, but there is no markup for CSS to inherit.
-   *
-   * Colour is deliberately left muted: a placeholder rendered in the chosen
-   * text colour reads as real content the student has already typed.
+   * The placeholder is measured rather than drawn by CSS because it has to sit
+   * exactly where the first character would land, which moves with a bullet,
+   * a number or a checkbox. It is always the plain base text: it deliberately
+   * does not mirror bold, italic, underline or a size tier armed on the caret,
+   * which made it jump about as the toolbar was pressed.
    */
   const blankNote = isEmptyHtml(active?.body ?? "");
   const [hint, setHint] = useState<{
     top: number;
     left: number;
     align: string;
-    style: React.CSSProperties;
   } | null>(null);
-
-  /** The font-size/line-height pairs editor.css assigns each size tier. */
-  const SIZE_STYLE: Record<string, { fontSize: string; lineHeight: string }> = {
-    "5": { fontSize: "1.32em", lineHeight: "1.45" },
-    "6": { fontSize: "1.7em", lineHeight: "1.5" },
-  };
 
   const measureHint = useCallback(() => {
     const el = editorRef.current;
@@ -448,15 +441,6 @@ export function NotesTab({
 
     const spot = blockTextStart(block);
     const frame = wrap.getBoundingClientRect();
-    // Matches editor.css's own rules exactly, including line-height — the
-    // hint used to only borrow font-size, so its line box came out shorter
-    // than the real text's at the larger tiers and the two baselines parted
-    // ways the bigger the size got.
-    const style: React.CSSProperties = { ...SIZE_STYLE[document.queryCommandValue("fontSize")] };
-    if (document.queryCommandState("bold")) style.fontWeight = 700;
-    if (document.queryCommandState("italic")) style.fontStyle = "italic";
-    if (document.queryCommandState("underline")) style.textDecoration = "underline";
-
     setHint({
       // The middle of the first glyph box, not its top. That rect is the text's
       // content area, which sits inside a taller line box (28px at the base
@@ -466,7 +450,6 @@ export function NotesTab({
       top: spot.top + spot.height / 2 - frame.top,
       left: spot.left - frame.left,
       align: getComputedStyle(block).textAlign,
-      style,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1387,7 +1370,6 @@ export function NotesTab({
                     : hint.align === "right"
                       ? "translate(-100%, -50%)"
                       : "translateY(-50%)",
-                ...hint.style,
               }}
               // text-[15px] matches .editor's own base size exactly — without
               // it this inherited whatever size sat above it in the page,
