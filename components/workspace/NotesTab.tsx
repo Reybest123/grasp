@@ -458,7 +458,12 @@ export function NotesTab({
     if (document.queryCommandState("underline")) style.textDecoration = "underline";
 
     setHint({
-      top: spot.top - frame.top,
+      // The middle of the first glyph box, not its top. That rect is the text's
+      // content area, which sits inside a taller line box (28px at the base
+      // size), while the hint is a whole line box of its own — pinned by its
+      // top edge it landed half the leading below the caret. Centring it on
+      // the glyph (translateY(-50%) below) lines the two up at every size.
+      top: spot.top + spot.height / 2 - frame.top,
       left: spot.left - frame.left,
       align: getComputedStyle(block).textAlign,
       style,
@@ -1378,10 +1383,10 @@ export function NotesTab({
                 // would: rightwards, out from the middle, or leftwards.
                 transform:
                   hint.align === "center"
-                    ? "translateX(-50%)"
+                    ? "translate(-50%, -50%)"
                     : hint.align === "right"
-                      ? "translateX(-100%)"
-                      : undefined,
+                      ? "translate(-100%, -50%)"
+                      : "translateY(-50%)",
                 ...hint.style,
               }}
               // text-[15px] matches .editor's own base size exactly — without
