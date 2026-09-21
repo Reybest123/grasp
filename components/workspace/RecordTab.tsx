@@ -20,6 +20,7 @@ import { updatedLabel } from "@/lib/schedule";
 import type { ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
+import { NoteSwitcher } from "@/components/workspace/NoteSwitcher";
 import { ErrorNote } from "@/components/ErrorNote";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
 import { WaitingState } from "@/components/WaitingState";
@@ -355,8 +356,26 @@ export function RecordTab({
   if (recorded.length === 0) return <div className="mx-auto max-w-3xl">{main}</div>;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <aside>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
+      <NoteSwitcher
+        heading="Recordings"
+        items={recorded.map((n) => ({
+          id: n.id,
+          title: n.title || "Untitled recording",
+          sub: now ? updatedLabel(n.updated, now) : "",
+        }))}
+        activeId={selected?.id}
+        current={active ? "Recording now" : elsewhere ? "Recording in another subject" : undefined}
+        onPick={setSelectedId}
+        action={{
+          label: rec.starting ? "Starting…" : "New recording",
+          icon: <MicIcon className="h-5 w-5" />,
+          onClick: start,
+          disabled: rec.starting || rec.phase !== "idle",
+        }}
+      />
+
+      <aside className="hidden lg:block">
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Recordings</h3>
         <ul className="space-y-1">
           {recorded.map((n) => (

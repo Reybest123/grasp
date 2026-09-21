@@ -45,6 +45,7 @@ import { useNow } from "@/lib/subjectsStore";
 import { NoteToolbar } from "@/components/workspace/NoteToolbar";
 import { EquationEditor } from "@/components/workspace/EquationEditor";
 import { ExplainPanel } from "@/components/workspace/ExplainPanel";
+import { NoteSwitcher } from "@/components/workspace/NoteSwitcher";
 import { EnhanceMenu } from "@/components/workspace/EnhanceMenu";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
@@ -137,12 +138,16 @@ export function NotesTab({
   const pillRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const skipPill = useRef(false);
+  // A tap on the pill can collapse the selection before its click lands, which
+  // would hide the pill out from under the finger. Held while it is pressed.
+  const pressingPill = useRef(false);
   // Whether a caret-formatting mark (see the "caret mark" section below) is
   // currently live, so the common case — typing where none was ever armed —
   // skips its text-node walk entirely rather than paying for it every keystroke.
   const hasCaretMark = useRef(false);
   const [selectedText, setSelectedText] = useState("");
   const [pill, setPill] = useState<{ top: number; left: number } | null>(null);
+  const docked = useCompact();
   const [panelOpen, setPanelOpen] = useState(false);
   const [explainMode, setExplainMode] = useState<ExplainMode>("explain");
 
@@ -597,6 +602,7 @@ export function NotesTab({
   /* -------------------------------- selection ------------------------------- */
 
   const updatePill = useCallback(() => {
+    if (pressingPill.current) return;
     // Tabbing into a cell selects it to make typing replace the value; that's
     // navigation, not a highlight, so it must not raise the Explain pill.
     if (skipPill.current) {
@@ -642,12 +648,31 @@ export function NotesTab({
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (pillRef.current?.contains(target)) return;
-      if (editorRef.current?.contains(target)) dragging.current = true;
+      if (pillRef.current?.contains(target)) {
+        pressingPill.current = true;
+        return;
+      }
+      // A touch selection is made by long-press and dragging the handles, and
+      // neither ends in a pointerup here, so a touch never counts as a drag —
+      // the pill just follows selectionchange instead.
+      if (e.pointerType !== "touch" && editorRef.current?.contains(target)) {
+        dragging.current = true;
+      }
       setPill(null);
     };
     const onUp = () => {
       dragging.current = false;
+      if (pressingPill.current) {
+        // A tap's click can land some way after its pointerup on a phone, so
+        // the hold is kept a moment longer. A press that did not end in a click
+        // (slid off the pill) is looked at again once it has run out.
+        setTimeout(() => {
+          if (!pressingPill.current) return;
+          pressingPill.current = false;
+          updatePill();
+        }, 400);
+        return;
+      }
       updatePill();
     };
     // Mid-drag the selection changes on every mouse move; wait for the release
@@ -661,17 +686,20 @@ export function NotesTab({
 
     document.addEventListener("pointerdown", onDown);
     document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
     document.addEventListener("selectionchange", onSelect);
     window.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
       document.removeEventListener("selectionchange", onSelect);
       window.removeEventListener("scroll", onScroll, true);
     };
   }, [updatePill]);
 
   function openPanel(mode: ExplainMode) {
+    pressingPill.current = false;
     setExplainMode(mode);
     setPanelOpen(true);
     setPill(null);
@@ -1144,9 +1172,32 @@ export function NotesTab({
   }
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
+      {/* Below `lg` the list collapses into one bar above the note, rather than
+          stacking every note above the one being written. */}
+      <NoteSwitcher
+        heading="Notes"
+        items={notes.map((n) => ({
+          id: n.id,
+          title: n.title || (n.recorded ? "Untitled recording" : "Untitled note"),
+          sub: now ? updatedLabel(n.updated, now) : "",
+          recorded: n.recorded,
+        }))}
+        activeId={active.id}
+        onPick={setActiveId}
+        onDelete={(id) => {
+          const n = notes.find((x) => x.id === id);
+          if (n) setPendingDelete(n);
+        }}
+        action={{
+          label: "New note",
+          icon: <PlusIcon className="h-5 w-5" />,
+          onClick: () => addNote("", ""),
+        }}
+      />
+
       {/* Note list */}
-      <aside>
+      <aside className="hidden lg:block">
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>
         <ul className="space-y-1">
           {notes.map((n) => (
@@ -1363,19 +1414,26 @@ export function NotesTab({
 
       {/* Floating selection actions — Explain talks it through, Refine rewrites
           it. Which one is pressed is how the AI is told whether to edit. */}
+      {/* On a phone it docks at the foot of the screen instead: above the
+          selection is exactly where the phone's own Copy / Select all bar
+          appears, and the two would sit on top of each other. */}
       {pill && (
         <div
           ref={pillRef}
           onMouseDown={(e) => e.preventDefault()}
-          style={{ top: pill.top, left: pill.left }}
-          className="fixed z-40 flex -translate-x-1/2 animate-[fadeIn_120ms_ease-out] overflow-hidden rounded-full bg-ink text-xs font-semibold text-white shadow-lg"
+          style={docked ? undefined : { top: pill.top, left: pill.left }}
+          className={`fixed z-40 flex -translate-x-1/2 animate-[fadeIn_120ms_ease-out] overflow-hidden rounded-full bg-ink font-semibold text-white shadow-lg ${
+            docked
+              ? "bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 text-sm"
+              : "text-xs"
+          }`}
         >
-          <PillButton mode="explain" onPick={openPanel}>
-            <SparkleIcon className="h-3.5 w-3.5" /> Explain
+          <PillButton mode="explain" onPick={openPanel} large={docked}>
+            <SparkleIcon className={docked ? "h-4 w-4" : "h-3.5 w-3.5"} /> Explain
           </PillButton>
           <span className="my-1.5 w-px bg-white/20" />
-          <PillButton mode="refine" onPick={openPanel}>
-            <EditIcon className="h-3.5 w-3.5" /> Refine
+          <PillButton mode="refine" onPick={openPanel} large={docked}>
+            <EditIcon className={docked ? "h-4 w-4" : "h-3.5 w-3.5"} /> Refine
           </PillButton>
         </div>
       )}
@@ -1426,18 +1484,35 @@ export function NotesTab({
 function PillButton({
   mode,
   onPick,
+  large = false,
   children,
 }: {
   mode: ExplainMode;
   onPick: (mode: ExplainMode) => void;
+  large?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       onClick={() => onPick(mode)}
-      className="inline-flex items-center gap-1.5 px-3.5 py-2 transition hover:bg-white/15"
+      className={`inline-flex items-center gap-1.5 transition hover:bg-white/15 ${
+        large ? "min-h-[48px] px-5" : "px-3.5 py-2"
+      }`}
     >
       {children}
     </button>
   );
+}
+
+/** Whether the screen is at Tailwind's `compact` breakpoint (a phone). */
+function useCompact(): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px), (max-height: 500px)");
+    const update = () => setCompact(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return compact;
 }

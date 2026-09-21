@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import "@/styles/editor.css";
@@ -20,6 +20,14 @@ const sans = Plus_Jakarta_Sans({
   variable: "--font-sans",
   display: "swap",
 });
+
+// Android shrinks the page for the on-screen keyboard rather than sliding it
+// over the top, so a box at the foot of a sheet (Explain's) stays in view.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
+};
 
 export const metadata: Metadata = {
   title: "Grasp — AI notes built for students, not boardrooms",

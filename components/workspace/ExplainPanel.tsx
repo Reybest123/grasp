@@ -131,9 +131,16 @@ export function ExplainPanel({
   }, [open, selected, mode]);
 
   // The editor still has focus when the panel opens, so a keystroke meant for
-  // the panel would land in the note.
+  // the panel would land in the note. On a touch screen focusing the box would
+  // throw the keyboard up over half the sheet when typing is optional, so there
+  // the editor is only let go of.
   useEffect(() => {
-    if (open) inputRef.current?.focus({ preventScroll: true });
+    if (!open) return;
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      (document.activeElement as HTMLElement | null)?.blur();
+    } else {
+      inputRef.current?.focus({ preventScroll: true });
+    }
   }, [open]);
 
   // Switching mode sends nothing: the student gets the same compose step they
@@ -143,7 +150,9 @@ export function ExplainPanel({
     modeRef.current = mode;
     setFresh(true);
     setFailure(null);
-    inputRef.current?.focus({ preventScroll: true });
+    if (!window.matchMedia("(pointer: coarse)").matches) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
   }, [open, mode]);
 
   useEffect(() => {
@@ -196,19 +205,25 @@ export function ExplainPanel({
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
+      {/* A side sheet on a laptop or tablet. On a phone a side sheet is the whole
+          screen and hides the note it is talking about, so it rises from the
+          bottom instead and leaves the top of the note in view. */}
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[420px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
+        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[420px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out compact:bottom-0 compact:top-auto compact:h-[85dvh] compact:max-w-none compact:rounded-t-3xl compact:border-l-0 ${
+          open
+            ? "translate-x-0 translate-y-0"
+            : "translate-x-full compact:translate-x-0 compact:translate-y-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="mx-auto mt-2.5 hidden h-1 w-10 shrink-0 rounded-full bg-slate-200 compact:block" />
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 compact:py-2.5">
           <div className="flex items-center gap-2 font-semibold text-ink">
             <SparkleIcon className="h-4 w-4 text-brand-600" />
             {modeLabel}
           </div>
           <button
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"
+            className="-mr-1 grid h-10 w-10 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-ink"
             aria-label="Close"
           >
             <CloseIcon className="h-5 w-5" />
@@ -288,7 +303,7 @@ export function ExplainPanel({
           </div>
         </div>
 
-        <div className="border-t border-slate-200 p-3">
+        <div className="border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {/* The passage the next request is about, right above where it is typed. */}
           {fresh && <QuoteCard text={selected} label={modeLabel} className="mb-2 w-full" />}
           <div className="flex items-end gap-2">
@@ -312,12 +327,14 @@ export function ExplainPanel({
                     ? "Say how it should be reworked…"
                     : "Ask a follow-up…"
               }
-              className="flex-1 resize-none overflow-hidden rounded-xl border border-slate-300 px-3 py-2 text-sm leading-5 outline-none focus:border-brand-500"
+              enterKeyHint="send"
+              // 16px on a phone: iOS zooms the whole page into any box set smaller.
+              className="flex-1 resize-none overflow-hidden rounded-xl border border-slate-300 px-3 py-2 text-base leading-6 outline-none focus:border-brand-500 roomy:text-sm roomy:leading-5"
             />
             <button
               onClick={send}
               disabled={pending || (!fresh && !input.trim())}
-              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+              className="min-h-[42px] rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
             >
               {fresh ? modeLabel : "Send"}
             </button>
