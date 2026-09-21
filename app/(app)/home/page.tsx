@@ -140,7 +140,7 @@ export default function HomePage() {
 
           {/* One implicit row sized to the space left, so the meters can fill it
               and the assessments card can scroll within it. */}
-          <div className="mt-6 grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)]">
+          <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)]">
             <div className="flex min-h-0 flex-col">
               <WeekAllowances />
             </div>
@@ -241,7 +241,7 @@ function HomeSkeleton() {
 
       <div
         aria-hidden="true"
-        className="mt-6 grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)]"
+        className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)]"
       >
         <div className="flex min-h-0 flex-col">
           <Skeleton className="h-4 w-24" />

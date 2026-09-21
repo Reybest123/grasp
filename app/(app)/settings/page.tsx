@@ -42,7 +42,7 @@ export default function SettingsPage() {
       {!ready ? (
         <SettingsSkeleton />
       ) : (
-        <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-2">
           <ProfileSection />
           <PasswordSection />
           <div className="lg:col-span-2">
@@ -400,7 +400,7 @@ function DeleteSection() {
 
 function SettingsSkeleton() {
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-2" aria-busy="true">
+    <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-2" aria-busy="true">
       <p className="sr-only" role="status">
         Loading settings
       </p>

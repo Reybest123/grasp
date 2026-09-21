@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/app/Sidebar";
 import { ProfileMenu } from "@/components/app/ProfileMenu";
+import { MobileNav } from "@/components/app/MobileNav";
 import { PageTransition } from "@/components/app/PageTransition";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubjectEditor } from "@/components/SubjectEditor";
@@ -130,7 +131,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               </span>
             )}
-            <ProfileMenu onLogOut={() => setConfirmLogOut(true)} />
+            {/* On a phone the burger replaces both the avatar and the rail. */}
+            <div className="compact:hidden">
+              <ProfileMenu onLogOut={() => setConfirmLogOut(true)} />
+            </div>
+            <MobileNav onLogOut={() => setConfirmLogOut(true)} />
           </div>
         </div>
       </header>
@@ -138,10 +143,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar onLogOut={() => setConfirmLogOut(true)} />
 
       {/* Both the header and the rail are fixed, so the content reserves their
-          space rather than sitting under them. The rail is the only navigation
-          there is, so it stays visible at every width — hiding it on small
-          screens would leave nothing to navigate with. */}
-      <div className="pl-16 pt-[69px]">
+          space rather than sitting under them. At `compact` the rail is hidden
+          and MobileNav's burger is the navigation instead. */}
+      <div className="pt-[69px] roomy:pl-16">
         <main className="min-h-[calc(100dvh-69px)]">
           <PageTransition>{children}</PageTransition>
         </main>

@@ -24,6 +24,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Where the icon rail gives way to the burger menu. A phone on its side is
+      // wider than `md` but only ~390px tall, and a rail plus header there leaves
+      // little room for the page, so height counts as well as width.
+      screens: {
+        compact: { raw: "(max-width: 767px), (max-height: 500px)" },
+        roomy: { raw: "(min-width: 768px) and (min-height: 501px)" },
+      },
       colors: {
         // The navy of the notebook in the logo. Headings and primary text.
         ink: "#0b2340",

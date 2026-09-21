@@ -355,7 +355,7 @@ export function RecordTab({
   if (recorded.length === 0) return <div className="mx-auto max-w-3xl">{main}</div>;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside>
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Recordings</h3>
         <ul className="space-y-1">

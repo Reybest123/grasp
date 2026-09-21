@@ -234,24 +234,30 @@ export function SubjectWorkspace({
 
       {/* Subject header */}
       <div className="px-6 pb-6 pt-5 sm:px-8">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <span
-            className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${color.gradient} text-2xl font-bold text-white shadow-sm`}
+            className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${color.gradient} text-xl font-bold text-white shadow-sm sm:h-14 sm:w-14 sm:text-2xl`}
           >
             {subject.name.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold tracking-tight text-ink">{subject.name}</h1>
+            <h1 className="break-words text-xl font-bold tracking-tight text-ink sm:text-2xl">
+              {subject.name}
+            </h1>
             <p className="truncate text-sm text-slate-500">
               {[subject.teacher, weekly].filter(Boolean).join(" · ") || "No class times set yet"}
             </p>
           </div>
           {onEdit && (
+            // Icon-only on a phone, where the words would squeeze the subject's
+            // name into a column a word wide.
             <button
               onClick={onEdit}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:bg-white hover:text-ink"
+              aria-label="Edit subject"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:bg-white hover:text-ink sm:h-auto sm:w-auto sm:px-3 sm:py-2"
             >
-              <EditIcon className="h-4 w-4" /> Edit subject
+              <EditIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Edit subject</span>
             </button>
           )}
         </div>
@@ -259,19 +265,28 @@ export function SubjectWorkspace({
 
       {/* Tabs — each takes an equal quarter so they span the full width */}
       <div className="border-b border-slate-200">
-        <div className="flex px-6 sm:px-8">
+        {/* On a phone the icon sits above the label and Resource Bank shortens
+            to "Resources", so all four fit without the strip running off-screen. */}
+        <div className="flex px-2 sm:px-8">
           {TABS.map(([key, label, icon]) => (
             <button
               key={key}
               onClick={() => selectTab(key)}
-              className={`-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
+              className={`-mb-px flex min-w-0 flex-1 flex-col items-center justify-center gap-1 border-b-2 px-1 py-2.5 text-xs font-semibold transition sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:text-sm ${
                 tab === key
                   ? "border-brand-600 text-brand-700"
                   : "border-transparent text-slate-500 hover:text-ink"
               }`}
             >
-              {icon("h-4 w-4")}
-              {label}
+              {icon("h-4 w-4 shrink-0")}
+              {key === "resources" ? (
+                <>
+                  <span className="sm:hidden">Resources</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </>
+              ) : (
+                label
+              )}
             </button>
           ))}
         </div>

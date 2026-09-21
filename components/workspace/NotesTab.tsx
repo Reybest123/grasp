@@ -1144,7 +1144,7 @@ export function NotesTab({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       {/* Note list */}
       <aside>
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>

@@ -2,8 +2,9 @@
 
 // The app's primary navigation.
 //
-// A fixed icon rail, always visible and never expandable — there is no way to
-// open it, and no labels. With only two destinations, they split the rail
+// A fixed icon rail, never expandable — there is no way to open it, and no
+// labels. Hidden at `compact` (a phone), where MobileNav's drawer replaces it.
+// With only two destinations, they split the rail
 // between them, half each, rather than sitting as two small rows at the top of
 // a mostly empty panel. A hairline divider separates the halves; the active one
 // is picked out by tint rather than by giving each destination its own colour,
@@ -57,7 +58,7 @@ export function Sidebar({ onLogOut }: { onLogOut: () => void }) {
           of top padding for the content. */}
       <nav
         aria-label="Main"
-        className="fixed bottom-0 left-0 top-[69px] z-40 flex w-16 flex-col border-r border-[#efe3d6] bg-[#f8efe6]"
+        className="fixed bottom-0 left-0 top-[69px] z-40 hidden w-16 roomy:flex flex-col border-r border-[#efe3d6] bg-[#f8efe6]"
       >
         {/* The two destinations, half the rail each. */}
         <div className="flex flex-1 flex-col divide-y divide-slate-200">

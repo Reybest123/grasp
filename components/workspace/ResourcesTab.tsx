@@ -138,7 +138,7 @@ export function ResourcesTab({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             {resources.map((r) => (
               <ResourceCard
                 key={r.id}
