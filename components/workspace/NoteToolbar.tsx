@@ -99,8 +99,8 @@ export function NoteToolbar({
    *  selectionchange, so anything mirroring the active format (the empty-note
    *  placeholder) has no other way to hear about it. */
   onFormat?: () => void;
-  /** Opens the equation editor — the dialog itself lives in NotesTab, which
-   *  also handles reopening an equation the student clicked. */
+  /** Starts an equation at the caret — NotesTab owns equation editing,
+   *  including opening one the student clicked. */
   onEquation: () => void;
   onTable: (rows: number, cols: number) => void;
   onUndo: () => void;

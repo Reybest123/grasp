@@ -39,7 +39,22 @@ import {
   deleteColumns,
   type Cell,
 } from "@/lib/tables";
-import { mathToHtml } from "@/lib/math";
+import {
+  activateMath,
+  canonicalEditorHtml,
+  caretAtPoint,
+  caretToEnd,
+  createBlankMath,
+  deleteAt,
+  ensureAnchors,
+  insertMathText,
+  insertStructure,
+  lockMath,
+  moveCaret,
+  moveVertical,
+  selectionInside,
+  type MathStructure,
+} from "@/lib/mathEdit";
 import { updatedLabel } from "@/lib/schedule";
 import { useNow } from "@/lib/subjectsStore";
 import { NoteToolbar } from "@/components/workspace/NoteToolbar";
@@ -137,17 +152,11 @@ export function NotesTab({
   const historyRef = useRef(new NoteHistory());
   const [canStep, setCanStep] = useState({ undo: false, redo: false });
 
-  // Equation editor. `target` is the equation being reopened, if any; otherwise
-  // the new one lands back at `range`, the caret we saved before the popup
-  // stole focus. `anchor` positions the popup next to where it was opened —
-  // the caret for a fresh equation, the clicked span for an existing one.
-  const [equation, setEquation] = useState<{
-    tex: string;
-    display: boolean;
-    target: HTMLElement | null;
-    range: Range | null;
-    anchor: DOMRect | null;
-  } | null>(null);
+  // The equation open for editing in the note, if any (lib/mathEdit.ts), and
+  // where it sits on screen so the equation bar can centre itself above it.
+  // A ref because the document-level listeners read it outside render.
+  const activeMathRef = useRef<HTMLElement | null>(null);
+  const [mathBox, setMathBox] = useState<DOMRect | null>(null);
 
   // The tip reads as part of the note, so dismissing it should stick.
   useEffect(() => {
@@ -188,7 +197,13 @@ export function NotesTab({
     // a plain comparison read it as a change and rewrote the editor straight
     // after a toolbar press, which threw the caret out of the block onto the
     // editor itself and left the next list button with nothing to act on.
-    if (stripCaretMark(el.innerHTML) !== html) el.innerHTML = html;
+    // An equation open for editing is compared in its stored form too, or
+    // every keystroke in it would read as a change and rebuild it from scratch.
+    if (stripCaretMark(canonicalEditorHtml(el)) !== html) {
+      el.innerHTML = html;
+      activeMathRef.current = null;
+      setMathBox(null);
+    }
   }, [active?.id, active?.body]);
 
   const syncHistory = useCallback(() => {
@@ -210,6 +225,8 @@ export function NotesTab({
     dragAnchor.current = null;
     setCellSel(null);
     setMenu(null);
+    activeMathRef.current = null;
+    setMathBox(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.id]);
 
@@ -225,7 +242,8 @@ export function NotesTab({
       // re-arms, and a structural key (Enter, Backspace in a list) commits
       // without going near one — so the strip belongs at the point of
       // persistence rather than on any single path into it.
-      const html = stripCaretMark(el.innerHTML);
+      // An equation still open for editing is saved in its resting form.
+      const html = stripCaretMark(canonicalEditorHtml(el));
       historyRef.current.record(html, caretOffset(el), coalesce);
       syncHistory();
       updateNote(active.id, { body: html, updated: new Date().toISOString() });
@@ -249,6 +267,8 @@ export function NotesTab({
       const el = editorRef.current;
       if (!step || !el || !active) return;
       el.innerHTML = step.html;
+      activeMathRef.current = null;
+      setMathBox(null);
       el.focus();
       restoreCaret(el, step.caret);
       setPill(null);
@@ -269,98 +289,244 @@ export function NotesTab({
 
   /* -------------------------------- equations ------------------------------- */
 
+  // Equations are typed straight into the note, the way Word and OneNote do it
+  // after Alt+= (lib/mathEdit.ts holds the editing itself). One is open at a
+  // time; the equation bar above it only adds structure at the caret.
+
+  // Document-level listeners read the latest commit through this.
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+
+  const measureMath = useCallback(() => {
+    const m = activeMathRef.current;
+    setMathBox(m?.isConnected ? m.getBoundingClientRect() : null);
+  }, []);
+
+  /** Closes the open equation, writing it back in its resting form. */
+  const endMath = useCallback((): HTMLElement | null => {
+    const m = activeMathRef.current;
+    activeMathRef.current = null;
+    setMathBox(null);
+    if (!m || !m.isConnected) return null;
+    const locked = lockMath(m);
+    commitRef.current();
+    return locked;
+  }, []);
+
+  /** Opens `math` for editing, with the caret where it was clicked or at the end. */
+  function beginMath(math: HTMLElement, point?: { x: number; y: number }) {
+    if (activeMathRef.current && activeMathRef.current !== math) endMath();
+    activateMath(math);
+    activeMathRef.current = math;
+    if (point) caretAtPoint(math, point.x, point.y);
+    else caretToEnd(math);
+    setPill(null);
+    measureMath();
+  }
+
+  /** Closes the open equation and puts the caret on one side of it. */
+  function leaveMath(side: "before" | "after") {
+    const m = activeMathRef.current;
+    if (!m) return;
+    const display = !!m.parentElement?.classList.contains("eq");
+    const locked = endMath();
+    if (!locked) return;
+    const line = locked.parentElement;
+    if (display && side === "after" && line) {
+      // A display equation owns its line, so "after it" is the next line.
+      let next = line.nextElementSibling as HTMLElement | null;
+      if (!next) {
+        next = document.createElement("p");
+        next.appendChild(document.createElement("br"));
+        line.after(next);
+        commit();
+      }
+      placeCaretAtStart(next);
+      return;
+    }
+    const r = document.createRange();
+    if (side === "after") r.setStartAfter(locked);
+    else r.setStartBefore(locked);
+    r.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(r);
+  }
+
+  /** Runs an edit inside the open equation, then saves it. */
+  function runMathEdit(edit: (math: HTMLElement) => void) {
+    const m = activeMathRef.current;
+    if (!m?.isConnected) return;
+    if (!selectionInside(m)) caretToEnd(m);
+    edit(m);
+    commit();
+    measureMath();
+  }
+
   /**
-   * Opens a blank equation at the caret — the toolbar button and Alt+= both
-   * call this. Whether it lands centred is decided here, not by a checkbox:
-   * an equation opened on an otherwise-empty paragraph becomes a standalone
-   * display equation, the way Word centres one typed on its own line; opened
-   * mid-sentence, a list item or a table cell, it stays inline.
+   * Starts a new equation at the caret — the toolbar button and Alt+= both
+   * call this. Started on an empty line it is a display equation, centred on
+   * its own line the way Word treats one; started mid-sentence, in a list item
+   * or a table cell, it stays inline. Text selected in the note becomes the
+   * equation's contents.
    */
   function openEquation() {
     const el = editorRef.current;
+    if (!el) return;
+    if (activeMathRef.current?.isConnected) return;
+    removeCaretMark();
+    el.focus();
+
     const sel = window.getSelection();
-    const inEditor = !!(el && sel?.rangeCount && el.contains(sel.anchorNode));
-    const range = inEditor ? sel!.getRangeAt(0).cloneRange() : null;
-
-    let display = false;
-    let anchor: DOMRect | null = null;
-    if (range && el) {
-      anchor = range.getBoundingClientRect();
-      const block = closestOwnBlock(el, range.startContainer);
-      display =
-        !!block &&
-        block.tagName === "P" &&
-        !block.classList.contains("check") &&
-        isEmptyHtml(block.innerHTML);
-    }
-
-    setEquation({ tex: "", display, target: null, range, anchor });
-  }
-
-  /**
-   * Inserts `html` at `range`'s position by splitting the surrounding node the
-   * way native typing would, rather than `execCommand("insertHTML")` — on a
-   * range collapsed at the very end of a paragraph, Chrome sometimes lands the
-   * insertion as a new sibling of the paragraph instead of inside it, the same
-   * class of bug the list and table code routes around elsewhere in this file.
-   */
-  function insertInlineAt(range: Range, html: string) {
-    range.deleteContents();
-    const temp = document.createElement("div");
-    temp.innerHTML = html;
-    const frag = document.createDocumentFragment();
-    let last: Node | null = null;
-    while (temp.firstChild) {
-      last = temp.firstChild;
-      frag.appendChild(last);
-    }
-    range.insertNode(frag);
-    if (last) {
-      const after = document.createRange();
-      after.setStartAfter(last);
-      after.collapse(true);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(after);
-    }
-  }
-
-  function insertEquation(tex: string) {
-    const el = editorRef.current;
-    if (!el || !equation) return;
-    const html = mathToHtml(tex, equation.display);
-
-    if (equation.target) {
-      // Reopened equation: swap it out, taking the wrapping <p class="eq"> with
-      // it so the student can toggle between inline and centred.
-      const parent = equation.target.parentElement;
-      const node = parent?.classList.contains("eq") ? parent : equation.target;
-      node.outerHTML = html;
-    } else if (equation.range) {
-      el.focus();
-      const block = closestOwnBlock(el, equation.range.startContainer);
-      if (equation.display && block?.tagName === "P" && isEmptyHtml(block.innerHTML)) {
-        // The equation was opened on a blank line: replace that paragraph
-        // outright rather than inserting into it — nesting the new <p class="eq">
-        // inside the empty one would be invalid markup.
-        const temp = document.createElement("div");
-        temp.innerHTML = html;
-        const node = temp.firstElementChild;
-        if (node) block.replaceWith(node);
-      } else {
-        insertInlineAt(equation.range, html);
-      }
+    let range: Range;
+    if (
+      sel?.rangeCount &&
+      sel.anchorNode !== el &&
+      el.contains(sel.anchorNode) &&
+      el.contains(sel.focusNode)
+    ) {
+      range = sel.getRangeAt(0).cloneRange();
     } else {
-      // No caret context (equation opened without focus in the editor):
-      // land it at the end rather than losing it.
-      el.focus();
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      insertInlineAt(range, html);
+      // No caret in the note: start it on a line of its own at the end.
+      let last = el.lastElementChild as HTMLElement | null;
+      if (!last || last.tagName !== "P" || !isEmptyHtml(last.innerHTML)) {
+        last = document.createElement("p");
+        last.appendChild(document.createElement("br"));
+        el.appendChild(last);
+      }
+      range = document.createRange();
+      range.selectNodeContents(last);
+      range.collapse(true);
     }
-    commit();
+
+    // Only a run of text converts; a selection across tables or paragraphs
+    // just starts the equation at its end.
+    let text = "";
+    if (!range.collapsed) {
+      if (!range.cloneContents().querySelector("table, p, li, div, .math")) {
+        text = range.toString();
+        range.deleteContents();
+      } else {
+        range.collapse(false);
+      }
+    }
+
+    const block = closestOwnBlock(el, range.startContainer);
+    const math = createBlankMath(text);
+    if (
+      block &&
+      block.tagName === "P" &&
+      !block.classList.contains("check") &&
+      isEmptyHtml(block.innerHTML)
+    ) {
+      // Replaces the empty paragraph rather than nesting a <p> inside it.
+      const line = document.createElement("p");
+      line.className = "eq";
+      line.appendChild(math);
+      block.replaceWith(line);
+    } else {
+      range.insertNode(math);
+    }
+    beginMath(math);
+    if (text) commit();
   }
+
+  /** Keys that move through or out of the open equation. True when handled. */
+  function onMathKeyDown(e: React.KeyboardEvent, math: HTMLElement): boolean {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      const where = moveCaret(math, e.key === "ArrowLeft" ? -1 : 1);
+      if (where !== "moved") leaveMath(where);
+      return true;
+    }
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      if (!moveVertical(math, e.key === "ArrowUp" ? -1 : 1)) return false;
+      e.preventDefault();
+      return true;
+    }
+    if (e.key === "Enter" || e.key === "Escape") {
+      e.preventDefault();
+      leaveMath("after");
+      return true;
+    }
+    return false;
+  }
+
+  // Typing, deleting and line breaks inside an equation are caught before the
+  // browser acts on them: ^ _ and / build structure the way Word's linear
+  // entry does, deletion must never tear a fraction in half, and Enter leaves
+  // the equation rather than splitting it. beforeinput rather than keydown,
+  // because a phone's keyboard reports those keys to keydown as "Unidentified".
+  const beforeInputRef = useRef<(e: InputEvent) => void>(() => {});
+  beforeInputRef.current = (e: InputEvent) => {
+    const math = activeMathRef.current;
+    if (!math || !selectionInside(math)) return;
+    const type = e.inputType;
+    if (type === "insertText" && (e.data === "^" || e.data === "_" || e.data === "/")) {
+      e.preventDefault();
+      const kind: MathStructure = e.data === "^" ? "sup" : e.data === "_" ? "sub" : "frac";
+      runMathEdit((m) => insertStructure(m, kind));
+      return;
+    }
+    if (type.startsWith("deleteContent") || type.startsWith("deleteWord")) {
+      e.preventDefault();
+      const dir = type.endsWith("Backward") ? -1 : 1;
+      if (deleteAt(math, dir) === "outside") {
+        // Nothing left to delete that way inside it: step out. An equation
+        // with nothing in it is removed on the way.
+        leaveMath(dir < 0 ? "before" : "after");
+      } else {
+        // A run of deleting is one undo step, as it is outside an equation.
+        commit(true);
+        measureMath();
+      }
+      return;
+    }
+    if (type === "insertParagraph" || type === "insertLineBreak") {
+      e.preventDefault();
+      leaveMath("after");
+      return;
+    }
+    // Bold or a colour means nothing inside an equation.
+    if (type.startsWith("format")) e.preventDefault();
+  };
+
+  const hasNote = !!active;
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const onBefore = (e: Event) => beforeInputRef.current(e as InputEvent);
+    el.addEventListener("beforeinput", onBefore);
+    return () => el.removeEventListener("beforeinput", onBefore);
+  }, [hasNote]);
+
+  // The equation closes the moment the caret leaves it — a click elsewhere,
+  // arrowing off a line, tabbing to the title — and the bar follows it on
+  // scroll and resize.
+  useEffect(() => {
+    const onSel = () => {
+      const m = activeMathRef.current;
+      if (!m) return;
+      if (!m.isConnected) {
+        activeMathRef.current = null;
+        setMathBox(null);
+        return;
+      }
+      if (!selectionInside(m)) endMath();
+    };
+    const onMove = () => {
+      if (activeMathRef.current) measureMath();
+    };
+    document.addEventListener("selectionchange", onSel);
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
+    return () => {
+      document.removeEventListener("selectionchange", onSel);
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
+    };
+  }, [endMath, measureMath]);
 
   /* --------------------------------- tables --------------------------------- */
 
@@ -588,7 +754,9 @@ export function NotesTab({
     const el = editorRef.current;
     const sel = window.getSelection();
     const text = sel?.toString().trim() ?? "";
-    if (!el || !sel || sel.isCollapsed || !text) {
+    // Selecting inside an equation being edited is editing it, not asking
+    // about it — the equation bar is already showing.
+    if (!el || !sel || sel.isCollapsed || !text || selectionInside(activeMathRef.current)) {
       setPill(null);
       return;
     }
@@ -896,6 +1064,12 @@ export function NotesTab({
   /** Paste arrives as arbitrary web HTML — strip it to tags the editor owns. */
   function onPaste(e: React.ClipboardEvent) {
     e.preventDefault();
+    // Inside an equation a paste is its plain text, on one line.
+    if (selectionInside(activeMathRef.current)) {
+      const text = e.clipboardData.getData("text/plain").replace(/\s+/g, " ");
+      runMathEdit((m) => insertMathText(m, text));
+      return;
+    }
     const html = e.clipboardData.getData("text/html");
     const clean = html
       ? sanitizeNoteHtml(html)
@@ -942,6 +1116,14 @@ export function NotesTab({
 
     // Typed and deleted characters collapse into one undo step; anything
     // structural (a paste, a format command, a line break) gets its own.
+    // Typing inside an equation can leave a slot empty or a structure without
+    // the text beside it the caret needs; put that back before saving.
+    const math = activeMathRef.current;
+    if (math && selectionInside(math)) {
+      ensureAnchors(math);
+      measureMath();
+    }
+
     commit(type.startsWith("insertText") || type.startsWith("deleteContent"));
   }
 
@@ -1026,6 +1208,15 @@ export function NotesTab({
       }
     }
 
+    // Inside an open equation the arrows walk its structure, and nothing below
+    // (list detaching, cell stepping) applies — except Tab, which still moves
+    // on to the next table cell and closes the equation on the way.
+    const openMath = activeMathRef.current;
+    if (openMath && selectionInside(openMath)) {
+      if (onMathKeyDown(e, openMath)) return;
+      if (e.key !== "Tab") return;
+    }
+
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) return;
     const cell = closestCell(el, sel.anchorNode);
@@ -1103,7 +1294,7 @@ export function NotesTab({
     }
   }
 
-  /** Ticking a checklist box (box area only), or reopening a clicked equation. */
+  /** Ticking a checklist box (box area only), or opening a clicked equation. */
   function onEditorClick(e: React.MouseEvent) {
     const target = e.target as HTMLElement;
     // Any click is a deliberate repositioning — whatever was armed for the
@@ -1112,13 +1303,12 @@ export function NotesTab({
 
     const math = target.closest?.(".math") as HTMLElement | null;
     if (math) {
-      setEquation({
-        tex: math.dataset.tex ?? "",
-        display: !!math.parentElement?.classList.contains("eq"),
-        target: math,
-        range: null,
-        anchor: math.getBoundingClientRect(),
-      });
+      // A drag that happened to end on an equation is a selection, not a
+      // request to edit it.
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed && !math.contains(sel.anchorNode)) return;
+      // Already open: the browser has put the caret where it was clicked.
+      if (math !== activeMathRef.current) beginMath(math, { x: e.clientX, y: e.clientY });
       return;
     }
 
@@ -1441,11 +1631,9 @@ export function NotesTab({
       />
 
       <EquationEditor
-        open={!!equation}
-        initialTex={equation?.tex ?? ""}
-        anchor={equation?.anchor ?? null}
-        onClose={() => setEquation(null)}
-        onInsert={insertEquation}
+        anchor={mathBox}
+        onStructure={(kind) => runMathEdit((m) => insertStructure(m, kind))}
+        onSymbol={(text) => runMathEdit((m) => insertMathText(m, text))}
       />
 
       {menu && (

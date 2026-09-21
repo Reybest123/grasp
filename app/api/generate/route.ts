@@ -4,6 +4,7 @@ import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
 import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
 import { LIMITS } from "@/lib/costModel";
+import { EQUATION_PROMPT } from "@/lib/math";
 
 // The blank-note counterpart to /api/enhance (§3.1): writes a starting set of
 // notes instead of improving existing ones, so the input is a title/subject
@@ -19,7 +20,9 @@ Write real content: definitions, mechanisms, worked examples, the kind of detail
 
 End on the last piece of content. Never close with a sentence addressed to the student or about the notes: no "For further study, consider...", no suggestions of what to explore or read next, no offers of more help ("If you want, I can also..."), no concluding summary or wrap-up line. Do not add a "Summary", "Key takeaways", "Conclusion" or "Further study" section.
 
-Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="..."> for any equation (LaTeX-lite: \\frac{}{}, ^{}, _{}, \\sqrt{}, Greek letter macros like \\pi). Every row of a table must keep the same number of cells.
+Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">, and <p class="eq"> for an equation on its own line. Every row of a table must keep the same number of cells.
+
+${EQUATION_PROMPT}
 
 Never use emojis.`;
 

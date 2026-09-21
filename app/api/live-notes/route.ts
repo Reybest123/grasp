@@ -4,6 +4,7 @@ import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
 import { claimLiveDraft } from "@/lib/usage";
 import { LIMITS, liveOutputTokens } from "@/lib/costModel";
+import { EQUATION_PROMPT } from "@/lib/math";
 
 // §3.1 Record — turns the lecture transcript so far into notes, re-run as more
 // of the lecture arrives so the student watches the notes build.
@@ -28,7 +29,9 @@ A bullet is a <ul><li>. Never fake one by starting a paragraph with a hyphen, da
 
 Return the notes as HTML only: no markdown, no code fences, no commentary before or after.
 
-Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="..."> for any equation (LaTeX-lite: \\frac{}{}, ^{}, _{}, \\sqrt{}, Greek letter macros like \\pi). Every row of a table must keep the same number of cells.
+Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">, and <p class="eq"> for an equation on its own line. Every row of a table must keep the same number of cells.
+
+${EQUATION_PROMPT}
 
 Never use emojis.`;
 

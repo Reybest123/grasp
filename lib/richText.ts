@@ -2,6 +2,8 @@
 // survives a save. The AI layer still speaks plain text, so everything crossing
 // that boundary goes through htmlToText / textToHtml.
 
+import { renderMath } from "@/lib/math";
+
 const BLOCK_TAGS = new Set(["P", "DIV", "LI", "H1", "H2", "H3", "H4", "BLOCKQUOTE"]);
 
 /** Wrappers that hold blocks rather than being one — never a caret's own block. */
@@ -183,7 +185,7 @@ function copyAttributes(from: Element, to: Element, allowed: readonly string[]) 
 function cleanInto(source: Node, target: Node, doc: Document) {
   for (const child of Array.from(source.childNodes)) {
     if (child.nodeType === Node.TEXT_NODE) {
-      target.appendChild(doc.createTextNode(child.textContent ?? ""));
+      appendTextWithMath(child.textContent ?? "", target, doc);
       continue;
     }
     if (!(child instanceof Element)) continue;
@@ -200,6 +202,68 @@ function cleanInto(source: Node, target: Node, doc: Document) {
     cleanInto(child, el, doc);
     target.appendChild(el);
   }
+}
+
+/**
+ * LaTeX delimiters the model sometimes writes in running text despite being
+ * asked for equation elements: \( \), \[ \] and double dollars. Single dollars are left
+ * alone, since "$5" in a note is money far more often than maths.
+ */
+const TEX_DELIMITED = /\\\(([\s\S]+?)\\\)|\\\[([\s\S]+?)\\\]|\$\$([\s\S]+?)\$\$/g;
+
+function appendTextWithMath(text: string, target: Node, doc: Document) {
+  let last = 0;
+  for (const m of text.matchAll(TEX_DELIMITED)) {
+    const tex = (m[1] ?? m[2] ?? m[3] ?? "").trim();
+    if (m.index > last) target.appendChild(doc.createTextNode(text.slice(last, m.index)));
+    if (tex) {
+      const span = doc.createElement("span");
+      span.className = "math";
+      span.setAttribute("data-tex", tex);
+      target.appendChild(span);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) target.appendChild(doc.createTextNode(text.slice(last)));
+}
+
+/**
+ * Every equation is redrawn from its source rather than trusted as sent. The
+ * model is asked for an empty <span class="math" data-tex="..."> and draws
+ * nothing itself, and a paste may carry a half-built structure; either way
+ * what reaches the note is lib/math.ts's own markup for that source. A span
+ * with raw source in it and no data-tex has its text taken as the source.
+ * A paragraph holding nothing but one equation is a display equation.
+ */
+function redrawMath(root: HTMLElement) {
+  // The model sometimes marks a line as a display equation and then writes the
+  // source straight into it, with no span. That text is the source.
+  root.querySelectorAll<HTMLElement>("p.eq").forEach((p) => {
+    const tex = (p.textContent ?? "").trim();
+    if (p.querySelector(".math") || !tex) return;
+    const span = p.ownerDocument.createElement("span");
+    span.className = "math";
+    span.setAttribute("data-tex", tex);
+    p.replaceChildren(span);
+  });
+  root.querySelectorAll<HTMLElement>("span.math").forEach((span) => {
+    const tex = (span.getAttribute("data-tex") || span.textContent || "").trim();
+    if (!tex) {
+      span.remove();
+      return;
+    }
+    span.className = "math";
+    span.setAttribute("contenteditable", "false");
+    span.setAttribute("data-tex", tex);
+    span.innerHTML = renderMath(tex);
+  });
+  root.querySelectorAll<HTMLElement>("p").forEach((p) => {
+    if (p.classList.contains("check") || p.classList.contains("eq")) return;
+    const kids = Array.from(p.childNodes).filter(
+      (n) => !(n.nodeType === Node.TEXT_NODE && !(n.textContent ?? "").trim()) && n.nodeName !== "BR"
+    );
+    if (kids.length === 1 && (kids[0] as Element).classList?.contains("math")) p.classList.add("eq");
+  });
 }
 
 /**
@@ -220,6 +284,7 @@ export function sanitizeNoteHtml(html: string): string {
 
   const target = doc.createElement("div");
   cleanInto(source, target, doc);
+  redrawMath(target);
   return target.innerHTML;
 }
 
@@ -293,7 +358,7 @@ export function foldHyphenBullets(html: string): string {
 export function isEmptyHtml(html: string): boolean {
   if (!html) return true;
   // A blank table or a bare equation has no text but is very much content.
-  if (/<table\b|class="math"/i.test(html)) return false;
+  if (/<table\b|class="[^"]*\bmath\b/i.test(html)) return false;
   return html.replace(/<[^>]*>/g, "").replace(/[\s ]/g, "") === "";
 }
 

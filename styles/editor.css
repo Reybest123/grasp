@@ -221,79 +221,188 @@
 }
 
 /* ---------------------------------- math ---------------------------------- */
-/* Built by lib/math.ts from a LaTeX-lite expression; the source stays on
-   data-tex so the equation can be reopened and edited. */
+/* Drawn by lib/math.ts from a LaTeX-lite source kept on data-tex, and edited
+   in place by lib/mathEdit.ts. At rest an equation is one atomic object; with
+   `.active` it is open and the caret moves through its structure. */
+
+.font-math,
+.editor .math,
+.math-preview {
+  font-family: "Cambria Math", Cambria, "STIX Two Math", "Latin Modern Math", "Times New Roman", serif;
+}
 
 .editor .math,
 .math-preview {
-  font-family: "Cambria Math", Cambria, "Times New Roman", serif;
   font-size: 1.08em;
   white-space: nowrap;
 }
 
-/* Atomic and clickable — a click reopens the equation editor. */
+/* A box of its own, so a fraction or root counts towards its height: the
+   shading while editing wraps the whole equation, and the equation bar is
+   placed clear of its top rather than over a numerator. */
+.editor .math {
+  display: inline-block;
+  line-height: 1.5;
+}
+
+/* Breathing room around = + and friends between operands (lib/math.ts). */
+.math .op {
+  margin: 0 0.2em;
+}
+
+/* At rest: clickable, and a click opens it for editing. */
 .editor .math {
   cursor: pointer;
   border-radius: 4px;
-  padding: 0 1px;
+  padding: 0 2px;
   transition: background-color 120ms;
 }
 
-.editor .math:hover {
-  background: #ede9fe;
+.editor .math:not(.active):hover {
+  background: #fff1ea;
 }
 
+/* Open for editing: a shaded box around the region being typed into, the way
+   Word frames an equation while the caret is in it. */
+.editor .math.active {
+  cursor: text;
+  background: #fdf4ee;
+  box-shadow: 0 0 0 1px #f6c3ad;
+  padding: 1px 4px;
+}
+
+/* An empty equation just opened with Alt+=. The caret sits before the words,
+   and the first key typed replaces them. */
+.editor .math.active.ph::after {
+  content: "Type equation here";
+  color: #a39b91;
+  pointer-events: none;
+}
+
+/* An empty slot — a fresh exponent, numerator or root — is a dashed box, so
+   there is something visible to type into. Open equations mark theirs with
+   .ph (the slot holds an invisible anchor, so :empty cannot see it); a stored
+   equation can hold an empty slot too, and that one is :empty. */
+.math.active .ph,
+.math sup:empty,
+.math sub:empty,
+.math .num:empty,
+.math .den:empty,
+.math .sqrt-body:empty {
+  display: inline-block;
+  min-width: 0.62em;
+  min-height: 0.85em;
+  border: 1px dashed #b3aaa0;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+/* A display equation — one started on an empty line — sits centred on its
+   own, a little larger. */
 .editor p.eq {
   margin: 1em 0;
   text-align: center;
 }
 
-.editor p.eq .math,
-.math-preview {
+.editor p.eq .math {
   font-size: 1.2em;
 }
 
+/* Tailwind's base styles already shift every <sup>/<sub> with `top`/`bottom`;
+   in an equation the offset is vertical-align alone, or the two stack and the
+   exponent floats clear of its base. */
 .math sup,
 .math sub {
-  font-size: 0.68em;
+  font-size: 0.7em;
   line-height: 0;
+  position: static;
 }
 
 .math sup {
-  vertical-align: 0.55em;
+  vertical-align: 0.48em;
+}
+
+/* Inside a numerator, denominator or root the exponent has to take up room,
+   or it rides up over the fraction bar or the bar of the root sign. */
+.math .num sup,
+.math .den sup,
+.math .sqrt-body sup,
+.math .num sub,
+.math .den sub,
+.math .sqrt-body sub {
+  line-height: 1.1;
+}
+
+/* An exponent right under the bar of a root would touch it; lift the bar. */
+.math .sqrt-body:has(sup) {
+  padding-top: 0.32em;
 }
 
 .math sub {
-  vertical-align: -0.28em;
+  vertical-align: -0.3em;
 }
 
 .math .frac {
   display: inline-flex;
   flex-direction: column;
-  vertical-align: -0.5em;
+  align-items: stretch;
+  vertical-align: middle;
   text-align: center;
-  margin: 0 0.15em;
+  margin: 0 0.12em;
+  font-size: 0.92em;
+  line-height: 1.25;
 }
 
 .math .frac .num {
-  padding: 0 0.3em;
-  border-bottom: 1px solid currentColor;
+  padding: 0 0.25em 0.08em;
+  border-bottom: 0.07em solid currentColor;
 }
 
 .math .frac .den {
-  padding: 0 0.3em;
+  padding: 0.08em 0.25em 0;
+}
+
+/* The root sign is drawn, not typed: a single stroke stretched to the full
+   height of whatever sits under it, so it reaches the top of a fraction as
+   readily as a single letter, and joins the bar over the radicand without a
+   gap. It is a mask over currentColor, so it follows the text colour. Older
+   notes stored a "√" glyph in this span; its text is simply not painted. */
+.math .sqrt {
+  display: inline-flex;
+  align-items: stretch;
+  vertical-align: middle;
+  margin: 0 0.06em;
 }
 
 .math .sqrt .rad {
-  padding-right: 0.04em;
+  flex: none;
+  width: 0.62em;
+  overflow: hidden;
+  color: inherit;
+  -webkit-text-fill-color: transparent;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 24' preserveAspectRatio='none'%3E%3Cpath d='M0.6 14.2 L3.2 12.6 L6.6 22.6 L11.4 0.7 L12 0.7' fill='none' stroke='black' stroke-width='1.35' stroke-linejoin='round' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")
+    no-repeat 0 0 / 100% 100%;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 24' preserveAspectRatio='none'%3E%3Cpath d='M0.6 14.2 L3.2 12.6 L6.6 22.6 L11.4 0.7 L12 0.7' fill='none' stroke='black' stroke-width='1.35' stroke-linejoin='round' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")
+    no-repeat 0 0 / 100% 100%;
+  user-select: none;
 }
 
-/* inline-block so the overline is drawn above the whole radicand — an inline
-   span would let a superscript poke out over the bar. */
 .math .sqrt .sqrt-body {
   display: inline-block;
-  border-top: 1px solid currentColor;
-  padding: 0.14em 0.16em 0;
+  border-top: 1.35px solid currentColor;
+  padding: 0.12em 0.14em 0 0.08em;
+  line-height: 1.3;
+}
+
+/* The n in an nth root, tucked into the crook of the sign. */
+.math .sqrt .root-idx {
+  font-size: 0.6em;
+  margin-right: -0.55em;
+  align-self: flex-start;
+  position: relative;
+  top: 0.35em;
+  z-index: 1;
 }
 
 /* Highlight-to-explain: the selection glow inside notes. */

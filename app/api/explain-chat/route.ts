@@ -4,6 +4,7 @@ import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
 import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
 import { LIMITS } from "@/lib/costModel";
+import { EQUATION_PROMPT } from "@/lib/math";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -31,7 +32,9 @@ Leave the rest of the note alone: every other part, and all of the note's struct
 If the student asks a question rather than for a change, answer it briefly and return revisedNote as null.`,
 } as const;
 
-const NOTE_FORMAT = `The note is HTML. The revisedNote you return must be the FULL note as HTML using only these tags: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">. Preserve the student's existing formatting exactly: emphasis, colours, checklist items written as <p class="check" data-done="true|false"> with their ticked state, tables with every row keeping the same number of cells, and equations copied through character for character.`;
+const NOTE_FORMAT = `The note is HTML. The revisedNote you return must be the FULL note as HTML using only these tags: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, <span class="math" data-tex="..."> and <p class="eq">. Preserve the student's existing formatting exactly: emphasis, colours, checklist items written as <p class="check" data-done="true|false"> with their ticked state, tables with every row keeping the same number of cells, and every equation copied through with its data-tex exactly as it is, the span left empty.
+
+${EQUATION_PROMPT}`;
 
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
