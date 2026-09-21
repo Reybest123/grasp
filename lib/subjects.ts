@@ -134,7 +134,12 @@ export function makeExam(date: string, title?: string): Exam {
   return { id: uid("e"), date, title };
 }
 
-/** A fresh, empty subject. Colour is auto-assigned from its position in the grid. */
+/**
+ * A fresh, empty subject. Colour is auto-assigned from its position in the grid.
+ * It starts with one blank note, so a new notebook opens somewhere to write
+ * rather than on the "no notes" state, which is kept for a student who has
+ * deleted every note on purpose.
+ */
 export function createSubject(name: string, index: number): Subject {
   return {
     id: uid("s"),
@@ -142,7 +147,7 @@ export function createSubject(name: string, index: number): Subject {
     colorKey: autoColorKey(index),
     classes: [],
     exams: [],
-    notes: [],
+    notes: [{ id: uid("n"), title: "", body: "", updated: new Date().toISOString() }],
     resources: [],
     quizTopics: [],
     quizzes: [],

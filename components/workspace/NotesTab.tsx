@@ -57,6 +57,7 @@ import {
   CloseIcon,
   EditIcon,
   MicIcon,
+  NoteIcon,
   PlusIcon,
   SparkleIcon,
   TrashIcon,
@@ -91,26 +92,6 @@ export function NotesTab({
   resources: ResourceBrief[];
 }) {
   const active = notes.find((n) => n.id === activeId) ?? notes[0];
-
-  // A subject with no notes opens on a blank one rather than on an empty state.
-  // "No notes yet" was a dead end wearing the shape of a card: the only thing
-  // to do on it was press New note, so the screen existed to ask a question
-  // that had exactly one answer. Deleting the last note lands here too, which
-  // is why the guard clears itself the moment a note exists again — the next
-  // time the list empties it seeds a fresh one.
-  //
-  // The ref is what survives React's dev-mode double-invoke of this effect;
-  // without it a fresh subject would open with two blank notes in it.
-  const seeding = useRef(false);
-  useEffect(() => {
-    if (notes.length > 0) {
-      seeding.current = false;
-      return;
-    }
-    if (seeding.current) return;
-    seeding.current = true;
-    addNote("", "");
-  }, [notes.length, addNote]);
 
   // "2m ago" in the note list is relative to a clock, so it has to be the
   // client's — rendering it during SSR would hydrate into a different string.
@@ -1154,9 +1135,31 @@ export function NotesTab({
   }
 
   if (!active) {
-    // One frame at most — the effect above is already creating the note. Held
-    // at the editor's own height so the page does not jump when it arrives.
-    return <div className="min-h-[440px]" aria-hidden="true" />;
+    // Every note has been deleted. New subjects start with a blank note
+    // (createSubject), so this is only reached on purpose, and it says so
+    // rather than quietly putting a fresh "Untitled note" back.
+    return (
+      <button
+        onClick={() => addNote("", "")}
+        className="group grid min-h-[440px] w-full place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 p-10 text-center transition hover:border-brand-400 hover:bg-brand-50/40"
+      >
+        <div className="max-w-md">
+          <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-slate-300 text-slate-400 transition group-hover:border-brand-400 group-hover:bg-white group-hover:text-brand-600">
+            <NoteIcon className="h-7 w-7" />
+          </span>
+          <h2 className="mt-5 text-2xl font-bold tracking-tight text-ink transition group-hover:text-brand-700">
+            You have no notes
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Start a note for {subjectName}, or record a lecture and Grasp will write one for you.
+          </p>
+          <span className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition group-hover:bg-brand-700">
+            <PlusIcon className="h-4 w-4" />
+            New note
+          </span>
+        </div>
+      </button>
+    );
   }
 
   return (

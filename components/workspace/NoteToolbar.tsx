@@ -162,6 +162,23 @@ export function NoteToolbar({
   const cmd = (name: string, value?: string) =>
     run(() => document.execCommand(name, false, value));
 
+  // Ctrl/Cmd+B, I and U go through exactly the path a button press does. Left
+  // to the browser they toggle the format but raise no selectionchange, so the
+  // button only lit up once the first character was typed, and the press
+  // skipped the undo step and the caret mark the button gets.
+  useEffect(() => {
+    const shortcuts: Record<string, string> = { b: "bold", i: "italic", u: "underline" };
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+      const name = shortcuts[e.key.toLowerCase()];
+      if (!name || !editorRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+      run(() => document.execCommand(name, false));
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [editorRef, run]);
+
   /** The blocks the current selection covers — one, or a whole dragged run. */
   const selectedBlocks = (el: HTMLElement) => {
     const sel = window.getSelection();
