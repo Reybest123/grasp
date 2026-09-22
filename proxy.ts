@@ -37,16 +37,23 @@ const AUTH_PAGES = ["/login"];
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const signedIn = req.cookies.has(SESSION_COOKIE);
+  // req.nextUrl reflects the request as Railway's proxy hands it to the
+  // container, not the address in the student's browser — on Railway that
+  // meant redirecting straight to the container's own internal port, which
+  // the browser cannot reach. APP_URL is the address that is actually public
+  // (lib/verification.ts's appOrigin does the same, but that module pulls in
+  // node:crypto and pg, neither of which the Edge runtime here can bundle).
+  const base = process.env.APP_URL?.replace(/\/+$/, "") || req.nextUrl.origin;
 
   if (!signedIn && PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    const login = new URL("/login", req.nextUrl);
+    const login = new URL("/login", base);
     // So the student lands back where they were aiming once they are in.
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
 
   if (signedIn && AUTH_PAGES.includes(pathname)) {
-    return NextResponse.redirect(new URL("/home", req.nextUrl));
+    return NextResponse.redirect(new URL("/home", base));
   }
 
   return NextResponse.next();

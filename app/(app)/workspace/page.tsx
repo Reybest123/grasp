@@ -28,7 +28,7 @@ export default function WorkspacePage() {
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">Your notebooks</h1>
         {subjects.length > 0 && (
           <p className="text-sm tabular-nums text-slate-500">
-            {subjects.length} {subjects.length === 1 ? "subject" : "subjects"}
+            {subjects.length} {subjects.length === 1 ? "notebook" : "notebooks"}
           </p>
         )}
       </div>

@@ -10,7 +10,7 @@
 // §11). Anything moved out of the layout and into a page would take the
 // recording down with it on the next navigation.
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/app/Sidebar";
@@ -160,9 +160,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           if (!editing) return;
           // Deleting the subject whose workspace is open would leave the page
           // rendering a subject that no longer exists, so step back to the grid
-          // first.
+          // first. router.push is itself a transition; removeSubject has to be
+          // wrapped in one too, or it lands as an urgent update that pre-empts
+          // the navigation and renders "Subject not found" on the old route for
+          // a frame before the transition finishes landing on /workspace.
           router.push("/workspace");
-          removeSubject(editing.id);
+          startTransition(() => {
+            removeSubject(editing.id);
+          });
         }}
       />
 
