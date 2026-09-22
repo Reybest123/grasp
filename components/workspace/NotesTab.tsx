@@ -689,14 +689,18 @@ export function NotesTab({
     }, []);
 
   const syncCaretMark = useCallback(() => {
-    removeCaretMark();
     const el = editorRef.current;
     const sel = window.getSelection();
-    if (!el || !sel || !sel.isCollapsed || !sel.rangeCount || !el.contains(sel.anchorNode)) return;
+    if (!el || !sel || !sel.isCollapsed || !sel.rangeCount || !el.contains(sel.anchorNode)) {
+      removeCaretMark();
+      return;
+    }
 
-    const block = closestOwnBlock(el, sel.anchorNode);
-    if (!block || !isEmptyHtml(block.innerHTML)) return;
-
+    // Read what's armed for the next keystroke *before* removeCaretMark runs.
+    // It deletes the very node the caret sits in to strip the old mark, and
+    // that mutation can reset the browser's own pending typing style — so a
+    // second format armed on top of the first (bold, then underline) read
+    // the first back as off the instant the mark was rebuilt after it.
     const bold = document.queryCommandState("bold");
     const italic = document.queryCommandState("italic");
     const underline = document.queryCommandState("underline");
@@ -704,6 +708,11 @@ export function NotesTab({
     const color = toHex(document.queryCommandValue("foreColor") || DEFAULT_TEXT_COLOR);
     const hasSize = size === "5" || size === "6";
     const hasColor = color !== DEFAULT_TEXT_COLOR;
+
+    removeCaretMark();
+
+    const block = closestOwnBlock(el, sel.anchorNode);
+    if (!block || !isEmptyHtml(block.innerHTML)) return;
     if (!bold && !italic && !underline && !hasSize && !hasColor) return;
 
     let html: string = CARET_MARK;
