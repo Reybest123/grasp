@@ -123,10 +123,6 @@ export function ResourcesTab({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="text-xs font-semibold text-slate-500">
-                {profile.unlimited ? `${resources.length} · Unlimited` : `${resources.length} of ${limit}`}{" "}
-                · {PLAN_LABEL[plan]} plan
-              </span>
               <button
                 onClick={() => setView("add")}
                 disabled={full}

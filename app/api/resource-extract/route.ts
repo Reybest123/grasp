@@ -49,7 +49,9 @@ entries — the document broken into the rows a student would want to see, in th
 
 Keep every mark allocation, weighting, percentage, date and command word ("analyse", "evaluate", "justify"): those are exactly the parts that change how Grasp writes and marks. Cover the whole document rather than stopping after the first few rows, up to ${MAX_ENTRIES} entries.
 
-Never invent a criterion, a date, a mark or a weighting that is not in the document. If it is unreadable, blank, or holds nothing structured, return an empty entries array and say so plainly in the summary.
+Not every resource is a formal table. Plain instructions the student wants Grasp to follow when it writes for them — "make anything you generate IB appropriate", "always use British spelling", "keep explanations to one paragraph" — are just as usable as a rubric. A document like that has no criteria or bands to list one row per; instead, give it "kind": "Other" and one entry per distinct instruction, "label" naming what it governs ("Style", "Curriculum") and "detail" the instruction itself, close to how the student wrote it.
+
+Never invent a criterion, a date, a mark or a weighting that is not in the document. Only return an empty entries array when there is truly nothing to extract: the document is blank, unreadable, or corrupted — never merely because it holds instructions instead of a table.
 
 Write plain text in every field — no markdown, no HTML, no emojis.`;
 

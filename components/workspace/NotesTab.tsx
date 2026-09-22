@@ -84,6 +84,19 @@ const TIP_KEY = "grasp.hideNoteTip";
 /** The editor always holds at least one block, so the toolbar has something to act on. */
 const EMPTY_BODY = "<p><br></p>";
 
+/**
+ * True only for a note that still has just its single starting block — the
+ * state the "Start typing…" placeholder belongs to. Pressing Enter on a
+ * blank note splits that block in two (both still empty), and although the
+ * body stays textless, it is no longer the pristine first-line state the
+ * placeholder describes, so it should not keep sitting there.
+ */
+function isPristineBlank(html: string): boolean {
+  if (!isEmptyHtml(html)) return false;
+  const blocks = html.match(/<(p|li|div)\b/gi);
+  return !blocks || blocks.length <= 1;
+}
+
 export function NotesTab({
   notes,
   activeId,
@@ -567,7 +580,7 @@ export function NotesTab({
    * does not mirror bold, italic, underline or a size tier armed on the caret,
    * which made it jump about as the toolbar was pressed.
    */
-  const blankNote = isEmptyHtml(active?.body ?? "");
+  const blankNote = isPristineBlank(active?.body ?? "");
   const [hint, setHint] = useState<{
     top: number;
     left: number;
@@ -581,8 +594,10 @@ export function NotesTab({
     // pressing a toolbar button while the caret happens to sit in an
     // already-written note calls this too (it also has to place the caret
     // mark below), and the hint must never show once real text exists
-    // anywhere, not just at the point this callback was created.
-    if (!el || !wrap || !isEmptyHtml(el.innerHTML)) return setHint(null);
+    // anywhere, not just at the point this callback was created — nor once
+    // Enter has split the starting block in two, even though both halves
+    // are still empty.
+    if (!el || !wrap || !isPristineBlank(el.innerHTML)) return setHint(null);
     const block = el.querySelector<HTMLElement>("p, li, td, th");
     if (!block) return setHint(null);
 
