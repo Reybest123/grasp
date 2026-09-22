@@ -14,7 +14,6 @@
 // instead of cycling the same lines forever.
 
 import { useEffect, useState } from "react";
-import { SparkleIcon } from "@/components/icons";
 
 const STEP_MS = 2600;
 const SLOW_MS = 20000;
@@ -92,9 +91,6 @@ function WritingPage() {
           ))}
         </div>
       </div>
-      <span className="glint absolute -right-2.5 -top-2.5 grid h-7 w-7 place-items-center rounded-full bg-brand-500 text-white shadow-soft">
-        <SparkleIcon className="h-3.5 w-3.5" />
-      </span>
     </div>
   );
 }

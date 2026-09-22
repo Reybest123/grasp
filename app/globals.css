@@ -227,20 +227,6 @@ select[class~="border-slate-200"] {
   animation: writeLine 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 
-@keyframes glint {
-  0%,
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    transform: scale(1.12) rotate(12deg);
-  }
-}
-
-.glint {
-  animation: glint 2.4s ease-in-out infinite;
-}
-
 /* The status line swapping to its next step. Keyed on the text, so it replays. */
 @keyframes statusIn {
   from {
@@ -284,7 +270,6 @@ select[class~="border-slate-200"] {
 
 @media (prefers-reduced-motion: reduce) {
   .write-line,
-  .glint,
   .status-in,
   .typing-dots::after {
     animation: none;
