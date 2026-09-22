@@ -40,10 +40,13 @@
 
 /* -------------------------------- emphasis -------------------------------- */
 
+/* Weight only — a hardcoded colour here used to win over whatever colour
+   (the default or a swatch) actually surrounded the text, so colouring a
+   line and then bolding it, or bolding a line already coloured, turned it
+   back to near-black. Bold should change weight, not colour. */
 .editor b,
 .editor strong {
   font-weight: 700;
-  color: #0f1222;
 }
 
 .editor u {
