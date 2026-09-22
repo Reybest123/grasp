@@ -227,7 +227,13 @@ export function TimetableSetup({
       {stage === "reading" && (
         <WaitingState
           title="Reading your timetable"
-          note="Working out your subjects and when each class runs."
+          steps={[
+            "Looking over your screenshot",
+            "Going through it one day at a time",
+            "Finding each subject and its teacher",
+            "Working out when every class runs",
+            "Setting up a notebook for each subject",
+          ]}
         />
       )}
 

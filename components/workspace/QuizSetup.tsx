@@ -140,11 +140,13 @@ export function QuizSetup({
       <WaitingState
         className="min-h-[360px]"
         title={`Writing ${total} question${total === 1 ? "" : "s"}`}
-        note={
-          noteIds.length
-            ? "Reading the notes you picked and setting questions on what they cover."
-            : "Setting questions on what this subject covers."
-        }
+        steps={[
+          noteIds.length ? "Reading the notes you picked" : "Thinking about what this subject covers",
+          "Choosing what to test you on",
+          "Writing the questions",
+          "Working out every answer",
+          "Double-checking the answer key",
+        ]}
       />
     );
   }

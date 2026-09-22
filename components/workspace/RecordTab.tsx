@@ -207,7 +207,12 @@ export function RecordTab({
         <WaitingState
           className="mt-4 min-h-[240px]"
           title="Polishing your notes"
-          note="Going back over the whole lecture, including the last thing said, to write the final version."
+          steps={[
+            "Catching the last thing that was said",
+            "Going back over the whole lecture",
+            "Sorting it into sections",
+            "Writing the final version of your notes",
+          ]}
         />
       ) : rec.noMaterial ? (
         /* The final transcript didn't hold two sentences of material — a

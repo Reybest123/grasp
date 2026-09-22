@@ -129,7 +129,13 @@ export function ResourceAdd({
       <WaitingState
         className="min-h-[360px]"
         title="Reading your document"
-        note="Grasp only does this once. After this it works from what it read, and the file itself is not kept."
+        steps={[
+          "Opening your document",
+          "Reading it through",
+          "Picking out the parts worth knowing",
+          "Writing up a summary Grasp can work from",
+          "Finishing up",
+        ]}
       />
     );
   }
