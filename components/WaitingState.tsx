@@ -45,7 +45,7 @@ export function WaitingState({
     };
   }, [steps.length]);
 
-  const line = slow ? "Still working. Bigger ones take a little longer." : steps[index];
+  const line = slow ? "Still working. Bigger ones take a little longer" : steps[index];
 
   return (
     <div
