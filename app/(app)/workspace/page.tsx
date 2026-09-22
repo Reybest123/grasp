@@ -3,11 +3,14 @@
 // The notebooks grid — one card per subject, plus the tile that creates one.
 // Opening a card is a real navigation to /workspace/<id>.
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSubjects, useNow } from "@/lib/subjectsStore";
 import { useRecording } from "@/lib/recordingStore";
 import { useChrome } from "@/components/app/AppShell";
 import { SubjectCard, AddSubjectCard } from "@/components/SubjectCard";
+import { NewSubjectDialog } from "@/components/NewSubjectDialog";
+import { autoColorKey } from "@/lib/subjectColors";
 import { Skeleton } from "@/components/Skeleton";
 import { LoadFailed } from "@/components/app/LoadFailed";
 
@@ -17,13 +20,7 @@ export default function WorkspacePage() {
   const { editSubject } = useChrome();
   const { guard } = useRecording();
   const now = useNow();
-
-  function handleAdd() {
-    // Create it empty and drop the student straight into the editor to fill in
-    // whatever they want — nothing is required beyond the name.
-    const created = addSubject("New subject");
-    editSubject(created.id);
-  }
+  const [adding, setAdding] = useState(false);
 
   return (
     <section className="px-6 py-10 sm:px-8">
@@ -64,11 +61,21 @@ export default function WorkspacePage() {
                 onEdit={() => editSubject(s.id)}
               />
             ))}
-            <AddSubjectCard onClick={handleAdd} />
+            <AddSubjectCard onClick={() => setAdding(true)} />
           </>
         )}
       </div>
       )}
+
+      <NewSubjectDialog
+        open={adding}
+        defaultColorKey={autoColorKey(subjects.length)}
+        onClose={() => setAdding(false)}
+        onCreate={({ name, teacher, colorKey }) => {
+          addSubject(name, { teacher: teacher || undefined, colorKey });
+          setAdding(false);
+        }}
+      />
     </section>
   );
 }

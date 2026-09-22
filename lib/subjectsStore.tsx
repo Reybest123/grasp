@@ -48,7 +48,7 @@ type Store = {
   retryLoad: () => void;
   /** true while an edit has failed to save and is waiting to be retried */
   saveFailed: boolean;
-  addSubject: (name: string) => Subject;
+  addSubject: (name: string, patch?: Partial<Pick<Subject, "teacher" | "colorKey">>) => Subject;
   /** onboarding (§2): the timetable becomes the whole subject list */
   replaceSubjects: (built: NewSubject[]) => Promise<void>;
   updateSubject: (id: string, patch: Partial<Subject>) => void;
@@ -198,11 +198,13 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Colour is assigned from the position the subject lands in, so a new one
-  // never duplicates the tile next to it.
+  // never duplicates the tile next to it -- unless the caller (the New
+  // subject dialog) picked one of its own.
   const addSubject = useCallback(
-    (name: string) => {
+    (name: string, patch?: Partial<Pick<Subject, "teacher" | "colorKey">>) => {
       const created = createSubject(name, latest.current.length);
-      created.colorKey = autoColorKey(latest.current.length);
+      created.colorKey = patch?.colorKey ?? autoColorKey(latest.current.length);
+      if (patch?.teacher) created.teacher = patch.teacher;
       setSubjects((prev) => [...prev, created]);
       scheduleFlush(created.id);
       return created;
