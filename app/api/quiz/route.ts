@@ -14,6 +14,24 @@ function clamp(n: unknown): number {
   return Math.min(MAX_PER_KIND, Math.max(0, v));
 }
 
+/** Fisher-Yates over the option order, carrying answerIndex along with it. */
+function shuffleMcqOptions<T extends { kind?: string; options?: unknown[]; answerIndex?: number }>(
+  q: T
+): T {
+  if (q.kind !== "mcq" || !Array.isArray(q.options)) return q;
+  const order = q.options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const options = q.options;
+  return {
+    ...q,
+    options: order.map((i) => options[i]),
+    answerIndex: order.indexOf(q.answerIndex as number),
+  };
+}
+
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
@@ -133,10 +151,14 @@ export async function POST(req: NextRequest) {
         q.answerIndex < q.options.length
       );
     });
-    // Only a provider failure hands the quiz back (above). Once the model has
-    // run it is paid for, and refunding an empty or broken reply would let a
-    // request built to produce one generate for free indefinitely.
-    return NextResponse.json({ questions: clean, used: pickUsed(parsed.used, briefs) });
+    // The model is asked to work out the answer before writing the options
+    // down, which in practice means it writes the correct one first far more
+    // often than chance — measured runs came back mostly answerIndex 0. That
+    // is a real pattern a student would learn to exploit inside a few
+    // quizzes, so the order is reshuffled here rather than trusted from the
+    // model.
+    const shuffled = clean.map(shuffleMcqOptions);
+    return NextResponse.json({ questions: shuffled, used: pickUsed(parsed.used, briefs) });
   } catch {
     console.error("[grasp] quiz JSON did not parse:", result.content.slice(0, 300));
     return NextResponse.json(

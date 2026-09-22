@@ -297,15 +297,18 @@ function StatRow({
       <StatTile
         value={marks ? marks.pct : 0}
         tone={marks ? BAND_RING[bandOf(marks.pct)] : "text-slate-200"}
-        center={(t) =>
-          marks ? (
-            <span className="text-lg font-bold tabular-nums text-ink">
-              {Math.round(marks.pct * t * 100)}%
+        center={(t) => {
+          const pct = Math.round(marks ? marks.pct * t * 100 : 0);
+          return marks ? (
+            <span
+              className={`font-bold tabular-nums text-ink ${pct >= 100 ? "text-sm" : "text-lg"}`}
+            >
+              {pct}%
             </span>
           ) : (
             <span className="text-lg font-bold text-slate-300">&ndash;</span>
-          )
-        }
+          );
+        }}
         label="Understanding"
         sub={
           marks
