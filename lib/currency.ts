@@ -45,10 +45,12 @@ export function currencyForCountry(code: string | null | undefined): Currency {
  * The country a request appears to come from, or null.
  *
  * Read in order of how much the source actually knows. The two geo headers are
- * set by the edge network in front of the app and are real IP geolocation;
- * Railway sets neither today, so in practice the language header is what
- * answers, and the geo headers are there so that putting Cloudflare in front
- * (or moving back to Vercel) upgrades this on its own with no code change.
+ * set by the edge network in front of the app and are real IP geolocation.
+ * graspstudy.com is proxied through Cloudflare (2026-09-23), so `cf-ipcountry`
+ * is the one that actually answers; `x-vercel-ip-country` is dead code kept
+ * for a return to Vercel, and the language header is the fallback for anything
+ * that reaches the app without going through either edge (local dev, hitting
+ * Railway's own address directly).
  *
  * `Accept-Language` is a weaker signal than an IP — it is the device's locale,
  * not its location — but it is free, needs no third-party lookup on the path
