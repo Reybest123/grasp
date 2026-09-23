@@ -15,9 +15,9 @@
 //
 //   address — the caller's IP. A weaker signal, and deliberately loose, because
 //     schools NAT an entire site behind one address: a class logging in together
-//     must not lock each other out. It is also spoofable by anyone who can set
-//     `X-Forwarded-For` upstream of our proxy, which is exactly why it is the
-//     secondary check and not the primary one. It catches the broad, cheap case
+//     must not lock each other out. It is also spoofable by anyone who skips
+//     Cloudflare and hits Railway's own address with a forged header, which is
+//     exactly why it is the secondary check and not the primary one. It catches the broad, cheap case
 //     of one host spraying many addresses.
 //
 // Only FAILURES are recorded. A successful login clears its account bucket, so a
@@ -88,10 +88,16 @@ export type RateGate =
  * is the stronger one, doing the work.
  */
 function addressOf(req: Request): string | null {
-  // The left-most entry is the original client; the rest are proxies. Client
-  // controlled in principle, hence the comment at the top of this file.
+  // Cloudflare proxies graspstudy.com and sets CF-Connecting-IP to the visitor,
+  // overwriting any the client sent. The fallbacks cover requests that skip
+  // Cloudflare (local dev, Railway's own address), where the left-most
+  // X-Forwarded-For entry is the client and is client-controlled.
   const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const address = forwarded || req.headers.get("x-real-ip")?.trim() || "";
+  const address =
+    req.headers.get("cf-connecting-ip")?.trim() ||
+    forwarded ||
+    req.headers.get("x-real-ip")?.trim() ||
+    "";
   return address ? address.slice(0, 64) : null;
 }
 
