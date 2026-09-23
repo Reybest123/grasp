@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   // Opened on another device, or while signed in as someone else.
   if (!user || user.id !== confirmedId) return to("/login?verified=1");
 
-  // A new account goes on to onboarding; one that has already finished it (a
-  // second click, say) goes to its dashboard.
-  return to(user.plan ? "/home" : "/onboarding");
+  // A new account gets a thank-you screen before onboarding; one that has
+  // already finished it (a second click, say) goes to its dashboard.
+  return to(user.plan ? "/home" : "/email-confirmed");
 }

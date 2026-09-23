@@ -147,7 +147,7 @@ export function OnboardingFlow({
 
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto">
         {question ? (
-          <section key={question.id} className="mx-auto max-w-2xl px-6 py-8">
+          <section key={question.id} className="rise mx-auto max-w-2xl px-6 py-8">
             <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
               {question.title}
             </h1>
@@ -204,7 +204,7 @@ export function OnboardingFlow({
             </div>
           </section>
         ) : (
-          <section className="mx-auto max-w-4xl px-6 py-6">
+          <section key="plans" className="rise mx-auto max-w-4xl px-6 py-6">
             <div className="text-center">
               <h1 className="text-3xl font-extrabold tracking-tight text-ink">Choose your plan</h1>
               <p className="mx-auto mt-2 max-w-md text-slate-600">

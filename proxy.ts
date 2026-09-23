@@ -25,6 +25,7 @@ const PROTECTED = [
   "/subject",
   "/onboarding",
   "/verify-email",
+  "/email-confirmed",
 ];
 
 /**

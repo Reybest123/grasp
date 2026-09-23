@@ -1,8 +1,8 @@
 "use client";
 
 // The check-your-email screen. The only things to do here are wait for the
-// link, ask for it again, or leave — which is also how a student who typed the
-// wrong address gets out, by logging out and signing up again.
+// link, ask for it again, or leave. Leaving deletes the unconfirmed account, so
+// a student who typed the wrong address can sign up again straight away.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,7 @@ export function VerifyEmail({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState(status ? STATUS_MESSAGE[status] : "");
 
   async function resend() {
@@ -47,13 +48,18 @@ export function VerifyEmail({
     setBusy(false);
   }
 
+  // Removes the unconfirmed account, not just the session, so the address can
+  // be signed up with again straight away. If that fails, plain log out still
+  // gets the student off this page.
   async function logOut() {
+    setLeaving(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      const res = await fetch("/api/auth/verify/discard", { method: "POST" });
+      if (!res.ok) await fetch("/api/auth/logout", { method: "POST" });
     } catch {
       // The destination is the same either way.
     }
-    router.replace("/");
+    router.replace("/signup");
   }
 
   return (
@@ -64,7 +70,7 @@ export function VerifyEmail({
       </header>
 
       <section className="min-h-0 flex-1 overflow-y-auto px-6">
-        <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-6">
+        <div className="rise mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-6">
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
             <MailIcon className="h-6 w-6" />
           </span>
@@ -100,15 +106,20 @@ export function VerifyEmail({
           </button>
 
           <p className="mt-6 text-sm leading-6 text-slate-500">
-            Not in your inbox? Check your spam folder. Wrong address?{" "}
+            Not in your inbox? Check your spam or junk folder, and mark it as not spam so the next one
+            arrives normally.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            Wrong address?{" "}
             <button
               type="button"
               onClick={logOut}
-              className="font-semibold text-brand-700 underline-offset-4 hover:underline"
+              disabled={leaving}
+              className="font-semibold text-brand-700 underline-offset-4 hover:underline disabled:opacity-50"
             >
-              Log out
+              {leaving ? "Logging out…" : "Log out"}
             </button>{" "}
-            and sign up again.
+            and this unconfirmed account is removed, so you can sign up again with the right one.
           </p>
         </div>
       </section>
