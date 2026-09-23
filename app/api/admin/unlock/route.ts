@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That password is incorrect." }, { status: 401 });
   }
 
+  await gate.release();
   // Unlocking again keeps whatever was already switched on.
   const state = (await readAdmin()) ?? ADMIN_DEFAULT;
   await writeAdmin(state);

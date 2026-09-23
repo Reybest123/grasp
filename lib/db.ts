@@ -43,6 +43,33 @@ export async function sql(strings: TemplateStringsArray, ...values: unknown[]): 
   return result.rows;
 }
 
+export type Sql = typeof sql;
+
+/**
+ * Runs `run` inside one transaction on one connection: every statement commits
+ * together or none do. The callback is handed its own `sql`, bound to that
+ * connection. Name the parameter `sql` so scripts/check-scoping.mjs still
+ * reads every query written inside it.
+ */
+export async function transaction<T>(run: (sql: Sql) => Promise<T>): Promise<T> {
+  const client = await pool().connect();
+  const bound: Sql = async (strings, ...values) => {
+    const text = strings.reduce((out, part, i) => out + "$" + i + part);
+    return (await client.query(text, values)).rows;
+  };
+  try {
+    await client.query("begin");
+    const result = await run(bound);
+    await client.query("commit");
+    return result;
+  } catch (err) {
+    await client.query("rollback").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 /** True when the app has a database to talk to at all. */
 export function hasDatabase(): boolean {
   return Boolean(process.env.DATABASE_URL);

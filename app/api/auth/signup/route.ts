@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
       error: passwordProblem(password, email),
       field: "password",
     });
-  if (refusal) return NextResponse.json(refusal, { status: 400 });
+  if (refusal) {
+    await gate.release();
+    return NextResponse.json(refusal, { status: 400 });
+  }
 
   const hash = await hashPassword(password);
 
@@ -55,6 +58,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (!result.ok) {
+    await gate.release();
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
   if (!result.data) {

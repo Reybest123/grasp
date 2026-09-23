@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     ? "This is the complete lecture. Write the finished set of notes."
     : "The lecture is still running and this transcript is partial. Write the notes for what has been covered so far.";
 
-  const user = `Subject: ${typeof subjectName === "string" ? subjectName : "(unknown)"}
+  const user = `Subject: ${typeof subjectName === "string" ? subjectName.slice(0, 100) : "(unknown)"}
 ${stage}${schedule}
 
 Transcript:

@@ -6,7 +6,7 @@
 // different moment for every one of them.
 
 import { randomUUID } from "node:crypto";
-import { query, sql } from "@/lib/db";
+import { query, sql, transaction, type Sql } from "@/lib/db";
 import {
   DEFAULT_PLAN,
   PLAN_LABEL,
@@ -28,9 +28,13 @@ import {
   LIMITS as CAPS,
   chargedSeconds,
   draftCeiling,
+  tokenActionWorstUsd,
   tokensForCost,
   transcriptCharCap,
 } from "@/lib/costModel";
+
+/** What an AI-token action holds while it runs: the most one can cost. */
+const AI_RESERVATION_TOKENS = tokensForCost(tokenActionWorstUsd());
 
 /**
  * `ai` rows hold the tokens one action was charged in `units`, so that kind is
@@ -137,10 +141,17 @@ export async function allowance(account: Account, kind: UsageKind): Promise<Resu
 }
 
 /**
- * Takes one unit of the weekly allowance, or refuses. The count and the insert
- * are one statement, so two requests racing each other cannot both slip under
- * the cap through the gap between a separate read and write.
+ * Serialises every claim on one account's allowance of one kind until the
+ * transaction ends. A count-then-insert, even written as one statement, is not
+ * enough on its own: under Postgres' default isolation each concurrent
+ * statement counts without seeing the others' uncommitted rows, so twenty
+ * requests at once all read nine of ten used and all insert.
  */
+async function lockAllowance(sql: Sql, userId: string, kind: string) {
+  await sql`select pg_advisory_xact_lock(hashtext(${`${userId}:${kind}`}))`;
+}
+
+/** Takes one unit of the weekly allowance, or refuses. */
 async function claim(
   account: Account,
   kind: UsageKind,
@@ -150,8 +161,10 @@ async function claim(
   // account's real week exactly as it was.
   if (account.unlimited) return { ok: true, data: true };
   const limit = LIMITS[kind](planOf(account));
-  const result = await query(async () => {
-    const rows = await sql`
+  const result = await query(() =>
+    transaction(async (sql) => {
+      await lockAllowance(sql, account.id, kind);
+      const rows = await sql`
       insert into usage (user_id, kind, ref)
       select ${account.id}, ${kind}, ${ref}
       where (
@@ -161,8 +174,9 @@ async function claim(
       on conflict (user_id, kind, ref) do nothing
       returning id
     `;
-    return rows.length > 0;
-  });
+      return rows.length > 0;
+    })
+  );
   if (!result.ok) return failed(result.error, result.status);
   return { ok: true, data: result.data };
 }
@@ -361,31 +375,65 @@ export async function claimMarking(
   };
 }
 
+/** A granted AI-token action: charge it once the provider answers, or release it if the call failed. */
+export type AiTokenGrant = {
+  ok: true;
+  charge: (costUsd: number) => Promise<void>;
+  release: () => Promise<void>;
+};
+
 /**
- * Lets an AI-token action run while any of the week's tokens are left. What it
- * costs is only known once the provider answers, so it is charged afterwards
- * with `chargeAiTokens`; the last action of a week can therefore run a little
- * past the allowance, which lib/plan.ts budgets for.
+ * Lets an AI-token action run while any of the week's tokens are left, and
+ * reserves the most one action can cost before it starts. What it really cost
+ * is only known once the provider answers, so `charge` then replaces the
+ * reservation with the real figure; `release` drops it when the call failed.
+ *
+ * Reserving under the allowance lock is what keeps requests fired together
+ * from all passing on the last token: each one sees the others' reservations.
+ * The last action of a week can still run past the allowance by one action,
+ * which lib/plan.ts budgets for.
  */
 export async function checkAiTokens(
   account: Account
-): Promise<{ ok: true } | { ok: false; response: Response }> {
-  if (account.unlimited) return { ok: true };
-  const current = await allowance(account, "ai");
-  if (!current.ok) return current;
-  const { used, limit, resetsAt } = current.data;
-  if (limit !== null && used >= limit) return refused("ai", resetsAt);
-  return { ok: true };
-}
+): Promise<AiTokenGrant | { ok: false; response: Response }> {
+  const noop = async () => {};
+  if (account.unlimited) return { ok: true, charge: noop, release: noop };
 
-/** Charges what an action actually cost, in tokens. A failed write is logged, not shown. */
-export async function chargeAiTokens(account: Account, costUsd: number): Promise<void> {
-  if (account.unlimited) return;
-  const result = await query(
-    () => sql`
-      insert into usage (user_id, kind, ref, units)
-      values (${account.id}, 'ai', ${randomUUID()}, ${tokensForCost(costUsd)})
-    `
+  const limit = LIMITS.ai(planOf(account));
+  const ref = randomUUID();
+  const reserved = await query(() =>
+    transaction(async (sql) => {
+      await lockAllowance(sql, account.id, "ai");
+      const rows = await sql`
+        insert into usage (user_id, kind, ref, units)
+        select ${account.id}, 'ai', ${ref}, ${AI_RESERVATION_TOKENS}
+        where (
+          select coalesce(sum(units), 0) from usage
+          where user_id = ${account.id} and kind = 'ai' and created_at > now() - interval '7 days'
+        ) < ${limit}
+        returning id
+      `;
+      return rows.length > 0;
+    })
   );
-  if (!result.ok) console.error("[grasp] could not charge AI tokens for", account.id);
+  if (!reserved.ok) return failed(reserved.error, reserved.status);
+  if (!reserved.data) return refused("ai", await resetOf(account, "ai"));
+
+  return {
+    ok: true,
+    charge: async (costUsd) => {
+      const result = await query(
+        () => sql`
+          update usage set units = ${tokensForCost(costUsd)}
+          where user_id = ${account.id} and kind = 'ai' and ref = ${ref}
+        `
+      );
+      if (!result.ok) console.error("[grasp] could not charge AI tokens for", account.id);
+    },
+    release: async () => {
+      await query(
+        () => sql`delete from usage where user_id = ${account.id} and kind = 'ai' and ref = ${ref}`
+      );
+    },
+  };
 }

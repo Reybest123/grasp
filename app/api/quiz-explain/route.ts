@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
-import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
+import { checkAiTokens } from "@/lib/usage";
 import { LIMITS, joinNotes } from "@/lib/costModel";
 
 export async function POST(req: NextRequest) {
@@ -74,8 +74,11 @@ export async function POST(req: NextRequest) {
       },
     ],
   });
-  if (!result.ok) return result.response;
-  await chargeAiTokens(guard.user, result.costUsd);
+  if (!result.ok) {
+    await tokens.release();
+    return result.response;
+  }
+  await tokens.charge(result.costUsd);
 
   const { text, used } = splitUsed(result.content.trim(), briefs);
   return NextResponse.json({ explanation: text, used });

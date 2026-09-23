@@ -121,7 +121,13 @@ export function NoteToolbar({
 
   const syncActive = useCallback(() => {
     const el = editorRef.current;
-    if (!el || !inEditor()) return;
+    if (!el) return;
+    // Out of the editor (the title, another note) there is no table to be in,
+    // so the list buttons must not stay greyed out from the last caret spot.
+    if (!inEditor()) {
+      setActive((a) => (a.inTable ? { ...a, inTable: false } : a));
+      return;
+    }
     // Block state is read off the DOM rather than queryCommandState: the lists
     // here are built by hand, and the checklist is a class the browser has no
     // command for at all.

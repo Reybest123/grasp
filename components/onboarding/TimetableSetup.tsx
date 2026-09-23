@@ -10,7 +10,7 @@
 // dashboard once onboarding is finished. The dashboard passes `save`, which
 // writes the subjects.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
 import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
@@ -73,6 +73,15 @@ export function TimetableSetup({
   // Saves queue behind one another, so two quick edits cannot land out of order
   // and leave the older list as the one stored.
   const saving = useRef<Promise<unknown>>(Promise.resolve());
+  // Closing the popup mid-read does not cancel the request. Its answer must
+  // not then replace every subject the student has made since.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   function keep(next: ExtractedSubject[]): Promise<unknown> {
     setSubjects(next);
@@ -112,6 +121,7 @@ export function TimetableSetup({
     }
 
     const result = await extractTimetable(dataUrl);
+    if (!mounted.current) return;
     if (result.error) {
       setError(result.error);
       setStage("upload");
@@ -144,7 +154,12 @@ export function TimetableSetup({
             ref={inputRef}
             type="file"
             accept={ACCEPT}
-            onChange={(e) => take(e.target.files?.[0])}
+            onChange={(e) => {
+              take(e.target.files?.[0]);
+              // Cleared so picking the same file again (after removing or a
+              // refusal) still fires a change.
+              e.target.value = "";
+            }}
             className="hidden"
           />
 
@@ -258,7 +273,7 @@ export function TimetableSetup({
                 You can add your subjects yourself from your notebooks.
               </p>
             ) : (
-              <ul className="scroll-thin min-h-0 flex-auto divide-y divide-slate-200 overflow-y-auto">
+              <ul className="min-h-0 flex-auto divide-y divide-slate-200 overflow-y-auto">
                 {subjects.map((s, i) => {
                   const gradient = getColor(autoColorKey(i)).gradient;
                   return (

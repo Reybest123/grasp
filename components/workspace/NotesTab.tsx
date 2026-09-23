@@ -23,6 +23,7 @@ import {
   setBlockCheck,
   placeCaretAtStart,
   selectContents,
+  escapeHtml,
 } from "@/lib/richText";
 import { NoteHistory, type Step } from "@/lib/history";
 import {
@@ -37,6 +38,8 @@ import {
   deleteRows,
   deleteColumns,
   deleteBlock,
+  removeTable,
+  blockText,
   neighbourCell,
   moreInCell,
   blockSpan,
@@ -243,6 +246,10 @@ export function NotesTab({
       el.innerHTML = html;
       activeMathRef.current = null;
       setMathBox(null);
+      // A cell selection points at the cells just replaced (an AI enhance or
+      // refine lands here), so it goes with them.
+      dragAnchor.current = null;
+      setCellSel(null);
     }
   }, [active?.id, active?.body]);
 
@@ -1056,7 +1063,6 @@ export function NotesTab({
     if (!span) return;
     const { r0, r1, c0, c1 } = span;
 
-    const after = table.nextElementSibling as HTMLElement | null;
     let survives = true;
 
     if (action === "row-above") insertRow(table, r0, "above");
@@ -1070,10 +1076,7 @@ export function NotesTab({
 
     // Taking out every row or column leaves a table that renders as nothing but
     // is still in the note, so it goes whole instead.
-    if (!survives) {
-      table.remove();
-      if (after) placeCaretAtStart(after);
-    }
+    if (!survives) placeCaretAtStart(removeTable(table));
     // Every op above can replace or remove the nodes the selection points at.
     clearCellSel();
     commit();
@@ -1113,6 +1116,16 @@ export function NotesTab({
     if (selectionInside(activeMathRef.current)) {
       const text = e.clipboardData.getData("text/plain").replace(/\s+/g, " ");
       runMathEdit((m) => insertMathText(m, text));
+      return;
+    }
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    // A cell takes plain lines: pasted paragraphs, lists or tables would break
+    // the row they land in.
+    if (el && sel && closestCell(el, sel.anchorNode)) {
+      const lines = e.clipboardData.getData("text/plain").split(/\r?\n/);
+      document.execCommand("insertHTML", false, lines.map(escapeHtml).join("<br>"));
+      commit();
       return;
     }
     const html = e.clipboardData.getData("text/html");
@@ -1213,9 +1226,10 @@ export function NotesTab({
     else edge.setStart(sel.focusNode, sel.focusOffset);
     const whole = sel.toString().trim() === (cell.textContent ?? "").trim();
     if (!whole && moreInCell(edge, dir)) return false;
+    // At the table's edge there is no cell to grow into; swallowing the key
+    // matches what an existing block does there.
     const next = neighbourCell(cell, dir);
-    if (!next) return false;
-    setCellBlock(cell, next);
+    if (next) setCellBlock(cell, next);
     return true;
   }
 
@@ -1279,16 +1293,31 @@ export function NotesTab({
         e.preventDefault();
         const table = cellBlock[0].closest("table") as HTMLTableElement | null;
         if (!table) return;
-        const after = table.nextElementSibling as HTMLElement | null;
         // Whole rows or whole columns are removed; a smaller block is emptied.
-        const land = deleteBlock(table, cellBlock);
-        if (land) placeCaretAtStart(land);
-        else {
-          table.remove();
-          if (after) placeCaretAtStart(after);
-        }
+        placeCaretAtStart(deleteBlock(table, cellBlock) ?? removeTable(table));
         clearCellSel();
         commit();
+        return;
+      }
+      // Copy, cut and paste act on the block, not on the native range under it,
+      // which runs through whole rows between the block's corners and would
+      // merge and delete cells it was never meant to touch.
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (key === "c" || key === "x")) {
+        e.preventDefault();
+        navigator.clipboard?.writeText(blockText(cellBlock)).catch(() => {});
+        if (key === "x") {
+          clearCells(cellBlock);
+          placeCaretAtStart(cellBlock[0]);
+          clearCellSel();
+          commit();
+        }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && key === "v") {
+        // The paste itself still runs; it lands in the block's first cell.
+        clearCellSel();
+        placeCaretAtStart(cellBlock[0]);
         return;
       }
       // A plain arrow leaves the block for a caret in the cell it grew to.
@@ -1405,9 +1434,7 @@ export function NotesTab({
       e.preventDefault();
       const table = cell.closest("table");
       if (!table || !tableIsEmpty(table)) return;
-      const after = table.nextElementSibling as HTMLElement | null;
-      table.remove();
-      if (after) placeCaretAtStart(after);
+      placeCaretAtStart(removeTable(table));
       commit();
     }
   }

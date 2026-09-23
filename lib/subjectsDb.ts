@@ -9,7 +9,7 @@
 //
 // Server-side only: imports lib/db.ts.
 
-import { sql } from "@/lib/db";
+import { sql, transaction } from "@/lib/db";
 import type { Subject, Note, Quiz } from "@/lib/subjects";
 import type { ClassSlot, Exam } from "@/lib/schedule";
 import type { Resource } from "@/lib/resources";
@@ -176,85 +176,119 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
  * a dropped connection and so reported a refused write as "Grasp could not
  * reach its database" — a 502 for what is really a 404, logged as a database
  * fault. The caller turns this into the right status.
+ *
+ * One transaction: the child rows are deleted and re-inserted together, so a
+ * failed insert rolls the deletes back rather than losing the notes they held.
+ * The upsert locks the subject row until commit, which also makes two saves
+ * of the same subject arriving at once run one after the other rather than
+ * interleaving their deletes and inserts.
  */
 export async function saveSubject(userId: string, subject: Subject): Promise<boolean> {
-  await sql`
-    insert into subjects (id, user_id, name, color_key, teacher, position, quiz_topics)
-    values (
-      ${subject.id}, ${userId}, ${subject.name}, ${subject.colorKey},
-      ${subject.teacher ?? null}, ${0}, ${JSON.stringify(subject.quizTopics ?? [])}
-    )
-    on conflict (id) do update set
-      name = excluded.name,
-      color_key = excluded.color_key,
-      teacher = excluded.teacher,
-      quiz_topics = excluded.quiz_topics
-    where subjects.user_id = ${userId}
-  `;
+  return transaction(async (sql) => {
+    await sql`
+      insert into subjects (id, user_id, name, color_key, teacher, position, quiz_topics)
+      values (
+        ${subject.id}, ${userId}, ${subject.name}, ${subject.colorKey},
+        ${subject.teacher ?? null}, ${0}, ${JSON.stringify(subject.quizTopics ?? [])}
+      )
+      on conflict (id) do update set
+        name = excluded.name,
+        color_key = excluded.color_key,
+        teacher = excluded.teacher,
+        quiz_topics = excluded.quiz_topics
+      where subjects.user_id = ${userId}
+    `;
 
-  // If the row already existed under another account the update above matched
-  // nothing, so nothing may be written beneath it either.
-  const owned = (await sql`
-    select 1 from subjects where id = ${subject.id} and user_id = ${userId}
-  `) as unknown[];
-  if (!owned.length) return false;
+    // If the row already existed under another account the update above matched
+    // nothing, so nothing may be written beneath it either.
+    const owned = (await sql`
+      select 1 from subjects where id = ${subject.id} and user_id = ${userId}
+    `) as unknown[];
+    if (!owned.length) return false;
 
-  await Promise.all([
-    sql`delete from class_slots where subject_id = ${subject.id}`,
-    sql`delete from exams where subject_id = ${subject.id}`,
-    sql`delete from notes where subject_id = ${subject.id}`,
-    sql`delete from resources where subject_id = ${subject.id}`,
-    sql`delete from quizzes where subject_id = ${subject.id}`,
-  ]);
+    // One statement at a time: a transaction runs on a single connection, and
+    // the driver has deprecated queueing overlapping queries on one.
+    await sql`delete from class_slots where subject_id = ${subject.id}`;
+    await sql`delete from exams where subject_id = ${subject.id}`;
+    await sql`delete from notes where subject_id = ${subject.id}`;
+    await sql`delete from resources where subject_id = ${subject.id}`;
+    await sql`delete from quizzes where subject_id = ${subject.id}`;
 
-  await Promise.all([
-    ...subject.classes.map(
-      (c) => sql`
+    // Each table's rows go in as one statement from a JSON array, rather than
+    // one round trip per note, slot, exam, resource and quiz.
+    if (subject.classes.length) {
+      const rows = subject.classes.map((c) => ({
+        id: c.id, day: c.day, start_time: c.start, end_time: c.end ?? null, room: c.room ?? null,
+      }));
+      await sql`
         insert into class_slots (id, subject_id, day, start_time, end_time, room)
-        values (${c.id}, ${subject.id}, ${c.day}, ${c.start}, ${c.end ?? null}, ${c.room ?? null})
-      `
-    ),
-    ...subject.exams.map(
-      (e) => sql`
+        select r.id, ${subject.id}, r.day, r.start_time, r.end_time, r.room
+        from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb)
+          as r(id text, day integer, start_time text, end_time text, room text)
+      `;
+    }
+    if (subject.exams.length) {
+      const rows = subject.exams.map((e) => ({ id: e.id, exam_date: e.date, title: e.title ?? null }));
+      await sql`
         insert into exams (id, subject_id, exam_date, title)
-        values (${e.id}, ${subject.id}, ${e.date}, ${e.title ?? null})
-      `
-    ),
-    ...subject.notes.map(
-      (n, i) => sql`
+        select r.id, ${subject.id}, r.exam_date, r.title
+        from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb)
+          as r(id text, exam_date date, title text)
+      `;
+    }
+    if (subject.notes.length) {
+      const rows = subject.notes.map((n, i) => ({
+        id: n.id, title: n.title, body: n.body, position: i,
+        updated_at: noteStamp(n.updated), recorded: n.recorded ?? false,
+      }));
+      await sql`
         insert into notes (id, subject_id, title, body, position, updated_at, recorded)
-        values (${n.id}, ${subject.id}, ${n.title}, ${n.body}, ${i}, ${noteStamp(n.updated)}, ${n.recorded ?? false})
-      `
-    ),
-    ...subject.resources.map(
-      (r, i) => sql`
-        insert into resources (id, subject_id, name, kind, summary, entries, status, error, position)
-        values (
-          ${r.id}, ${subject.id}, ${r.name}, ${r.kind}, ${r.summary},
-          ${JSON.stringify(r.entries ?? [])}, ${r.status}, ${r.error ?? null}, ${i}
-        )
-      `
-    ),
-    ...subject.quizzes.map(
-      (q) => sql`
+        select r.id, ${subject.id}, r.title, r.body, r.position, r.updated_at, r.recorded
+        from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb)
+          as r(id text, title text, body text, position integer, updated_at timestamptz, recorded boolean)
+      `;
+    }
+    if (subject.resources.length) {
+      const rows = subject.resources.map((r, i) => ({
+        id: r.id, name: r.name, kind: r.kind, summary: r.summary,
+        entries: r.entries ?? [], status: r.status, error: r.error ?? null, position: i,
+        added_at: noteStamp(r.added),
+      }));
+      await sql`
+        insert into resources (id, subject_id, name, kind, summary, entries, status, error, position, added_at)
+        select r.id, ${subject.id}, r.name, r.kind, r.summary, r.entries, r.status, r.error, r.position, r.added_at
+        from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb)
+          as r(id text, name text, kind text, summary text, entries jsonb, status text, error text, position integer, added_at timestamptz)
+      `;
+    }
+    if (subject.quizzes.length) {
+      // created_at is sent too: left to its default it was reset to now() on
+      // every save, so every quiz read "just now" and the grid lost its order.
+      const rows = subject.quizzes.map((q) => ({
+        id: q.id, title: q.title, topics: q.topics ?? [], instructions: q.instructions ?? "",
+        note_ids: q.noteIds ?? [], questions: q.questions ?? [], answers: q.answers ?? {},
+        submitted: q.submitted, score: q.score ?? null, built_with: q.builtWith ?? null,
+        marked_with: q.markedWith ?? null, color_key: q.colorKey ?? null, created_at: noteStamp(q.created),
+      }));
+      await sql`
         insert into quizzes (
-          id, subject_id, title, topics, instructions, note_ids,
-          questions, answers, submitted, score, built_with, marked_with, color_key
+          id, subject_id, title, topics, instructions, note_ids, questions, answers,
+          submitted, score, built_with, marked_with, color_key, created_at
         )
-        values (
-          ${q.id}, ${subject.id}, ${q.title}, ${JSON.stringify(q.topics ?? [])},
-          ${q.instructions ?? ""}, ${JSON.stringify(q.noteIds ?? [])},
-          ${JSON.stringify(q.questions ?? [])}, ${JSON.stringify(q.answers ?? {})},
-          ${q.submitted}, ${q.score ? JSON.stringify(q.score) : null},
-          ${q.builtWith ? JSON.stringify(q.builtWith) : null},
-          ${q.markedWith ? JSON.stringify(q.markedWith) : null},
-          ${q.colorKey ?? null}
-        )
-      `
-    ),
-  ]);
+        select
+          r.id, ${subject.id}, r.title, r.topics, r.instructions, r.note_ids, r.questions, r.answers,
+          r.submitted, r.score, r.built_with, r.marked_with, r.color_key, r.created_at
+        from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb)
+          as r(
+            id text, title text, topics jsonb, instructions text, note_ids jsonb, questions jsonb,
+            answers jsonb, submitted boolean, score jsonb, built_with jsonb, marked_with jsonb,
+            color_key text, created_at timestamptz
+          )
+      `;
+    }
 
-  return true;
+    return true;
+  });
 }
 
 /** Positions are rewritten whenever the grid's order can have changed. */

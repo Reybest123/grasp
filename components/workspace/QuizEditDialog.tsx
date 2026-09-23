@@ -7,11 +7,12 @@
 // directions, and holds the last quiz while closing so the content does not
 // blank out mid-fade.
 
+import { ColorSwatches } from "@/components/ColorSwatches";
 import { useEffect, useRef, useState } from "react";
 import type { Quiz } from "@/lib/subjects";
-import { SUBJECT_COLORS, getColor } from "@/lib/subjectColors";
+import { getColor } from "@/lib/subjectColors";
 import { useEnterTransition } from "@/lib/useEnterTransition";
-import { CheckIcon, CloseIcon, QuizIcon, TrashIcon } from "@/components/icons";
+import { CloseIcon, QuizIcon, TrashIcon } from "@/components/icons";
 
 export function QuizEditDialog({
   quiz: quizProp,
@@ -141,25 +142,7 @@ export function QuizEditDialog({
           <div>
             <p className="text-sm font-semibold text-ink">Colour</p>
             <p className="mt-0.5 text-xs text-slate-500">Matches the subject unless you change it.</p>
-            <div className="mt-3 flex flex-wrap gap-2.5">
-              {SUBJECT_COLORS.map((c) => (
-                <button
-                  type="button"
-                  key={c.key}
-                  onClick={() => setColorKey(c.key)}
-                  title={c.label}
-                  aria-label={c.label}
-                  aria-pressed={colorKey === c.key}
-                  className={`grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br ${
-                    c.gradient
-                  } text-white transition ${
-                    colorKey === c.key ? "ring-2 ring-ink ring-offset-2" : "opacity-80 hover:opacity-100"
-                  }`}
-                >
-                  {colorKey === c.key && <CheckIcon className="h-4 w-4" />}
-                </button>
-              ))}
-            </div>
+            <ColorSwatches value={colorKey} onChange={setColorKey} />
           </div>
         </div>
 

@@ -261,7 +261,8 @@ function DeleteSection() {
   const { profile } = useProfile();
   const status = usePlanStatus();
   // A plan still running has to be cancelled first; the route checks it too.
-  const planActive = Boolean(profile.plan) && status.loaded && !status.error && !status.cancelledAt;
+  const planActive =
+    Boolean(profile.plan) && status.loaded && !status.error && !status.cancelledAt && !status.expired;
   const [open, setOpen] = useState(false);
   // Set by pressing Delete account while the plan is still running. The button
   // stays pressable in that state rather than sitting disabled: a disabled

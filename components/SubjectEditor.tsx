@@ -4,12 +4,13 @@
 // Every field except the name is optional — a student can add nothing here and
 // the app still works. Whatever they do fill in becomes AI context (lib/schedule).
 
+import { ColorSwatches } from "@/components/ColorSwatches";
 import { useEffect, useState } from "react";
 import type { Subject } from "@/lib/subjects";
 import { makeSlot, makeExam } from "@/lib/subjects";
-import { SUBJECT_COLORS, getColor } from "@/lib/subjectColors";
+import { getColor } from "@/lib/subjectColors";
 import type { ClassSlot, Exam } from "@/lib/schedule";
-import { CloseIcon, PlusIcon, TrashIcon, CheckIcon, ExamIcon, ClockIcon } from "@/components/icons";
+import { CloseIcon, PlusIcon, TrashIcon, ExamIcon, ClockIcon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DateSelect } from "@/components/DateSelect";
 import { DaySelect, TimeSelect } from "@/components/ClassTimeSelects";
@@ -21,12 +22,15 @@ export function SubjectEditor({
   onClose,
   onSave,
   onDelete,
+  recording = false,
 }: {
   subject: Subject | null;
   open: boolean;
   onClose: () => void;
   onSave: (patch: Partial<Subject>) => void;
   onDelete: () => void;
+  /** A lecture is being recorded into this subject; deleting it ends that. */
+  recording?: boolean;
 }) {
   // AppShell clears the subject the moment the panel closes. Rendering straight
   // off that prop unmounted the sheet mid-close, so it vanished instead of
@@ -155,26 +159,7 @@ export function SubjectEditor({
             <p className="mt-0.5 text-xs text-slate-500">
               Picked for you automatically — change it if you like.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2.5">
-              {SUBJECT_COLORS.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={() => setColorKey(c.key)}
-                  title={c.label}
-                  aria-label={c.label}
-                  aria-pressed={colorKey === c.key}
-                  className={`grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br ${
-                    c.gradient
-                  } text-white transition ${
-                    colorKey === c.key
-                      ? "ring-2 ring-ink ring-offset-2"
-                      : "opacity-80 hover:opacity-100"
-                  }`}
-                >
-                  {colorKey === c.key && <CheckIcon className="h-4 w-4" />}
-                </button>
-              ))}
-            </div>
+            <ColorSwatches value={colorKey} onChange={setColorKey} />
           </section>
 
           {/* Class times */}
@@ -332,7 +317,9 @@ export function SubjectEditor({
         title={`Delete ${subject.name}?`}
         body={`This removes the subject along with its ${subject.notes.length} note${
           subject.notes.length === 1 ? "" : "s"
-        }, resources and quiz topics. This cannot be undone.`}
+        }, resources and quiz topics.${
+          recording ? " The lecture recording in it ends and is not saved." : ""
+        } This cannot be undone.`}
         confirmLabel="Yes, delete it"
         onConfirm={() => {
           setConfirmDelete(false);

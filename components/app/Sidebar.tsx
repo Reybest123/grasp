@@ -112,6 +112,9 @@ function RailLink({
     <Link
       href={item.href}
       onClick={(e) => {
+        // A modified or middle click opens a new tab, which leaves this one
+        // (and any recording in it) alone, so the browser handles it.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
         e.preventDefault();
         onNavigate(() => router.push(item.href));
       }}

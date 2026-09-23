@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
-import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
+import { checkAiTokens } from "@/lib/usage";
 import { LIMITS } from "@/lib/costModel";
 import { EQUATION_PROMPT } from "@/lib/math";
 
@@ -69,8 +69,11 @@ Note title: ${cleanTitle || "(none given)"}${focus}${schedule}`;
     ],
     temperature: 0.5,
   });
-  if (!result.ok) return result.response;
-  await chargeAiTokens(guard.user, result.costUsd);
+  if (!result.ok) {
+    await tokens.release();
+    return result.response;
+  }
+  await tokens.charge(result.costUsd);
 
   const { text, used } = splitUsed(stripFence(result.content), briefs);
   return NextResponse.json({ generated: text, used });

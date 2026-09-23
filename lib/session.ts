@@ -188,9 +188,14 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       name: row.name,
       verified: row.email_verified_at !== null,
       plan: forced ?? plan,
-      // A forced plan reads as the plan itself, not as a trial of it.
+      // Only a trial still running. The column keeps its date after the trial
+      // converts (it is what stops the account taking a second one), so a past
+      // date means a paying student, not someone on a trial. A forced plan
+      // reads as the plan itself, not as a trial of it.
       trialEndsAt:
-        forced || !row.trial_ends_at ? null : new Date(row.trial_ends_at).toISOString(),
+        forced || !row.trial_ends_at || new Date(row.trial_ends_at).getTime() <= Date.now()
+          ? null
+          : new Date(row.trial_ends_at).toISOString(),
       unlimited: admin?.unlimited === true,
       currency: isCurrency(row.currency) ? row.currency : null,
     };

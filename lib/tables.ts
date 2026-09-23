@@ -137,6 +137,19 @@ export function blockSpan(cells: Cell[]): { r0: number; r1: number; c0: number; 
   };
 }
 
+/** A block's text the way a spreadsheet copies it: cells split by tabs, rows by newlines. */
+export function blockText(cells: Cell[]): string {
+  const rows = new Map<number, string[]>();
+  cells.forEach((cell) => {
+    const row = cellPosition(cell)?.row ?? 0;
+    rows.set(row, [...(rows.get(row) ?? []), (cell.innerText ?? "").trim()]);
+  });
+  return [...rows.keys()]
+    .sort((a, b) => a - b)
+    .map((r) => rows.get(r)!.join("\t"))
+    .join("\n");
+}
+
 /** Empties cells without removing them — a cell always keeps its line box. */
 export function clearCells(cells: Cell[]): void {
   cells.forEach((cell) => {
@@ -219,6 +232,22 @@ export function deleteColumns(table: HTMLTableElement, from: number, to: number)
 }
 
 /**
+ * Takes a table out of the note and returns the block the caret should land
+ * in: whatever followed it, or a fresh empty paragraph when it was the last
+ * thing in the note, so the editor is never left with nowhere to type.
+ */
+export function removeTable(table: HTMLTableElement): HTMLElement {
+  let after = table.nextElementSibling as HTMLElement | null;
+  if (!after) {
+    after = document.createElement("p");
+    after.appendChild(document.createElement("br"));
+    table.after(after);
+  }
+  table.remove();
+  return after;
+}
+
+/**
  * Delete pressed on a block of cells. A block covering whole rows removes those
  * rows, one covering whole columns removes those columns, and anything smaller
  * only empties its cells. Returns the cell the caret should land in, or null
@@ -268,6 +297,15 @@ export function neighbourCell(cell: Cell, dir: ArrowDir): Cell | null {
 export function moreInCell(edge: Range, dir: ArrowDir): boolean {
   const visible = (s: string) => !!s.replace(/[\u200b\ufeff]/g, "").trim();
   if (dir === "left" || dir === "right") return visible(edge.toString());
+
+  // A long line that wraps has no <br> in it, so the stretch's own line boxes
+  // are measured too: spanning more than one line means there is one to go.
+  const rects = Array.from(edge.getClientRects()).filter((r) => r.height > 0);
+  if (rects.length > 1) {
+    const tops = rects.map((r) => r.top);
+    const lineHeight = Math.min(...rects.map((r) => r.height));
+    if (Math.max(...tops) - Math.min(...tops) > lineHeight / 2) return true;
+  }
 
   const part = edge.cloneContents();
   const breaks = part.querySelectorAll("br");

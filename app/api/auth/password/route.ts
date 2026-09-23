@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
   if (!gate.ok) return gate.response;
 
   const problem = passwordProblem(next, guard.user.email);
-  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+  if (problem) {
+    await gate.release();
+    return NextResponse.json({ error: problem }, { status: 400 });
+  }
 
   const found = await query(async () => {
     const rows = (await sql`
@@ -34,13 +37,17 @@ export async function POST(req: NextRequest) {
     `) as { password_hash: string }[];
     return rows[0]?.password_hash ?? null;
   });
-  if (!found.ok) return NextResponse.json({ error: found.error }, { status: found.status });
+  if (!found.ok) {
+    await gate.release();
+    return NextResponse.json({ error: found.error }, { status: found.status });
+  }
 
   if (!found.data || !(await verifyPassword(current, found.data))) {
     await gate.record();
     return NextResponse.json({ error: "That is not your current password." }, { status: 403 });
   }
   if (current === next) {
+    await gate.release();
     return NextResponse.json(
       { error: "That is already your password. Choose a new one." },
       { status: 400 }
@@ -52,7 +59,10 @@ export async function POST(req: NextRequest) {
     await sql`update users set password_hash = ${hash} where id = ${guard.user.id}`;
     await endOtherSessions(guard.user.id);
   });
-  if (!saved.ok) return NextResponse.json({ error: saved.error }, { status: saved.status });
+  if (!saved.ok) {
+    await gate.release();
+    return NextResponse.json({ error: saved.error }, { status: saved.status });
+  }
 
   await gate.clear();
   return NextResponse.json({ ok: true });

@@ -94,7 +94,7 @@ export function TimetableDialog({
           </p>
         </div>
 
-        <div className="scroll-thin flex min-h-0 flex-auto flex-col overflow-y-auto px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
+        <div className="flex min-h-0 flex-auto flex-col overflow-y-auto px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
           <TimetableSetup
             save={save}
             onSubjects={onSubjects}

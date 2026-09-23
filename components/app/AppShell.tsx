@@ -156,8 +156,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         open={editing !== null}
         onClose={() => setEditingId(null)}
         onSave={(patch) => editing && updateSubject(editing.id, patch)}
+        recording={recording && rec.subjectId === editing?.id}
         onDelete={() => {
           if (!editing) return;
+          // A recording into this subject would outlive it with nowhere to be
+          // saved or stopped from, so it ends with the subject.
+          if (rec.subjectId === editing.id) rec.discard();
           // Deleting the subject whose workspace is open would leave the page
           // rendering a subject that no longer exists, so step back to the grid
           // first. router.push is itself a transition; removeSubject has to be

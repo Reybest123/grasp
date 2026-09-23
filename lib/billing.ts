@@ -254,6 +254,9 @@ export async function changePlan(
       items: [{ id: item.id, price: priceId(plan) }],
       proration_behavior: "create_prorations",
       metadata: { ...subscription.metadata, plan },
+      // Only Pro has a trial. Switching to Max mid-trial ends it, so Max is
+      // charged straight away rather than free for the rest of the Pro trial.
+      ...(subscription.status === "trialing" && plan !== "pro" ? { trial_end: "now" as const } : {}),
     });
     await syncSubscription(updated);
     return { ok: true };
@@ -385,7 +388,7 @@ async function writeUser(
           subscription_status = ${subscription.status},
           current_period_end = ${currentPeriodEnd},
           plan_cancelled_at = coalesce(plan_cancelled_at, now()),
-          trial_ends_at = ${trialEndsAt}
+          trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
     `;
   } else {
@@ -396,7 +399,7 @@ async function writeUser(
           subscription_status = ${subscription.status},
           current_period_end = ${currentPeriodEnd},
           plan_cancelled_at = null,
-          trial_ends_at = ${trialEndsAt}
+          trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
     `;
   }

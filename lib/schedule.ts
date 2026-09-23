@@ -214,11 +214,6 @@ export function examStatuses(exams: Exam[], now: Date): ExamStatus[] {
     .sort((a, b) => a.days - b.days);
 }
 
-/** The first of those — what the cards and the subject header show. */
-export function nextExam(exams: Exam[], now: Date): ExamStatus | null {
-  return examStatuses(exams, now)[0] ?? null;
-}
-
 /**
  * Every dated exam across every subject, in the same order — the home
  * dashboard's assessments panel, which lists them rather than showing only the

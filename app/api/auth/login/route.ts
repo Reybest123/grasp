@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
-import { verifyPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSession } from "@/lib/session";
 import { normalizeEmail } from "@/lib/accounts";
 import { authRateLimit } from "@/lib/rateLimit";
@@ -20,6 +20,14 @@ const REJECTED = "The email address or password is incorrect.";
  * outlines both boxes, since either one could be the wrong one.
  */
 const rejected = () => NextResponse.json({ error: REJECTED, field: "password" }, { status: 401 });
+
+/**
+ * A real hash of a random password, checked when the email has no account, so
+ * a missing account costs the same scrypt run as a wrong password. It has to
+ * be well-formed: verifyPassword refuses a malformed one before hashing
+ * anything, which made unknown emails answer instantly.
+ */
+const DUMMY_HASH = hashPassword(crypto.randomUUID());
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -49,6 +57,7 @@ export async function POST(req: NextRequest) {
   if (!result.ok) {
     // A database fault is Grasp's problem, not a failed attempt: counting it
     // would lock students out of an account they typed correctly.
+    await gate.release();
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
@@ -57,7 +66,7 @@ export async function POST(req: NextRequest) {
   // so a missing account and a wrong password take the same time to reject.
   // Otherwise the difference between an instant 401 and a ~100ms one tells a
   // stranger which addresses are registered.
-  const stored = user?.password_hash ?? "scrypt$32768$8$1$00$00";
+  const stored = user?.password_hash ?? (await DUMMY_HASH);
   const valid = await verifyPassword(password, stored);
 
   if (!user || !valid) {

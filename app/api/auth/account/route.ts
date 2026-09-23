@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { destroySession, requireUser } from "@/lib/session";
-import { cancelImmediately } from "@/lib/billing";
+import { cancelImmediately, isExpired } from "@/lib/billing";
 
 export async function DELETE(req: NextRequest) {
   const guard = await requireUser();
@@ -18,14 +18,23 @@ export async function DELETE(req: NextRequest) {
 
   const found = await query(async () => {
     const rows = (await sql`
-      select password_hash, plan, plan_cancelled_at from users where id = ${guard.user.id}
-    `) as { password_hash: string; plan: string | null; plan_cancelled_at: string | Date | null }[];
+      select password_hash, plan, plan_cancelled_at, subscription_status
+      from users where id = ${guard.user.id}
+    `) as {
+      password_hash: string;
+      plan: string | null;
+      plan_cancelled_at: string | Date | null;
+      subscription_status: string | null;
+    }[];
     return rows[0] ?? null;
   });
   if (!found.ok) return NextResponse.json({ error: found.error }, { status: found.status });
 
-  // Checked here as well as in Settings, which only disables the button.
-  if (found.data?.plan && !found.data.plan_cancelled_at) {
+  // Checked here as well as in Settings. A subscription Stripe has already
+  // ended outright never had a cancel date written, and there is nothing left
+  // to cancel on the Plans page, so it does not block deletion.
+  const row = found.data;
+  if (row?.plan && !row.plan_cancelled_at && !isExpired(row.subscription_status)) {
     return NextResponse.json(
       { error: "Cancel your plan on the Plans page before deleting your account.", planActive: true },
       { status: 409 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, stripFence } from "@/lib/openai";
 import { asBriefs, resourceBlock, splitUsed } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
-import { chargeAiTokens, checkAiTokens } from "@/lib/usage";
+import { checkAiTokens } from "@/lib/usage";
 import { LIMITS } from "@/lib/costModel";
 import { EQUATION_PROMPT } from "@/lib/math";
 
@@ -22,7 +22,7 @@ Do all four of these:
 
 Do not append a "Key takeaways", "Summary" or "Notes" section. Do not add headings the student did not ask for. The output must be the same note, better. End on the note's last piece of content: never add a closing sentence addressed to the student, a suggestion of what to study or explore next, or an offer of more help ("If you want, I can also...").
 
-Preserve the student's formatting. Keep every <b>, <i>, <u>, <font size> and <font color> where it already applies, keep checklist items as <p class="check" data-done="true|false"> with their ticked state unchanged, keep any align-center/align-right class on a block exactly as it was, keep every table row and cell in place, and copy every existing <span class="math" data-tex="..."> equation through with its data-tex exactly as it is — never retype or reformat one — leaving the span itself empty. Where the student typed a formula as plain text (v = u + at, x^2 + 3x = 10, a/b), turn it into an equation element. Never strip emphasis, colour, a checklist, an alignment, a table or an equation the student added.
+Preserve the student's formatting. Keep every <b>, <i>, <u>, <font size> and <font color> where it already applies, keep checklist items as <p class="check" data-done="true|false"> with their ticked state unchanged, keep any align-center/align-right class on a block exactly as it was, keep every table row and cell in place, and copy every existing <span class="math" data-tex="..."> equation through with its data-tex exactly as it is — never retype or reformat one — leaving the span itself empty. Where the student typed a mathematical formula as plain text (v = u + at, x^2 + 3x = 10, 3/4 of x), turn it into an equation element. A slash in ordinary words is not maths: leave and/or, either/or, 50/50, km/h, dates like 3/4/2026 and anything else that is not a formula exactly as written. Never strip emphasis, colour, a checklist, an alignment, a table or an equation the student added.
 
 Only these tags are allowed: <p>, <b>, <i>, <u>, <br>, <sup>, <sub>, <font size="1-7">, <font color="#rrggbb">, <ul>, <ol start="n">, <li>, <table>, <tbody>, <tr>, <th>, <td>, and <span class="math" data-tex="...">, and <p class="eq"> for an equation on its own line. Every row of a table must keep the same number of cells.
 
@@ -76,8 +76,11 @@ export async function POST(req: NextRequest) {
     ],
     temperature: 0.4,
   });
-  if (!result.ok) return result.response;
-  await chargeAiTokens(guard.user, result.costUsd);
+  if (!result.ok) {
+    await tokens.release();
+    return result.response;
+  }
+  await tokens.charge(result.costUsd);
 
   const { text, used } = splitUsed(stripFence(result.content), briefs);
   return NextResponse.json({ enhanced: text || body, used });

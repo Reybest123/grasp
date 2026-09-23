@@ -13,6 +13,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { requireUser } from "@/lib/session";
+import { dataUrlPageCount } from "@/lib/pdf";
+
+/** A school week, transcribed lesson by lesson and then grouped, fits well
+ *  inside this; it bounds what one read can cost. */
+const MAX_OUTPUT_TOKENS = 6000;
+const MAX_TIMETABLE_PAGES = 2;
 import { dataUrlType, isSupportedImage, tooLargeMessage, unsupportedFileMessage } from "@/lib/fileTypes";
 
 /** Vercel caps a serverless request body at ~4.5MB; base64 inflates by a third. */
@@ -115,6 +121,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // A timetable is a page or two. Anything longer is not one, and every page
+  // is billed on the most expensive model in the app.
+  if (isPdf && dataUrlPageCount(dataUrl) > MAX_TIMETABLE_PAGES) {
+    return NextResponse.json(
+      {
+        error: `That PDF is longer than a timetable. Please upload just the page with your timetable on it, or a screenshot of it.`,
+      },
+      { status: 400 }
+    );
+  }
+
   // The stronger model, for the same reason the Resource Bank uses it: this
   // read happens once and the student's whole week inherits what it gets wrong.
   const result = await chatCompletion({
@@ -133,6 +150,7 @@ export async function POST(req: NextRequest) {
       },
     ],
     temperature: 0.1,
+    max_completion_tokens: MAX_OUTPUT_TOKENS,
   });
   if (!result.ok) return result.response;
 

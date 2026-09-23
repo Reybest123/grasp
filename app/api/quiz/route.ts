@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
           'You are Grasp, generating a personalized quiz for a student. ' +
           grounding +
           ' Never use emojis. If the student has an assessment coming up soon, lean toward exam-style application questions. ' +
-          'A "mcq" question has exactly 4 options and exactly one correct answer, given as a 0-based answerIndex; the wrong options must be plausible, not filler. ' +
+          'A "mcq" question has exactly 4 options and exactly one correct answer, given as a 0-based answerIndex; the wrong options must be plausible, not filler. The options are shown in a shuffled order, so no option may depend on its position or refer to others: never "All of the above", "None of the above", "Both A and B" or any letter. ' +
           'Work every question out yourself before writing it down, and check that answerIndex points at the option you worked out, and that no other option is also correct. The same goes for every modelAnswer. ' +
           'A "short" question expects one or two sentences. A "long" question expects a paragraph and should ask the student to explain, compare or justify rather than recall. ' +
           'Both "short" and "long" carry a modelAnswer: what a full-mark answer would say. ' +
@@ -147,6 +147,7 @@ export async function POST(req: NextRequest) {
         Array.isArray(q.options) &&
         q.options.length >= 2 &&
         typeof q.answerIndex === "number" &&
+        Number.isInteger(q.answerIndex) &&
         q.answerIndex >= 0 &&
         q.answerIndex < q.options.length
       );

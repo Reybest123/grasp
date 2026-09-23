@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
+import { useRecording } from "@/lib/recordingStore";
 import { DEFAULT_PLAN, PLAN_LABEL } from "@/lib/plan";
 import { limitCopy, subscribeLimit, type LimitEvent } from "@/lib/limitNotice";
 import { useEnterTransition } from "@/lib/useEnterTransition";
@@ -23,6 +24,7 @@ import { PlansIcon } from "@/components/icons";
 
 export function LimitDialog() {
   const router = useRouter();
+  const { guard } = useRecording();
   const { profile } = useProfile();
   const [event, setEvent] = useState<LimitEvent | null>(null);
   const [last, setLast] = useState<LimitEvent | null>(null);
@@ -101,7 +103,7 @@ export function LimitDialog() {
               type="button"
               onClick={() => {
                 setEvent(null);
-                router.push("/plans");
+                guard(() => router.push("/plans"));
               }}
               className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700"
             >

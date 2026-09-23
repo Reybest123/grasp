@@ -9,9 +9,6 @@ const BLOCK_TAGS = new Set(["P", "DIV", "LI", "H1", "H2", "H3", "H4", "BLOCKQUOT
 /** Wrappers that hold blocks rather than being one — never a caret's own block. */
 const CONTAINER_TAGS = new Set(["UL", "OL", "TABLE", "THEAD", "TBODY", "TR"]);
 
-/** A table cell owns its content directly: there is no <p> inside it. */
-const CELL_TAGS = new Set(["TD", "TH"]);
-
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -284,8 +281,38 @@ export function sanitizeNoteHtml(html: string): string {
 
   const target = doc.createElement("div");
   cleanInto(source, target, doc);
+  flattenCellLists(target, doc);
   redrawMath(target);
   return target.innerHTML;
+}
+
+/**
+ * Lists and checklists do not belong in a table cell (a cell is one short
+ * value, and the toolbar will not put one there), so any that arrive in one --
+ * from a paste, an AI reply or an older note -- become plain lines split by
+ * line breaks. Enforced here because every way into a note passes through it.
+ */
+function flattenCellLists(root: HTMLElement, doc: Document) {
+  root.querySelectorAll("td, th").forEach((cell) => {
+    // A checklist item is a paragraph; inside a cell, paragraphs become lines
+    // too, the way the editor writes a cell (Enter adds a <br>, not a <p>).
+    cell.querySelectorAll("p").forEach((para) => {
+      const line = doc.createDocumentFragment();
+      while (para.firstChild) line.appendChild(para.firstChild);
+      if (para.nextSibling) line.appendChild(doc.createElement("br"));
+      para.replaceWith(line);
+    });
+    // Innermost lists first, so a nested list is flattened into its item
+    // before that item is itself flattened into the cell.
+    Array.from(cell.querySelectorAll("ul, ol")).reverse().forEach((list) => {
+      const lines = doc.createDocumentFragment();
+      Array.from(list.children).forEach((item, i) => {
+        if (i > 0) lines.appendChild(doc.createElement("br"));
+        while (item.firstChild) lines.appendChild(item.firstChild);
+      });
+      list.replaceWith(lines);
+    });
+  });
 }
 
 /**
@@ -493,15 +520,6 @@ export function wrapInList(block: HTMLElement, tag: ListTag = "UL"): HTMLElement
   const li = document.createElement("li");
   while (block.firstChild) li.appendChild(block.firstChild);
   if (!li.hasChildNodes()) li.appendChild(document.createElement("br"));
-
-  // A cell holds its content directly, so the list nests inside it rather than
-  // replacing it — a <ul> where a <td> should be would break the row.
-  if (CELL_TAGS.has(block.tagName)) {
-    const nested = document.createElement(tag.toLowerCase());
-    nested.appendChild(li);
-    block.appendChild(nested);
-    return li;
-  }
 
   const prev = block.previousElementSibling;
   const next = block.nextElementSibling;

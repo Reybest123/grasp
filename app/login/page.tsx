@@ -16,6 +16,7 @@ export default async function LoginPage({
   const { next, verified, reset } = await searchParams;
   // Only in-app paths. An absolute URL here would make the login form an open
   // redirect — somewhere to send a student after authenticating them.
-  const safe = next?.startsWith("/") && !next.startsWith("//") ? next : undefined;
+  // A backslash counts too: browsers read "/\evil.com" as "//evil.com".
+  const safe = next && /^\/(?![/\\])/.test(next) && !next.includes("\\") ? next : undefined;
   return <AuthForm mode="login" next={safe} verified={verified === "1"} reset={reset === "1"} />;
 }

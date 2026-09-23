@@ -67,11 +67,6 @@ export function planPrice(plan: Plan, currency: Currency): string {
   return formatMoney(PLAN_PRICE_BY_CURRENCY[currency][plan], currency);
 }
 
-/** The amount in cents Stripe charges for a plan in a currency. */
-export function planAmountCents(plan: Plan, currency: Currency): number {
-  return Math.round(PLAN_PRICE_BY_CURRENCY[currency][plan] * 100);
-}
-
 /**
  * The most a plan's AI can cost Grasp in a week, as a share of its price, with
  * every allowance used to the full at its worst case (lib/costModel.ts). The AI
@@ -275,7 +270,8 @@ export const PLAN_PERKS: Record<Plan, string[]> = {
   ],
 };
 
-/** "Pro trial" for an account on a trial (running or ended), otherwise the plan's own name. */
+/** "Pro trial" for an account on a running trial, otherwise the plan's own name.
+ *  The session only reports `trialEndsAt` while the trial runs. */
 export function planName(plan: Plan, trialEndsAt: string | null): string {
   return trialEndsAt ? `${PLAN_LABEL[plan]} trial` : PLAN_LABEL[plan];
 }

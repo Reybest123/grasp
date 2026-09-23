@@ -12,7 +12,7 @@
 // put and the page never scrolls. The step below them only scrolls inside
 // itself on a screen too short to hold it.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
@@ -43,6 +43,16 @@ export function OnboardingFlow({
     focus: [],
   });
   const [busy, setBusy] = useState(false);
+  // Back from Stripe's Checkout can restore this page from the browser's
+  // back/forward cache exactly as it was left: mid-redirect, with both plan
+  // buttons disabled. A restored page starts over as pressable.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setBusy(false);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
   const [error, setError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -121,7 +131,7 @@ export function OnboardingFlow({
         </span>
       </div>
 
-      <div ref={scrollRef} className="scroll-thin relative min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto">
         {question ? (
           <section key={question.id} className="mx-auto max-w-2xl px-6 py-8">
             <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">

@@ -16,10 +16,10 @@
 // before anything is sent.
 
 import { NextRequest, NextResponse } from "next/server";
-import { inflateSync } from "node:zlib";
 import { chatCompletion } from "@/lib/openai";
 import { RESOURCE_KINDS, isResourceKind, type ResourceEntry } from "@/lib/resources";
 import { pageLimitProblem, textLimitProblem } from "@/lib/resourceLimits";
+import { dataUrlPageCount } from "@/lib/pdf";
 import { dataUrlType, isSupportedImage, tooLargeMessage, unsupportedFileMessage } from "@/lib/fileTypes";
 import { requireUser } from "@/lib/session";
 import { query, sql } from "@/lib/db";
@@ -60,47 +60,13 @@ type Part =
   | { type: "image_url"; image_url: { url: string; detail: "high" } }
   | { type: "file"; file: { filename: string; file_data: string } };
 
-const PAGE_OBJECT = /\/Type\s*\/Page(?![A-Za-z])/g;
-
-/**
- * How many pages a PDF has, or 0 when that cannot be told.
- *
- * Counts page objects rather than trusting the page tree's `/Count`, which a
- * nested tree repeats at every level. PDF 1.5 and later can pack page objects
- * into compressed object streams, where the raw bytes never show them, so each
- * object stream is inflated and searched too. No PDF library: this is the one
- * question the route needs answered, and a parser would be a dependency for it.
- */
-function pdfPageCount(bytes: Buffer): number {
-  const raw = bytes.toString("latin1");
-  let count = raw.match(PAGE_OBJECT)?.length ?? 0;
-
-  const streamStart = /stream\r?\n/g;
-  let match: RegExpExecArray | null;
-  while ((match = streamStart.exec(raw))) {
-    const start = match.index + match[0].length;
-    const end = raw.indexOf("endstream", start);
-    if (end < 0) break;
-    const dictionary = raw.slice(raw.lastIndexOf("obj", match.index), match.index);
-    if (/\/Type\s*\/ObjStm/.test(dictionary)) {
-      try {
-        count += inflateSync(bytes.subarray(start, end)).toString("latin1").match(PAGE_OBJECT)?.length ?? 0;
-      } catch {
-        // Not deflated, or damaged: it contributes nothing.
-      }
-    }
-    streamStart.lastIndex = end + "endstream".length;
-  }
-  return count;
-}
-
 export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
   const { name, kind, dataUrl, text, subjectName, subjectId } = await req.json().catch(() => ({}));
 
-  const filename = typeof name === "string" && name.trim() ? name.trim() : "document";
+  const filename = typeof name === "string" && name.trim() ? name.trim().slice(0, 200) : "document";
   const hasFile = typeof dataUrl === "string" && dataUrl.startsWith("data:");
   const hasText = typeof text === "string" && text.trim().length > 0;
   const isPdf = hasFile && dataUrl.startsWith("data:application/pdf");
@@ -125,7 +91,7 @@ export async function POST(req: NextRequest) {
     if (tooLong) return NextResponse.json({ error: tooLong }, { status: 400 });
   }
   if (isPdf) {
-    const pages = pdfPageCount(Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64"));
+    const pages = dataUrlPageCount(dataUrl);
     if (pages === 0) {
       return NextResponse.json(
         {
@@ -154,7 +120,7 @@ export async function POST(req: NextRequest) {
   if (!claim.ok) return claim.response;
 
   const intro =
-    `Subject: ${typeof subjectName === "string" && subjectName.trim() ? subjectName.trim() : "(unknown)"}\n` +
+    `Subject: ${typeof subjectName === "string" && subjectName.trim() ? subjectName.trim().slice(0, 100) : "(unknown)"}\n` +
     `File name: ${filename}\n` +
     (isResourceKind(kind) ? `The student filed it as: ${kind}. Correct this if the document is plainly something else.\n` : "") +
     `\nRead the document and return the JSON.`;
@@ -240,8 +206,8 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Refuses the read when the subject's Resource Bank is already at the plan's
- * cap, or when the subject is not this student's to add to.
+ * Refuses the read when no subject is named, or when the subject's Resource
+ * Bank is already at the plan's cap.
  *
  * Scoped by `user_id` even though the id alone would find the row: subject ids
  * are minted client-side and so are guessable, which is the same reason every
@@ -258,7 +224,11 @@ async function bankIsFull(
   subjectId: unknown,
   plan: Plan
 ): Promise<NextResponse | null> {
-  if (typeof subjectId !== "string" || !subjectId) return null;
+  // Without a subject there is nothing to count against, so leaving it out
+  // would skip the cap altogether.
+  if (typeof subjectId !== "string" || !subjectId) {
+    return NextResponse.json({ error: "Grasp could not tell which subject this is for. Refresh and try again." }, { status: 400 });
+  }
 
   const counted = await query(async () => {
     const rows = (await sql`

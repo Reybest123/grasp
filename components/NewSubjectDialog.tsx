@@ -9,10 +9,11 @@
 // through the card's own Edit button -- which is what the tile's "Class times
 // and exam dates optional" line already promises.
 
+import { ColorSwatches } from "@/components/ColorSwatches";
 import { useEffect, useRef, useState } from "react";
-import { SUBJECT_COLORS, getColor } from "@/lib/subjectColors";
+import { getColor } from "@/lib/subjectColors";
 import { useEnterTransition } from "@/lib/useEnterTransition";
-import { CheckIcon, CloseIcon, WorkspaceIcon } from "@/components/icons";
+import { CloseIcon, WorkspaceIcon } from "@/components/icons";
 
 export function NewSubjectDialog({
   open,
@@ -140,29 +141,11 @@ export function NewSubjectDialog({
 
           <div>
             <p className="text-sm font-semibold text-ink">Colour</p>
-            <p className="mt-0.5 text-xs text-slate-500">Picked for you automatically -- change it if you like.</p>
-            <div className="mt-3 flex flex-wrap gap-2.5">
-              {SUBJECT_COLORS.map((c) => (
-                <button
-                  type="button"
-                  key={c.key}
-                  onClick={() => setColorKey(c.key)}
-                  title={c.label}
-                  aria-label={c.label}
-                  aria-pressed={colorKey === c.key}
-                  className={`grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br ${
-                    c.gradient
-                  } text-white transition ${
-                    colorKey === c.key ? "ring-2 ring-ink ring-offset-2" : "opacity-80 hover:opacity-100"
-                  }`}
-                >
-                  {colorKey === c.key && <CheckIcon className="h-4 w-4" />}
-                </button>
-              ))}
-            </div>
+            <p className="mt-0.5 text-xs text-slate-500">Picked for you automatically — change it if you like.</p>
+            <ColorSwatches value={colorKey} onChange={setColorKey} />
           </div>
 
-          <p className="text-xs text-slate-400">Class times and exam dates are optional -- add them any time from Edit subject.</p>
+          <p className="text-xs text-slate-400">Class times and exam dates are optional — add them any time from Edit subject.</p>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">

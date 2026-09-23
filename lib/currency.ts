@@ -16,8 +16,6 @@
 
 export type Currency = "usd" | "aud";
 
-export const CURRENCIES: Currency[] = ["usd", "aud"];
-
 /**
  * What anyone Grasp cannot place is charged in. USD rather than AUD because it
  * is the currency the cost model is written in, so an unplaced student is the

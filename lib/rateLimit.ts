@@ -25,7 +25,7 @@
 // attempts it took to get there.
 
 import { createHash } from "node:crypto";
-import { query, sql } from "@/lib/db";
+import { query, sql, transaction } from "@/lib/db";
 
 /** Which route is counting. Each gets its own buckets and its own thresholds. */
 export type AuthScope = "login" | "signup" | "password" | "reset" | "admin";
@@ -70,10 +70,12 @@ const REFUSED = "Too many attempts. Please wait a few minutes and try again.";
 export type RateGate =
   | {
       ok: true;
-      /** Record this attempt as failed. Call on every rejection, not on success. */
+      /** Count this attempt. Call on every rejection (or, for signup, on success). */
       record: () => Promise<void>;
       /** Forget this account's failures. Call once the attempt succeeds. */
       clear: () => Promise<void>;
+      /** Neither: the attempt should not count (a form error, a database fault). */
+      release: () => Promise<void>;
     }
   | { ok: false; response: Response };
 
@@ -131,53 +133,73 @@ export async function authRateLimit(
   const accountBucket = bucket(scope, "account", account || null);
   const addressBucket = bucket(scope, "address", address);
 
-  const counted = await query(async () => {
-    const rows = (await sql`
-      select
-        count(*) filter (where bucket = ${accountBucket})::int as account_hits,
-        count(*) filter (where bucket = ${addressBucket})::int as address_hits
-      from auth_attempts
-      where (bucket = ${accountBucket} or bucket = ${addressBucket})
-        and created_at > now() - make_interval(mins => ${rule.windowMinutes})
-    `) as { account_hits: number; address_hits: number }[];
-    return rows[0] ?? { account_hits: 0, address_hits: 0 };
-  });
+  // The attempt is counted *before* the route checks anything, inside one
+  // transaction that holds a lock on the bucket. Counting only after the route
+  // has run scrypt let hundreds of guesses fired at once all read an empty
+  // bucket and all be evaluated. Each outcome then settles the reservation:
+  // `record` keeps it, `clear` and `release` hand it back.
+  const buckets = [accountBucket, addressBucket].filter((b) => b !== NO_BUCKET);
+  const reserved = await query(() =>
+    transaction(async (sql) => {
+      await sql`select pg_advisory_xact_lock(hashtext(${buckets[0] ?? scope}))`;
+      const rows = (await sql`
+        select
+          count(*) filter (where bucket = ${accountBucket})::int as account_hits,
+          count(*) filter (where bucket = ${addressBucket})::int as address_hits
+        from auth_attempts
+        where (bucket = ${accountBucket} or bucket = ${addressBucket})
+          and created_at > now() - make_interval(mins => ${rule.windowMinutes})
+      `) as { account_hits: number; address_hits: number }[];
+      const { account_hits = 0, address_hits = 0 } = rows[0] ?? {};
+      if (account_hits >= rule.perAccount || address_hits >= rule.perAddress) return null;
 
-  if (counted.ok) {
-    const { account_hits, address_hits } = counted.data;
-    if (account_hits >= rule.perAccount || address_hits >= rule.perAddress) {
-      return {
-        ok: false,
-        response: Response.json({ error: REFUSED, rateLimited: true }, { status: 429 }),
-      };
-    }
+      const ids: string[] = [];
+      for (const bucket of buckets) {
+        const inserted = (await sql`
+          insert into auth_attempts (bucket) values (${bucket}) returning id
+        `) as { id: string }[];
+        if (inserted[0]) ids.push(String(inserted[0].id));
+      }
+      return ids;
+    })
+  );
+
+  if (reserved.ok && reserved.data === null) {
+    return {
+      ok: false,
+      response: Response.json({ error: REFUSED, rateLimited: true }, { status: 429 }),
+    };
   }
+  // Unreachable database: fail open, as above, with nothing to settle.
+  const ids = reserved.ok ? reserved.data ?? [] : [];
+  const release = async () => {
+    if (!ids.length) return;
+    await query(() => sql`delete from auth_attempts where id = any(${ids}::bigint[])`);
+  };
 
   return {
     ok: true,
     record: async () => {
-      const buckets = [accountBucket, addressBucket].filter((b) => b !== NO_BUCKET);
-      await query(async () => {
-        for (const bucket of buckets) {
-          await sql`insert into auth_attempts (bucket) values (${bucket})`;
-        }
-        // Pruned here rather than on a schedule, since there is none. Only
-        // occasionally: the table is small and a sweep on every failed login
-        // would cost more than it saves.
-        if (Math.random() < 0.02) {
-          await sql`
+      // Pruned here rather than on a schedule, since there is none. Only
+      // occasionally: the table is small and a sweep on every failed login
+      // would cost more than it saves.
+      if (Math.random() < 0.02) {
+        await query(
+          () => sql`
             delete from auth_attempts
             where created_at < now() - make_interval(hours => ${PRUNE_AFTER_HOURS})
-          `;
-        }
-      });
+          `
+        );
+      }
     },
     clear: async () => {
+      await release();
       if (accountBucket === NO_BUCKET) return;
       // The address bucket is deliberately left alone. One correct login among
       // many wrong ones is exactly what a successful guessing run looks like,
       // so it must not wipe the evidence of the attempts around it.
       await query(() => sql`delete from auth_attempts where bucket = ${accountBucket}`);
     },
+    release,
   };
 }

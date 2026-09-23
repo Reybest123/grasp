@@ -27,6 +27,8 @@ import type { ClassSlot } from "@/lib/schedule";
 
 /** Long enough to swallow a run of typing, short enough to feel saved. */
 const FLUSH_MS = 900;
+/** Browsers refuse a keepalive request body over 64KB; kept under it. */
+const KEEPALIVE_MAX_BYTES = 60_000;
 
 /** How long a failed save waits before it is tried again. */
 const RETRY_MS = 10_000;
@@ -171,31 +173,45 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   );
 
   // A student who closes the tab mid-sentence should not lose it. `keepalive`
-  // is what lets a fetch outlive the page; the payload cap on it (64KB) is
-  // generous next to one subject, and this is a last resort rather than the
-  // normal path.
+  // is what lets a fetch outlive the page, but the browser refuses a keepalive
+  // body over 64KB, and a subject with a few long notes is past that. Those go
+  // through the ordinary flush instead, which keeps them dirty and retries if
+  // the page is still there. A keepalive that fails puts its subject back too.
   useEffect(() => {
     function onHide() {
       if (document.visibilityState !== "hidden" || !dirty.current.size) return;
-      for (const id of dirty.current) {
+      let large = false;
+      for (const id of [...dirty.current]) {
         const subject = latest.current.find((s) => s.id === id);
         if (!subject) continue;
-        try {
-          fetch(`/api/subjects/${encodeURIComponent(id)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ subject }),
-            keepalive: true,
-          });
-        } catch {
-          // Nothing further to try at this point.
+        const body = JSON.stringify({ subject });
+        if (new Blob([body]).size > KEEPALIVE_MAX_BYTES) {
+          large = true;
+          continue;
         }
+        dirty.current.delete(id);
+        fetch(`/api/subjects/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body,
+          keepalive: true,
+        })
+          .then((res) => {
+            if (!res.ok && res.status >= 500) throw new Error(String(res.status));
+          })
+          .catch(() => {
+            dirty.current.add(id);
+            retrySoon();
+          });
       }
-      dirty.current.clear();
+      if (large) {
+        if (timer.current) clearTimeout(timer.current);
+        flushRef.current();
+      }
     }
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
-  }, []);
+  }, [retrySoon]);
 
   // Colour is assigned from the position the subject lands in, so a new one
   // never duplicates the tile next to it -- unless the caller (the New
