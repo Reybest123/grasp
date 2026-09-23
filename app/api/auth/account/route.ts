@@ -10,7 +10,7 @@ import { destroySession, requireUser } from "@/lib/session";
 import { cancelImmediately, isExpired } from "@/lib/billing";
 
 export async function DELETE(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireUser({ allowExpired: true });
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => ({}));

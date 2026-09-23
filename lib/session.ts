@@ -20,6 +20,7 @@ import { isPlan, type Plan } from "@/lib/plan";
 import { isCurrency, type Currency } from "@/lib/currency";
 import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 import { readAdmin } from "@/lib/admin";
+import { isExpired } from "@/lib/billing";
 
 export { SESSION_COOKIE };
 
@@ -39,6 +40,9 @@ const TOUCH_EVERY_MS = 60 * 1000;
 /** Where a page sends a stale session: it clears the cookie, then goes to /login. */
 export const EXPIRED_PATH = "/api/auth/expired";
 
+/** Where an account whose subscription has ended is sent to choose a plan again. */
+export const RENEW_PATH = "/renew";
+
 export type SessionUser = {
   id: string;
   email: string;
@@ -52,6 +56,8 @@ export type SessionUser = {
   unlimited: boolean;
   /** what the account is billed in; null until it first reaches Stripe Checkout */
   currency: Currency | null;
+  /** the account had a plan and its subscription has ended; sent to /renew */
+  expired: boolean;
 };
 
 /** The cookie holds the token; the database holds this. Email links too. */
@@ -146,7 +152,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
   try {
     const rows = (await sql`
       select u.id, u.email, u.name, u.email_verified_at, u.plan, u.trial_ends_at,
-             u.currency, s.expires_at, s.last_seen_at
+             u.currency, u.subscription_status, s.expires_at, s.last_seen_at
       from sessions s
       join users u on u.id = s.user_id
       where s.token_hash = ${hash}
@@ -158,6 +164,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       plan: string | null;
       trial_ends_at: string | Date | null;
       currency: string | null;
+      subscription_status: string | null;
       expires_at: string | Date;
       last_seen_at: string | Date;
     }[];
@@ -198,6 +205,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
           : new Date(row.trial_ends_at).toISOString(),
       unlimited: admin?.unlimited === true,
       currency: isCurrency(row.currency) ? row.currency : null,
+      expired: !forced && plan !== null && isExpired(row.subscription_status),
     };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);
@@ -222,12 +230,16 @@ export type Guard =
  * by choosing a plan, unless the route opts in with `allowNoPlan` — only
  * app/api/checkout does, since it is how such an account gets a plan in the
  * first place. An unconfirmed account cannot have a plan yet, so
- * `allowUnverified` implies it.
+ * `allowUnverified` implies it. An account whose subscription has ended is
+ * refused too, unless the route opts in with `allowExpired`: only the account
+ * and billing routes do, since they are how it logs out, deletes itself or
+ * pays again. `allowNoPlan` implies it.
  */
 export async function requireUser({
   allowUnverified = false,
   allowNoPlan = allowUnverified,
-}: { allowUnverified?: boolean; allowNoPlan?: boolean } = {}): Promise<Guard> {
+  allowExpired = allowNoPlan,
+}: { allowUnverified?: boolean; allowNoPlan?: boolean; allowExpired?: boolean } = {}): Promise<Guard> {
   const user = await currentUser();
   if (!user) {
     return {
@@ -253,6 +265,15 @@ export async function requireUser({
       ),
     };
   }
+  if (user.expired && !allowExpired) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: "Your plan has ended. Choose a plan to keep using Grasp.", expired: true },
+        { status: 403 }
+      ),
+    };
+  }
   return { ok: true, user };
 }
 
@@ -274,6 +295,7 @@ export async function guardAppPage(): Promise<SessionUser | null> {
   if (user === "none") redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
   if (!user.plan) redirect("/onboarding");
+  if (user.expired) redirect(RENEW_PATH);
   return user;
 }
 
@@ -284,5 +306,16 @@ export async function guardOnboardingPage(): Promise<SessionUser | null> {
   if (user === "none") redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
   if (user.plan) redirect("/home");
+  return user;
+}
+
+/** The renew page is only for an account whose plan has ended; anyone else goes where they belong. */
+export async function guardRenewPage(): Promise<SessionUser | null> {
+  const user = await lookupSession();
+  if (user === "error") return null;
+  if (user === "none") redirect(EXPIRED_PATH);
+  if (!user.verified) redirect("/verify-email");
+  if (!user.plan) redirect("/onboarding");
+  if (!user.expired) redirect("/home");
   return user;
 }

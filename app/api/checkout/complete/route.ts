@@ -17,8 +17,13 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return NextResponse.redirect(`${origin}/login`);
 
   const sessionId = req.nextUrl.searchParams.get("session_id");
-  const to = req.nextUrl.searchParams.get("to") === "onboarding" ? "onboarding" : "plans";
-  const destination = to === "onboarding" ? `${origin}/home?setup=timetable` : `${origin}/plans?checkout=1`;
+  const to = req.nextUrl.searchParams.get("to");
+  const destination =
+    to === "onboarding"
+      ? `${origin}/home?setup=timetable`
+      : to === "renew"
+        ? `${origin}/home`
+        : `${origin}/plans?checkout=1`;
 
   if (sessionId) {
     try {

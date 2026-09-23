@@ -376,6 +376,10 @@ async function writeUser(
   const trialEndsAt = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
   const currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
 
+  // An ended subscription never overwrites a different one: a late or retried
+  // event for the old subscription of a student who has since paid again would
+  // otherwise mark the new one ended and send them to /renew.
+  //
   // Two statements rather than one with a SQL `case`, so "keep the existing
   // cancel date" can be expressed with `coalesce(plan_cancelled_at, now())` —
   // `now()` is SQL, not a bindable value, so it can only appear written
@@ -390,6 +394,9 @@ async function writeUser(
           plan_cancelled_at = coalesce(plan_cancelled_at, now()),
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
+        and (${subscription.status} <> 'canceled'
+             or stripe_subscription_id is null
+             or stripe_subscription_id = ${subscription.id})
     `;
   } else {
     await sql`
@@ -401,6 +408,9 @@ async function writeUser(
           plan_cancelled_at = null,
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
+        and (${subscription.status} <> 'canceled'
+             or stripe_subscription_id is null
+             or stripe_subscription_id = ${subscription.id})
     `;
   }
 }

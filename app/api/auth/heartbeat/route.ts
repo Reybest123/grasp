@@ -9,5 +9,5 @@ import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 export async function POST() {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: SIGNED_OUT_MESSAGE }, { status: 401 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, expired: user.expired });
 }

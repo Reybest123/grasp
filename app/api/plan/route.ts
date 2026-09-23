@@ -24,7 +24,7 @@ async function status(userId: string) {
 }
 
 export async function GET() {
-  const guard = await requireUser();
+  const guard = await requireUser({ allowExpired: true });
   if (!guard.ok) return guard.response;
 
   const found = await status(guard.user.id);

@@ -28,19 +28,25 @@ const PRIMARY =
   "flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-600";
 
 export function OnboardingFlow({
+  saved,
+  onAnswered,
   onFinish,
   onLogOut,
 }: {
+  /** answers stored on an earlier visit; the flow then opens on the plans */
+  saved: OnboardingAnswers | null;
+  /** the last question has been answered */
+  onAnswered: (answers: OnboardingAnswers) => void;
   /** saves; resolves to an error to show, or null */
   onFinish: (answers: OnboardingAnswers, plan: Plan) => Promise<string | null>;
   onLogOut: () => void;
 }) {
   const currency = useCurrency();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(saved ? PLANS_STEP : 0);
   const [picked, setPicked] = useState<Record<Question["id"], string[]>>({
-    yearLevel: [],
-    uses: [],
-    focus: [],
+    yearLevel: saved?.yearLevel ? [saved.yearLevel] : [],
+    uses: saved?.uses ?? [],
+    focus: saved?.focus ? [saved.focus] : [],
   });
   const [busy, setBusy] = useState(false);
   // Back from Stripe's Checkout can restore this page from the browser's
@@ -82,13 +88,21 @@ export function OnboardingFlow({
     setPicked((p) => ({ ...p, [q.id]: [option] }));
   }
 
+  const answers = (): OnboardingAnswers => ({
+    yearLevel: picked.yearLevel[0] ?? "",
+    uses: picked.uses,
+    focus: picked.focus[0] ?? "",
+  });
+
+  function next() {
+    if (step + 1 === PLANS_STEP) onAnswered(answers());
+    goTo(step + 1);
+  }
+
   async function start(plan: Plan) {
     setBusy(true);
     setError("");
-    const problem = await onFinish(
-      { yearLevel: picked.yearLevel[0] ?? "", uses: picked.uses, focus: picked.focus[0] ?? "" },
-      plan
-    );
+    const problem = await onFinish(answers(), plan);
     if (problem) {
       setError(problem);
       setBusy(false);
@@ -181,7 +195,7 @@ export function OnboardingFlow({
               )}
               <button
                 type="button"
-                onClick={() => goTo(step + 1)}
+                onClick={next}
                 disabled={picked[question.id].length === 0}
                 className={PRIMARY}
               >

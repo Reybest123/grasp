@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const returnTo = body.returnTo === "onboarding" ? "onboarding" : "plans";
+  const returnTo =
+    body.returnTo === "onboarding" || body.returnTo === "renew" ? body.returnTo : "plans";
   const origin = appOrigin(req.nextUrl.origin);
   const session = await createCheckoutSession({
     userId: guard.user.id,
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     // looks like it came from — the same answer the plan cards were drawn with.
     currency: await resolveCurrency(guard.user),
     successUrl: `${origin}/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}&to=${returnTo}`,
-    cancelUrl: returnTo === "onboarding" ? `${origin}/onboarding` : `${origin}/plans`,
+    cancelUrl: `${origin}/${returnTo}`,
   });
   if (!session.ok) return NextResponse.json({ error: session.error }, { status: 502 });
   return NextResponse.json({ url: session.url });

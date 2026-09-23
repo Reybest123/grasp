@@ -11,7 +11,7 @@ import { endOtherSessions, requireUser } from "@/lib/session";
 import { authRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireUser({ allowExpired: true });
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => ({}));

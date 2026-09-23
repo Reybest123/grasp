@@ -536,6 +536,15 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - **`lib/email.ts` is a raw `fetch` to Resend, not the SDK**, the same discipline as `lib/openai.ts`: the provider's reply is logged server-side and never returned.
   - **Two env vars will matter at launch.** Without `EMAIL_FROM`, mail goes from `onboarding@resend.dev`, which Resend only delivers to the address the Resend account was made with — fine now, useless once there are real students, so a verified sending domain is a launch requirement. `APP_URL` pins the address the link points at, since behind a proxy the request's own origin is not guaranteed to be the public one.
 
+- **A plan that has ended locks the app until one is chosen again** (2026-09-23, at the user's request). An account whose Stripe subscription is `canceled` (a cancelled plan or trial that ran out, or one cancelled from Stripe's dashboard) carries `expired: true` on its session user (`lookupSession`, from `users.subscription_status`; a plan forced from `/admin` is never expired).
+  - **`guardAppPage` sends it to `/renew`** (`app/renew/`, `components/RenewPlans.tsx`, guarded by `guardRenewPage`, which sends anyone not expired back to `/home`). The page is onboarding's frame with "Your plan has ended", both `PlanCard`s with no trial badge, "Choose Pro"/"Choose Max" into a fresh Checkout Session (`returnTo: "renew"`, which cancels back to `/renew` and completes to `/home`), and Log out.
+  - **`requireUser()` refuses it with a 403 and `expired: true`** unless a route passes `allowExpired`, which checkout, the Checkout return, account deletion, password change and `GET /api/plan` do (`allowNoPlan` implies it). Every data and AI route is closed.
+  - **A tab left open when the plan ends goes to `/renew` on its next heartbeat**, since `/api/auth/heartbeat` now answers `expired`.
+  - **Deleting the account stays possible from `/renew`** (`components/RenewDelete.tsx`, the same password-confirmed `DELETE /api/auth/account`), because Settings is out of reach and the Privacy Policy promises deletion.
+  - **An ended subscription can no longer overwrite a different one** (`writeUser` in `lib/billing.ts`). A late or retried event for a student's old subscription, after they had paid again, would have marked the new one ended and locked a paying student out.
+  - Verified against the dev server and in the browser: an ended account is sent from `/home`, `/workspace` and `/onboarding` to `/renew`, `/api/subjects` and `/api/usage` answer 403, and Choose Pro opens Stripe at US$5.49 a week with no trial.
+- **Leaving at the paywall resumes at the paywall** (2026-09-23, at the user's request). The three onboarding answers are saved (`POST /api/onboarding`) the moment the last question is answered, not only when a plan is pressed, and `/onboarding` (now a server page reading them, with the client half moved to `components/onboarding/OnboardingScreen.tsx`) opens on the plan step when they exist. Back still returns to the questions, pre-filled.
+
 - **Whole-codebase review (2026-09-23)**, run at the user's request with `code-review`, `security-review` and `simplify` over everything rather than a diff. Both security passes (server routes, and every place the browser writes HTML) found nothing exploitable. What was fixed:
   - **Login no longer reveals which emails have accounts.** The fallback hash checked for an unknown email was malformed, so `verifyPassword` refused it before running scrypt and an unknown email answered instantly. It is now a real hash of a random password, built once (`DUMMY_HASH`).
   - **`/login?next=` refuses backslashes.** Browsers read `/\evil.com` as `//evil.com`, which made the post-login redirect an open one.
@@ -550,7 +559,6 @@ The database grew a `users.currency` column with the multi-currency work above; 
 
 **Still mocked / not yet built:**
 - Nothing on the limits front: quizzes, recordings, weekly Resource Bank reads and the per-subject Resource Bank document count are all enforced server-side (see above).
-- Billing takes a real card and a real subscription, but a fully-**ended** subscription (Stripe status `canceled`, after it runs its cancelled-but-not-renewing course to the end, or is cancelled from Stripe's own dashboard) is not enforced anywhere except `/plans`, which shows "Your plan has ended" and a way to resubscribe. Every other page and every AI route still works, because `plan` is never cleared once an account has one — `requireUser()` only checks that a plan was *chosen*, not that its subscription is still alive. A soft prompt (a banner in the app shell, say) or a hard lockout on that state is the next step here, not a config value to flip.
 - `past_due`/`unpaid` (a card that failed and is being retried) is likewise unenforced — full access continues through Stripe's own retry schedule, which is deliberate for now (a hard cutoff on the first missed payment is harsh), but nothing in Grasp tells the student their card failed; that relies on Stripe's own dunning emails, which are only as good as whatever is configured in the Stripe dashboard.
 - A weekly limit on the timetable read (`/api/timetable-extract`, GPT-4o). Explain, refine, enhance, generate and quiz explanations are now on AI tokens (see Weekly allowances).
 - Changing an account's email, which needs a confirmation link sent to the new address first.
@@ -592,6 +600,7 @@ scripts/        check-scoping.mjs (npm run check:scoping — fails on a query
                 stripe-setup.mjs (npm run billing:setup — creates the two
                       weekly Stripe Prices, prints the env lines for them)
 app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
+                renew/ (where an account whose plan has ended chooses one again),
                 admin/ (password-gated plan switch + unlimited mode; api/admin, api/admin/unlock),
                 forgot-password/, reset-password/ (the reset email's link),
                 verify-email/ (check-your-email, where unconfirmed accounts wait),
@@ -624,7 +633,8 @@ components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEd
                 PasswordInput (password field with the show/hide eye),
                 StatRing (shared by the dashboard tiles and quiz results),
                 LegalPage + LegalSection (the legal pages' frame),
-                PlanCard (landing pricing and onboarding's plan step)
+                PlanCard (landing pricing and onboarding's plan step),
+                RenewPlans + RenewDelete (the /renew page and its delete-account form)
 components/auth/ AuthForm (login and signup are the same form), VerifyEmail,
                 PasswordReset (forgot-password and choose-a-new-password screens)
 components/landing/ HeroShowcase (the hero's cycling feature showcase),
