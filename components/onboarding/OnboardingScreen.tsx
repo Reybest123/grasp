@@ -14,7 +14,13 @@ import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import type { OnboardingAnswers } from "@/lib/onboarding";
 import type { Plan } from "@/lib/plan";
 
-export function OnboardingScreen({ saved }: { saved: OnboardingAnswers | null }) {
+export function OnboardingScreen({
+  saved,
+  account,
+}: {
+  saved: OnboardingAnswers | null;
+  account: { name: string; email: string };
+}) {
   const router = useRouter();
 
   // Best effort: if it does not land, a student who leaves now only answers the
@@ -48,14 +54,5 @@ export function OnboardingScreen({ saved }: { saved: OnboardingAnswers | null })
     return null;
   }
 
-  async function logOut() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // The destination is the same either way.
-    }
-    router.replace("/");
-  }
-
-  return <OnboardingFlow saved={saved} onAnswered={answered} onFinish={finish} onLogOut={logOut} />;
+  return <OnboardingFlow saved={saved} onAnswered={answered} onFinish={finish} account={account} />;
 }

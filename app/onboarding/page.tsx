@@ -15,5 +15,10 @@ export default async function Onboarding() {
       )
     : null;
   const saved = found?.ok ? parseAnswers(found.data[0]?.onboarding) : null;
-  return <OnboardingScreen saved={saved} />;
+  return (
+    <OnboardingScreen
+      saved={saved}
+      account={{ name: user?.name ?? "", email: user?.email ?? "" }}
+    />
+  );
 }

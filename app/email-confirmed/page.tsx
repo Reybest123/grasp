@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EXPIRED_PATH, currentUser } from "@/lib/session";
 import { Logo } from "@/components/Logo";
+import { SetupAccountMenu } from "@/components/auth/SetupAccountMenu";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 
 export const metadata = { title: "Email confirmed — Grasp" };
@@ -24,8 +25,9 @@ export default async function EmailConfirmedPage() {
         className="ruled fade-out-b pointer-events-none absolute inset-0 opacity-60"
       />
 
-      <header className="relative shrink-0 px-6 py-4">
+      <header className="relative flex shrink-0 items-center justify-between gap-4 px-6 py-4">
         <Logo />
+        <SetupAccountMenu name={user.name} email={user.email} />
       </header>
 
       <section className="relative min-h-0 flex-1 overflow-y-auto px-6">

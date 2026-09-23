@@ -10,7 +10,9 @@ import { destroySession, requireUser } from "@/lib/session";
 import { cancelImmediately, isExpired } from "@/lib/billing";
 
 export async function DELETE(req: NextRequest) {
-  const guard = await requireUser({ allowExpired: true });
+  // A confirmed account that has not chosen a plan can delete itself from the
+  // onboarding screens; allowNoPlan implies allowExpired.
+  const guard = await requireUser({ allowNoPlan: true });
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => ({}));

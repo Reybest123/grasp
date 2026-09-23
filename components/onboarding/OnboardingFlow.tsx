@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
+import { SetupAccountMenu } from "@/components/auth/SetupAccountMenu";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
@@ -31,7 +32,7 @@ export function OnboardingFlow({
   saved,
   onAnswered,
   onFinish,
-  onLogOut,
+  account,
 }: {
   /** answers stored on an earlier visit; the flow then opens on the plans */
   saved: OnboardingAnswers | null;
@@ -39,7 +40,8 @@ export function OnboardingFlow({
   onAnswered: (answers: OnboardingAnswers) => void;
   /** saves; resolves to an error to show, or null */
   onFinish: (answers: OnboardingAnswers, plan: Plan) => Promise<string | null>;
-  onLogOut: () => void;
+  /** who is signed in, for the account menu */
+  account: { name: string; email: string };
 }) {
   const currency = useCurrency();
   const [step, setStep] = useState(saved ? PLANS_STEP : 0);
@@ -120,13 +122,7 @@ export function OnboardingFlow({
 
       <header className="relative mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-4 px-6 py-4">
         <Logo />
-        <button
-          type="button"
-          onClick={onLogOut}
-          className="text-sm font-semibold text-slate-500 transition hover:text-ink"
-        >
-          Log out
-        </button>
+        <SetupAccountMenu name={account.name} email={account.email} />
       </header>
 
       <div className="relative mx-auto flex w-full max-w-2xl shrink-0 items-center gap-4 px-6">
