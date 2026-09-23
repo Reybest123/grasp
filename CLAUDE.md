@@ -686,6 +686,8 @@ Keep one component per file. `app/globals.css` holds app-wide base and keyframes
 
 Rationale: Without pushing, your work is siloed on this machine and doesn't reach Railway, making the deployed site stale. Pushing after every commit keeps deployments in sync.
 
+**Run the `code-review`, `security-review` and `simplify` skills on any nontrivial code you write, before committing.** "Nontrivial" means a new feature, a bug fix touching logic, or anything beyond a one-line/copy-only change — a wording tweak or a CSS value doesn't need this. `code-review` for correctness bugs, `security-review` given Grasp handles auth/sessions/Stripe/DB scoping, `simplify` for a cleanup pass once the logic is right. Fix what they find before pushing.
+
 ---
 
 <!-- BEGIN:nextjs-agent-rules -->
