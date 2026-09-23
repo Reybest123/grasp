@@ -30,13 +30,17 @@ import {
   closestCell,
   stepCell,
   tableIsEmpty,
-  cellPosition,
   cellsBetween,
   clearCells,
   insertRow,
   insertColumn,
   deleteRows,
   deleteColumns,
+  deleteBlock,
+  neighbourCell,
+  moreInCell,
+  blockSpan,
+  type ArrowDir,
   type Cell,
 } from "@/lib/tables";
 import {
@@ -83,6 +87,29 @@ const TIP_KEY = "grasp.hideNoteTip";
 
 /** The editor always holds at least one block, so the toolbar has something to act on. */
 const EMPTY_BODY = "<p><br></p>";
+
+const ARROW_DIR: Record<string, ArrowDir | undefined> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
+
+/** Keys that move the caret without changing the text. */
+const NAV_KEYS = new Set([
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+]);
+
+// Pressing Shift on its way to Shift+arrow or Shift+click must not drop a
+// block selection before the arrow or click arrives.
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Meta", "Alt"]);
 
 /**
  * True only for a note that still has just its single starting block — the
@@ -998,12 +1025,9 @@ export function NotesTab({
    *  selection's span when there is one, otherwise the single clicked cell. */
   const menuSpan = useMemo(() => {
     const cells = cellSel ? cellsBetween(cellSel.anchor, cellSel.focus) : [];
-    const spots = cells.map(cellPosition).filter(Boolean) as { row: number; col: number }[];
-    if (spots.length < 2) return { rows: 1, cols: 1 };
-    return {
-      rows: new Set(spots.map((p) => p.row)).size,
-      cols: new Set(spots.map((p) => p.col)).size,
-    };
+    const span = cells.length > 1 ? blockSpan(cells) : null;
+    if (!span) return { rows: 1, cols: 1 };
+    return { rows: span.r1 - span.r0 + 1, cols: span.c1 - span.c0 + 1 };
   }, [cellSel]);
 
   function onEditorContextMenu(e: React.MouseEvent) {
@@ -1028,12 +1052,9 @@ export function NotesTab({
     // selecting three rows and choosing "Delete rows" removes all three.
     const cells = selectedCells();
     const block = cells.length ? cells : [cell];
-    const spots = block.map(cellPosition).filter(Boolean) as { row: number; col: number }[];
-    if (!spots.length) return;
-    const rows = spots.map((p) => p.row);
-    const cols = spots.map((p) => p.col);
-    const [r0, r1] = [Math.min(...rows), Math.max(...rows)];
-    const [c0, c1] = [Math.min(...cols), Math.max(...cols)];
+    const span = blockSpan(block);
+    if (!span) return;
+    const { r0, r1, c0, c1 } = span;
 
     const after = table.nextElementSibling as HTMLElement | null;
     let survives = true;
@@ -1161,16 +1182,56 @@ export function NotesTab({
    * toolbar button again — rather than folding its text into the block above,
    * which is what made bullets "stick together" when deleted.
    */
-  const NAV_KEYS = new Set([
-    "ArrowLeft",
-    "ArrowRight",
-    "ArrowUp",
-    "ArrowDown",
-    "Home",
-    "End",
-    "PageUp",
-    "PageDown",
-  ]);
+  /**
+   * Grows or shrinks a block of cells by one step. With no block yet, the key
+   * selects through the cell's own text first and only reaches the next cell
+   * from the edge of it. Returns false to leave the key to the browser.
+   */
+  function extendCellBlock(dir: ArrowDir): boolean {
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel?.rangeCount) return false;
+
+    const current = cellSelRef.current;
+    if (current) {
+      // At the table's edge the key is swallowed, or the native range would
+      // wander out of the table and drag the paragraphs around it in.
+      const next = neighbourCell(current.focus, dir);
+      if (next) setCellBlock(current.anchor, next);
+      return true;
+    }
+
+    const cell = closestCell(el, sel.focusNode);
+    if (!cell || closestCell(el, sel.anchorNode) !== cell || !sel.focusNode) return false;
+    // The part of the cell between the caret and the edge it is moving towards.
+    // Left/Right only leave the cell once there is no text left that way, and
+    // Up/Down once there is no line left, so a cell's own text is still
+    // selectable a character or a line at a time.
+    const edge = document.createRange();
+    edge.selectNodeContents(cell);
+    if (dir === "left" || dir === "up") edge.setEnd(sel.focusNode, sel.focusOffset);
+    else edge.setStart(sel.focusNode, sel.focusOffset);
+    const whole = sel.toString().trim() === (cell.textContent ?? "").trim();
+    if (!whole && moreInCell(edge, dir)) return false;
+    const next = neighbourCell(cell, dir);
+    if (!next) return false;
+    setCellBlock(cell, next);
+    return true;
+  }
+
+  function setCellBlock(anchor: Cell, focus: Cell) {
+    // Shrunk back to the one cell it started in: that is a plain selection of
+    // the cell's text, which the browser draws itself.
+    if (anchor === focus) {
+      selectContents(anchor);
+      setCellSel(null);
+      return;
+    }
+    // The native range spans the block's corners so the caret lives somewhere
+    // sensible; its paint is suppressed and the overlay is drawn instead.
+    window.getSelection()?.setBaseAndExtent(anchor, 0, focus, focus.childNodes.length);
+    setCellSel({ anchor, focus });
+  }
 
   function onEditorKeyDown(e: React.KeyboardEvent) {
     const el = editorRef.current;
@@ -1190,6 +1251,21 @@ export function NotesTab({
       return;
     }
 
+    // Shift+arrows select across cells, the way they do in Word and Docs.
+    const dir = ARROW_DIR[e.key];
+    if (
+      dir &&
+      e.shiftKey &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey &&
+      !selectionInside(activeMathRef.current) &&
+      extendCellBlock(dir)
+    ) {
+      e.preventDefault();
+      return;
+    }
+
     // A block of cells is selected: the keys that act on a selection act on all
     // of them, and anything else drops back to the ordinary caret in one cell.
     const cellBlock = selectedCells();
@@ -1201,13 +1277,31 @@ export function NotesTab({
       }
       if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
-        clearCells(cellBlock);
-        placeCaretAtStart(cellBlock[0]);
+        const table = cellBlock[0].closest("table") as HTMLTableElement | null;
+        if (!table) return;
+        const after = table.nextElementSibling as HTMLElement | null;
+        // Whole rows or whole columns are removed; a smaller block is emptied.
+        const land = deleteBlock(table, cellBlock);
+        if (land) placeCaretAtStart(land);
+        else {
+          table.remove();
+          if (after) placeCaretAtStart(after);
+        }
         clearCellSel();
         commit();
         return;
       }
-      if (!e.metaKey && !e.ctrlKey && !NAV_KEYS.has(e.key)) clearCellSel();
+      // A plain arrow leaves the block for a caret in the cell it grew to.
+      if (dir && !e.shiftKey) {
+        e.preventDefault();
+        const focus = cellSelRef.current?.focus;
+        clearCellSel();
+        if (focus) placeCaretAtStart(focus);
+        return;
+      }
+      if (!e.metaKey && !e.ctrlKey && !NAV_KEYS.has(e.key) && !MODIFIER_KEYS.has(e.key)) {
+        clearCellSel();
+      }
     }
 
     // Word and OneNote's own shortcut for "start an equation here".
@@ -1245,7 +1339,7 @@ export function NotesTab({
     if (!sel || !sel.rangeCount) return;
     const cell = closestCell(el, sel.anchorNode);
 
-    if (cell && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    if (cell && !e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       // Native caret movement tracks pixel position, not column — in a row
       // with more than one column it can land one cell off. Column index is
       // tracked explicitly instead, so Up/Down always lands in the same column.

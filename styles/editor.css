@@ -117,8 +117,12 @@
 .editor .check::before {
   content: "";
   display: inline-block;
-  /* Centres the box against the text's own optical middle. */
-  vertical-align: middle;
+  /* Centres the box on the middle of a capital letter (Plus Jakarta's cap
+     height is 0.8em, so its middle sits 0.4em above the baseline). `middle`
+     centred it on the lowercase letters instead, about 2px lower, which left
+     the text looking raised above the box. The box has no content, so its
+     bottom edge is what this offset moves: 0.4em up, less half its height. */
+  vertical-align: calc(0.4em - 9px);
   height: 18px;
   width: 18px;
   margin-right: 8px;

@@ -123,6 +123,20 @@ export function cellsBetween(a: Cell, b: Cell): Cell[] {
   return cells;
 }
 
+/** The first and last row and column a set of cells covers. */
+export function blockSpan(cells: Cell[]): { r0: number; r1: number; c0: number; c1: number } | null {
+  const spots = cells.map(cellPosition).filter(Boolean) as { row: number; col: number }[];
+  if (!spots.length) return null;
+  const rows = spots.map((p) => p.row);
+  const cols = spots.map((p) => p.col);
+  return {
+    r0: Math.min(...rows),
+    r1: Math.max(...rows),
+    c0: Math.min(...cols),
+    c1: Math.max(...cols),
+  };
+}
+
 /** Empties cells without removing them — a cell always keeps its line box. */
 export function clearCells(cells: Cell[]): void {
   cells.forEach((cell) => {
@@ -202,4 +216,66 @@ export function deleteColumns(table: HTMLTableElement, from: number, to: number)
     for (let c = to; c >= from; c -= 1) row.cells[c]?.remove();
   });
   return true;
+}
+
+/**
+ * Delete pressed on a block of cells. A block covering whole rows removes those
+ * rows, one covering whole columns removes those columns, and anything smaller
+ * only empties its cells. Returns the cell the caret should land in, or null
+ * when the block was the whole table and the caller should remove it.
+ */
+export function deleteBlock(table: HTMLTableElement, cells: Cell[]): Cell | null {
+  const span = blockSpan(cells);
+  if (!span) return cells[0] ?? null;
+  const { r0, r1, c0, c1 } = span;
+  const rowCount = table.rows.length;
+  const colCount = table.rows[0]?.cells.length ?? 0;
+  const wholeRows = c0 === 0 && c1 === colCount - 1;
+  const wholeCols = r0 === 0 && r1 === rowCount - 1;
+
+  if (wholeRows && wholeCols) return null;
+  if (wholeRows) {
+    deleteRows(table, r0, r1);
+    const row = table.rows[Math.min(r0, table.rows.length - 1)];
+    return (row?.cells[0] as Cell | undefined) ?? null;
+  }
+  if (wholeCols) {
+    deleteColumns(table, c0, c1);
+    const row = table.rows[0];
+    return (row?.cells[Math.min(c0, row.cells.length - 1)] as Cell | undefined) ?? null;
+  }
+  clearCells(cells);
+  return cells[0];
+}
+
+export type ArrowDir = "up" | "down" | "left" | "right";
+
+/** The cell one step from `cell` in a direction, or null at the table's edge. */
+export function neighbourCell(cell: Cell, dir: ArrowDir): Cell | null {
+  const table = cell.closest("table") as HTMLTableElement | null;
+  const pos = cellPosition(cell);
+  if (!table || !pos) return null;
+  const row = pos.row + (dir === "up" ? -1 : dir === "down" ? 1 : 0);
+  const col = pos.col + (dir === "left" ? -1 : dir === "right" ? 1 : 0);
+  return (table.rows[row]?.cells[col] as Cell | undefined) ?? null;
+}
+
+/**
+ * Whether the caret still has somewhere to go inside its cell, given `edge`:
+ * the stretch of the cell between the caret and the side it is moving towards.
+ * Sideways that is any text; up or down it is another line.
+ */
+export function moreInCell(edge: Range, dir: ArrowDir): boolean {
+  const visible = (s: string) => !!s.replace(/[\u200b\ufeff]/g, "").trim();
+  if (dir === "left" || dir === "right") return visible(edge.toString());
+
+  const part = edge.cloneContents();
+  const breaks = part.querySelectorAll("br");
+  if (dir === "up") return breaks.length > 0;
+  // A cell usually ends in a <br> with nothing after it, which is not a line.
+  if (!breaks.length) return false;
+  const below = document.createRange();
+  below.setStartAfter(breaks[0]);
+  below.setEnd(part, part.childNodes.length);
+  return visible(below.toString());
 }

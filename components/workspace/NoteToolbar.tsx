@@ -28,6 +28,7 @@ import {
   RedoIcon,
 } from "@/components/icons";
 import { TablePicker } from "@/components/workspace/TablePicker";
+import { closestCell } from "@/lib/tables";
 import {
   blocksInRange,
   closestOwnBlock,
@@ -79,6 +80,7 @@ const OFF = {
   size: "3",
   align: "left" as Align,
   color: DEFAULT_TEXT_COLOR,
+  inTable: false,
 };
 
 export function NoteToolbar({
@@ -123,9 +125,14 @@ export function NoteToolbar({
     // Block state is read off the DOM rather than queryCommandState: the lists
     // here are built by hand, and the checklist is a class the browser has no
     // command for at all.
-    const block = closestOwnBlock(el, window.getSelection()?.anchorNode ?? null);
+    const sel = window.getSelection();
+    const block = closestOwnBlock(el, sel?.anchorNode ?? null);
     const kind = listKindOf(block);
     setActive({
+      // Lists and checklists are kept out of tables: a cell is one short value,
+      // and a bullet or checkbox inside it only breaks the table's rows apart.
+      inTable:
+        !!closestCell(el, sel?.anchorNode ?? null) && !!closestCell(el, sel?.focusNode ?? null),
       bold: document.queryCommandState("bold"),
       italic: document.queryCommandState("italic"),
       underline: document.queryCommandState("underline"),
@@ -186,13 +193,20 @@ export function NoteToolbar({
     return blocksInRange(el, sel.getRangeAt(0));
   };
 
+  /** Blocks a press may act on: anything outside a table, plus a cell's block
+   *  that is already this kind of list, so a list an older note put in a cell
+   *  can still be taken out. A drag from a paragraph down into a table still
+   *  lists the paragraph. */
+  const listableBlocks = (el: HTMLElement, isOn: (b: HTMLElement) => boolean) =>
+    selectedBlocks(el).filter((b) => !closestCell(el, b) || isOn(b));
+
   // A press applies one decision to the whole selection: if every block it
   // covers is already this kind of list, the press turns them all off.
   const toggleList = (tag: ListTag) =>
     run(() => {
       const el = editorRef.current;
       if (!el) return;
-      const blocks = selectedBlocks(el);
+      const blocks = listableBlocks(el, (b) => listKindOf(b) === tag);
       if (!blocks.length) return;
 
       const allOn = blocks.every((b) => listKindOf(b) === tag);
@@ -204,7 +218,7 @@ export function NoteToolbar({
     run(() => {
       const el = editorRef.current;
       if (!el) return;
-      const blocks = selectedBlocks(el);
+      const blocks = listableBlocks(el, (b) => b.classList.contains("check"));
       if (!blocks.length) return;
 
       const allOn = blocks.every((b) => b.classList.contains("check"));
@@ -269,15 +283,30 @@ export function NoteToolbar({
 
       <Divider />
 
-      <Button label="Bullet points" active={active.bullets} onClick={() => toggleList("UL")}>
+      <Button
+        label="Bullet points"
+        active={active.bullets}
+        disabled={active.inTable && !active.bullets}
+        onClick={() => toggleList("UL")}
+      >
         <BulletListIcon className="h-4 w-4" />
       </Button>
 
-      <Button label="Numbered list" active={active.numbers} onClick={() => toggleList("OL")}>
+      <Button
+        label="Numbered list"
+        active={active.numbers}
+        disabled={active.inTable && !active.numbers}
+        onClick={() => toggleList("OL")}
+      >
         <NumberedListIcon className="h-4 w-4" />
       </Button>
 
-      <Button label="Checklist" active={active.check} onClick={toggleCheck}>
+      <Button
+        label="Checklist"
+        active={active.check}
+        disabled={active.inTable && !active.check}
+        onClick={toggleCheck}
+      >
         <ChecklistIcon className="h-4 w-4" />
       </Button>
 

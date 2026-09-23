@@ -15,10 +15,14 @@ const display = Bricolage_Grotesque({
   weight: ["600", "700", "800"],
 });
 
+// The italic face is loaded too. Without it the browser fakes italics by
+// slanting the upright letters without widening them, so the last letter leaned
+// out past the caret and past the edge of a text highlight.
 const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
+  style: ["normal", "italic"],
 });
 
 // Android shrinks the page for the on-screen keyboard rather than sliding it
