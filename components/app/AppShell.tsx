@@ -20,9 +20,8 @@ import { PageTransition } from "@/components/app/PageTransition";
 import { RenewPlans } from "@/components/RenewPlans";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubjectEditor } from "@/components/SubjectEditor";
-import { useSubjects, useNow } from "@/lib/subjectsStore";
+import { useSubjects } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
-import { DEFAULT_PLAN, formatDuration, planName, trialDaysLeft } from "@/lib/plan";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { AlertIcon, MicIcon } from "@/components/icons";
 
@@ -51,21 +50,12 @@ export function AppShell({ expired, children }: { expired: boolean; children: Re
   // from the live recording view does.
   const rec = useRecording();
   const { guard } = rec;
-  const { logOut, profile, ready: profileReady } = useProfile();
-  const now = useNow();
-  const trialLeft = now ? trialDaysLeft(profile.trialEndsAt, now) : null;
+  const { logOut } = useProfile();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [focusRecord, setFocusRecord] = useState(0);
   // One confirm, raised from both the rail and the profile menu.
   const [confirmLogOut, setConfirmLogOut] = useState(false);
   const recording = rec.phase !== "idle";
-
-  // The store re-reads it from the server whenever no recording is running, and
-  // it counts down with the timer while one is.
-  const timeLeft =
-    rec.weekLeft === null
-      ? null
-      : Math.max(0, rec.weekLeft - (rec.phase === "recording" ? rec.seconds : 0));
 
   const editing = subjects.find((s) => s.id === editingId) ?? null;
 
@@ -107,32 +97,6 @@ export function AppShell({ expired, children }: { expired: boolean; children: Re
               </span>
             )}
             <RecordingChip onOpen={openRecording} />
-            {/* Waits for the account, rather than naming a plan and then
-                swapping it a frame later. A trial says how long it has left,
-                which matters more than this week's recordings while it runs. */}
-            {profileReady && (
-              <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-3 pr-3.5 text-xs font-semibold text-slate-600 sm:inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                {expired ? "Plan ended" : planName(profile.plan ?? DEFAULT_PLAN, profile.trialEndsAt)}
-                {expired ? null : profile.unlimited ? (
-                  <span className="text-slate-500">Unlimited</span>
-                ) : trialLeft !== null ? (
-                  <span className="text-slate-500">
-                    {trialLeft === 0
-                      ? "Trial ended"
-                      : `${trialLeft} day${trialLeft === 1 ? "" : "s"} left`}
-                  </span>
-                ) : (
-                  timeLeft !== null && (
-                    <span className="tabular-nums text-slate-500">
-                      {timeLeft === 0
-                        ? "No recording time left this week"
-                        : `${formatDuration(timeLeft, true)} recording left`}
-                    </span>
-                  )
-                )}
-              </span>
-            )}
             {/* On a phone the burger replaces both the avatar and the rail. */}
             <div className="compact:hidden">
               <ProfileMenu onLogOut={() => setConfirmLogOut(true)} />
