@@ -44,6 +44,11 @@ export function PlanCard({
   const featured = plan === "pro";
   const showTrial = featured && trialBadge;
   const price = planPrice(plan, currency);
+  // A bare "$" reads as local dollars in Canada, New Zealand, Singapore and the
+  // rest, so a USD price says which dollars it is.
+  const usdNote = currency === "usd" && (
+    <p className="mt-1 text-xs text-slate-500">US dollars (USD)</p>
+  );
 
   return (
     <div
@@ -68,11 +73,14 @@ export function PlanCard({
             <h3 className="font-display text-lg font-bold text-ink">{PLAN_LABEL[plan]}</h3>
             <p className="mt-1 text-sm text-slate-500">{PLAN_TAGLINE[plan]}</p>
           </div>
-          <div className="flex shrink-0 items-baseline gap-1">
-            <span className="font-display text-3xl font-extrabold tracking-tight text-ink">
-              {price}
-            </span>
-            <span className="text-xs text-slate-500">/ {BILLING_PERIOD}</span>
+          <div className="shrink-0 text-right">
+            <div className="flex items-baseline gap-1">
+              <span className="font-display text-3xl font-extrabold tracking-tight text-ink">
+                {price}
+              </span>
+              <span className="text-xs text-slate-500">/ {BILLING_PERIOD}</span>
+            </div>
+            {usdNote}
           </div>
         </div>
       ) : (
@@ -85,6 +93,7 @@ export function PlanCard({
             </span>
             <span className="text-sm text-slate-500">/ {BILLING_PERIOD}</span>
           </div>
+          {usdNote}
         </>
       )}
       <ul
