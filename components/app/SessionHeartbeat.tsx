@@ -7,13 +7,13 @@
 // background tab's timers are throttled, and again whenever the tab comes back
 // into view. A laptop that slept overnight wakes to a 401, and the student is
 // sent to log in rather than left on a dashboard whose requests all fail. A
-// plan that ends while the tab is open goes to /renew for the same reason.
+// plan that ends while the tab is open reloads, so the shell shows the plans.
 
 import { useEffect } from "react";
 
 const PING_MS = 5 * 60 * 1000;
 
-export function SessionHeartbeat() {
+export function SessionHeartbeat({ expired }: { expired: boolean }) {
   useEffect(() => {
     let gone = false;
 
@@ -27,9 +27,9 @@ export function SessionHeartbeat() {
           return;
         }
         const data = await res.json().catch(() => ({}));
-        if (data.expired === true) {
+        if (data.expired === true && !expired) {
           gone = true;
-          window.location.assign("/renew");
+          window.location.reload();
         }
       } catch {
         // Offline for a moment; the next ping tries again.
@@ -46,7 +46,7 @@ export function SessionHeartbeat() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [expired]);
 
   return null;
 }

@@ -378,7 +378,7 @@ async function writeUser(
 
   // An ended subscription never overwrites a different one: a late or retried
   // event for the old subscription of a student who has since paid again would
-  // otherwise mark the new one ended and send them to /renew.
+  // otherwise mark the new one ended and lock them out.
   //
   // Two statements rather than one with a SQL `case`, so "keep the existing
   // cancel date" can be expressed with `coalesce(plan_cancelled_at, now())` —

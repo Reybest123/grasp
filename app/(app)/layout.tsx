@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const currency = await resolveCurrency(user);
   return (
     <CurrencyProvider currency={currency}>
-      <AppProviders>{children}</AppProviders>
+      <AppProviders expired={user?.expired ?? false}>{children}</AppProviders>
     </CurrencyProvider>
   );
 }

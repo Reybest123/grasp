@@ -11,12 +11,13 @@
 // recording down with it on the next navigation.
 
 import { createContext, startTransition, useCallback, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/app/Sidebar";
 import { ProfileMenu } from "@/components/app/ProfileMenu";
 import { MobileNav } from "@/components/app/MobileNav";
 import { PageTransition } from "@/components/app/PageTransition";
+import { RenewPlans } from "@/components/RenewPlans";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubjectEditor } from "@/components/SubjectEditor";
 import { useSubjects, useNow } from "@/lib/subjectsStore";
@@ -42,8 +43,9 @@ export function useChrome(): Chrome {
   return ctx;
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ expired, children }: { expired: boolean; children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { subjects, updateSubject, removeSubject, saveFailed } = useSubjects();
   // The logo navigates, so it goes through the same guard every other exit
   // from the live recording view does.
@@ -111,8 +113,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {profileReady && (
               <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-3 pr-3.5 text-xs font-semibold text-slate-600 sm:inline-flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                {planName(profile.plan ?? DEFAULT_PLAN, profile.trialEndsAt)}
-                {profile.unlimited ? (
+                {expired ? "Plan ended" : planName(profile.plan ?? DEFAULT_PLAN, profile.trialEndsAt)}
+                {expired ? null : profile.unlimited ? (
                   <span className="text-slate-500">Unlimited</span>
                 ) : trialLeft !== null ? (
                   <span className="text-slate-500">
@@ -135,7 +137,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="compact:hidden">
               <ProfileMenu onLogOut={() => setConfirmLogOut(true)} />
             </div>
-            <MobileNav onLogOut={() => setConfirmLogOut(true)} />
+            <MobileNav expired={expired} onLogOut={() => setConfirmLogOut(true)} />
           </div>
         </div>
       </header>
@@ -147,7 +149,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           and MobileNav's burger is the navigation instead. */}
       <div className="pt-[69px] roomy:pl-16">
         <main className="min-h-[calc(100dvh-69px)]">
-          <PageTransition>{children}</PageTransition>
+          {/* An ended plan keeps the shell, so the student can still log out or
+              go to Settings, but every other page asks them to choose a plan. */}
+          <PageTransition>
+            {expired && !pathname.startsWith("/settings") ? <RenewPlans /> : children}
+          </PageTransition>
         </main>
       </div>
 

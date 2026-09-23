@@ -17,16 +17,23 @@ import { AppShell } from "@/components/app/AppShell";
 import { SessionHeartbeat } from "@/components/app/SessionHeartbeat";
 import { LimitDialog } from "@/components/app/LimitDialog";
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({
+  expired,
+  children,
+}: {
+  /** the plan has ended: every page but Settings shows the plans instead */
+  expired: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <ProfileProvider>
-      <SessionHeartbeat />
+      <SessionHeartbeat expired={expired} />
       <SubjectsProvider>
         <RecordingProvider>
           {/* Inside the recording provider so its link to /plans can go through
               the recording guard like every other way off the Record tab. */}
           <LimitDialog />
-          <AppShell>{children}</AppShell>
+          <AppShell expired={expired}>{children}</AppShell>
         </RecordingProvider>
       </SubjectsProvider>
     </ProfileProvider>

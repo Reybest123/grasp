@@ -40,9 +40,6 @@ const TOUCH_EVERY_MS = 60 * 1000;
 /** Where a page sends a stale session: it clears the cookie, then goes to /login. */
 export const EXPIRED_PATH = "/api/auth/expired";
 
-/** Where an account whose subscription has ended is sent to choose a plan again. */
-export const RENEW_PATH = "/renew";
-
 export type SessionUser = {
   id: string;
   email: string;
@@ -56,7 +53,7 @@ export type SessionUser = {
   unlimited: boolean;
   /** what the account is billed in; null until it first reaches Stripe Checkout */
   currency: Currency | null;
-  /** the account had a plan and its subscription has ended; sent to /renew */
+  /** the account had a plan and its subscription has ended; every page but Settings asks it to renew */
   expired: boolean;
 };
 
@@ -295,7 +292,6 @@ export async function guardAppPage(): Promise<SessionUser | null> {
   if (user === "none") redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
   if (!user.plan) redirect("/onboarding");
-  if (user.expired) redirect(RENEW_PATH);
   return user;
 }
 
@@ -309,13 +305,3 @@ export async function guardOnboardingPage(): Promise<SessionUser | null> {
   return user;
 }
 
-/** The renew page is only for an account whose plan has ended; anyone else goes where they belong. */
-export async function guardRenewPage(): Promise<SessionUser | null> {
-  const user = await lookupSession();
-  if (user === "error") return null;
-  if (user === "none") redirect(EXPIRED_PATH);
-  if (!user.verified) redirect("/verify-email");
-  if (!user.plan) redirect("/onboarding");
-  if (!user.expired) redirect("/home");
-  return user;
-}

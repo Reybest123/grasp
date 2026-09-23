@@ -41,7 +41,7 @@ const ITEMS: Item[] = [
   },
 ];
 
-export function MobileNav({ onLogOut }: { onLogOut: () => void }) {
+export function MobileNav({ expired, onLogOut }: { expired: boolean; onLogOut: () => void }) {
   const [open, setOpen] = useState(false);
   const visible = useEnterTransition(open);
   const pathname = usePathname();
@@ -155,7 +155,9 @@ export function MobileNav({ onLogOut }: { onLogOut: () => void }) {
                   </p>
                   {ready && (
                     <p className="mt-0.5 text-xs font-semibold text-brand-700">
-                      {profile.unlimited
+                      {expired
+                        ? "Plan ended"
+                        : profile.unlimited
                         ? "Unlimited"
                         : planName(
                             profile.plan ?? DEFAULT_PLAN,

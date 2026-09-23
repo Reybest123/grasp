@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     // looks like it came from — the same answer the plan cards were drawn with.
     currency: await resolveCurrency(guard.user),
     successUrl: `${origin}/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}&to=${returnTo}`,
-    cancelUrl: `${origin}/${returnTo}`,
+    cancelUrl: `${origin}/${returnTo === "renew" ? "home" : returnTo}`,
   });
   if (!session.ok) return NextResponse.json({ error: session.error }, { status: 502 });
   return NextResponse.json({ url: session.url });

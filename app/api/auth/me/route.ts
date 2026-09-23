@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireUser({ allowExpired: true });
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => ({}));
