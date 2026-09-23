@@ -36,7 +36,7 @@ export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max" };
  * actually pays. Every plan gives every student the same allowances, so there
  * is one budget, in one currency, and it is this one.
  */
-export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 6.99, max: 14.49 };
+export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 5.49, max: 14.49 };
 
 /**
  * What each plan costs in each currency a student can be charged in — the
@@ -48,15 +48,16 @@ export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 6.99, max: 14.49 };
  * same plan. They are chosen to sit near the anchor converted at the rate of
  * the day, and re-checked by hand when that drifts far enough to matter.
  *
- * At AUD 0.65 to the dollar the AUD prices come to about $6.49 and $13.00 —
- * under the anchor by roughly 7% on Pro and 10% on Max, so an Australian
+ * At AUD 0.65 to the dollar the AUD prices come to about $5.19 and $13.00 —
+ * under the anchor by roughly 5% on Pro and 10% on Max, so an Australian
  * student is the better deal. Worth knowing when the rate moves: the
  * allowances do not shrink with it, so a falling AUD eats margin rather than
- * service.
+ * service. At that rate a maxed-out Max paid in AUD costs about 54% of what it
+ * sold for, just over AI_BUDGET_SHARE, which only the USD price is held to.
  */
 export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<Plan, number>> = {
   usd: PLAN_PRICE_USD,
-  aud: { pro: 9.99, max: 19.99 },
+  aud: { pro: 7.99, max: 19.99 },
 };
 
 /** How often a plan is billed, as it reads after "/" and "a". */
@@ -68,21 +69,13 @@ export function planPrice(plan: Plan, currency: Currency): string {
 }
 
 /**
- * The most a plan's AI can cost Grasp in a week, as a share of its price, with
- * every allowance used to the full at its worst case (lib/costModel.ts). The AI
- * token allowance is whatever this leaves once the fixed allowances are paid for.
- *
- * Raised from 0.5 to 0.59 on 2026-09-19, deliberately and at the user's
- * request, when the prices came down: the allowances are derived from the
- * price, so holding this at a half would have cut Max from 19,000 tokens to
- * 6,000 — fewer than Pro's, on a plan costing twice as much, which stops the
- * tier making sense at all. The choice was a thinner worst case over a worse
- * product. A maxed-out plan now costs Grasp about 58% of its price rather than
- * 49%, which is still the right side of profitable, and the worst case is
- * deliberately pessimistic: every figure in lib/costModel.ts prices output at
- * its cap, and the costs measured against the real prompts sit far below it.
+ * The most a plan's AI can cost Grasp in a week, as a share of its USD price,
+ * with every allowance used to the full at its worst case (lib/costModel.ts).
+ * A ceiling, checked below: a plan whose worst case goes over it fails the
+ * build. The worst case is deliberately pessimistic, since every figure in
+ * lib/costModel.ts prices output at its cap.
  */
-export const AI_BUDGET_SHARE = 0.59;
+export const AI_BUDGET_SHARE = 0.5;
 
 export const PLAN_TAGLINE: Record<Plan, string> = {
   pro: "Everything you need to study from your own notes.",
@@ -198,25 +191,11 @@ function fixedWorstUsd(plan: Plan) {
 
 /**
  * AI tokens a rolling week, enforced by lib/usage.ts on explain, refine,
- * enhance, generate and "Explain why I'm wrong". Not a figure to set by hand:
- * it is whatever the plan's budget has left once every other allowance is paid
- * for at its worst, rounded down to a thousand.
+ * enhance, generate and "Explain why I'm wrong". Set by hand, since students
+ * were never close to the old allowances derived from what the budget had
+ * left; the check after planWorstCase keeps them inside AI_BUDGET_SHARE.
  */
-export const AI_TOKEN_LIMIT: Record<Plan, number> = {
-  pro: tokenAllowance("pro"),
-  max: tokenAllowance("max"),
-};
-
-function tokenAllowance(plan: Plan): number {
-  const fixed = fixedWorstUsd(plan);
-  const left =
-    PLAN_PRICE_USD[plan] * AI_BUDGET_SHARE -
-    fixed.quizzes -
-    fixed.resourceReads -
-    fixed.recordings -
-    tokenActionWorstUsd();
-  return Math.max(0, Math.floor(left / TOKEN_USD / 1000) * 1000);
-}
+export const AI_TOKEN_LIMIT: Record<Plan, number> = { pro: 2_000, max: 5_000 };
 
 export function aiTokenLimit(plan: Plan): number {
   return AI_TOKEN_LIMIT[plan];
@@ -232,6 +211,17 @@ export function planWorstCase(plan: Plan): WorstCase {
     total: fixed.quizzes + fixed.resourceReads + fixed.recordings + tokens,
     budget: PLAN_PRICE_USD[plan] * AI_BUDGET_SHARE,
   };
+}
+
+for (const plan of PLANS) {
+  const worst = planWorstCase(plan);
+  if (worst.total > worst.budget) {
+    throw new Error(
+      `${PLAN_LABEL[plan]} can cost $${worst.total.toFixed(2)} a week at its worst, over its ` +
+        `$${worst.budget.toFixed(2)} budget (AI_BUDGET_SHARE of the USD price). ` +
+        `Raise the price or lower an allowance in lib/plan.ts.`
+    );
+  }
 }
 
 /** "17,000", without toLocaleString, whose separator differs between server and browser. */

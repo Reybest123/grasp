@@ -77,7 +77,7 @@ const PLANS = [
     plan: "pro",
     label: "Grasp Pro",
     lookupKey: "grasp_pro_weekly",
-    amounts: { usd: 6.99, aud: 9.99 },
+    amounts: { usd: 5.49, aud: 7.99 },
   },
   {
     plan: "max",
