@@ -79,7 +79,9 @@ export default function Privacy() {
             the link. Your network address and browser are combined into a one-way scrambled code
             that changes every day, so visits can be counted without following anyone from one day
             to the next. Grasp also records when you make an account, confirm your email, go to
-            checkout and start a plan. No cookie is used for this and nothing is shared with an
+            checkout and start a plan. The record of making an account carries that day&apos;s
+            code, so visits made on the day you sign up can be linked to your account, which is
+            how Grasp tells which advert brought you. Visits on other days cannot be. No cookie is used for this and nothing is shared with an
             analytics company. Visit records are deleted after 180 days, and the rest go when your
             account does.
           </li>

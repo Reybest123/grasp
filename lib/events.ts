@@ -29,15 +29,18 @@ export function looksAutomated(req: Request): boolean {
 }
 
 /**
- * Who this is, for today only. The salt is derived from a secret the server
- * already holds plus the date, so the hash cannot be rebuilt from a list of
- * addresses.
+ * Who this is, for today only. The salt is derived from ANALYTICS_SALT, a
+ * random secret used for nothing else, plus the date. Without that secret the
+ * hash cannot be rebuilt from a list of addresses, and it is not derived from
+ * anything the database holds, so a copy of the database does not unlock it.
+ * Unset, no visitor is recorded at all rather than one under a guessable salt.
  */
 export function visitorOf(req: Request): string | null {
+  const secret = process.env.ANALYTICS_SALT;
   const address = addressOf(req);
-  if (!address) return null;
+  if (!secret || !address) return null;
   const day = new Date().toISOString().slice(0, 10);
-  const salt = createHmac("sha256", process.env.DATABASE_URL || "grasp").update(`visitor:${day}`).digest();
+  const salt = createHmac("sha256", secret).update(`visitor:${day}`).digest();
   return createHash("sha256")
     .update(salt)
     .update(address)
@@ -86,12 +89,29 @@ export async function track(
               ${page?.utm_campaign ?? null}, ${clip(detail, 100)})
       on conflict do nothing
     `;
-    // A sweep on a small share of writes, like auth_attempts, since there is no
-    // scheduler. Page views are the bulk of the table and are kept 180 days.
-    if (name === "pageview" && Math.random() < 0.02) {
-      await sql`delete from events where name = 'pageview' and user_id is null and created_at < now() - interval '180 days'`;
-    }
+    if (name === "pageview") await pruneOldViews();
   } catch (err) {
     console.error("[grasp] could not record an event:", err);
+  }
+}
+
+const PRUNE_EVERY_MS = 60 * 60 * 1000;
+const holder = globalThis as unknown as { graspViewsPrunedAt?: number };
+
+/**
+ * Deletes page views older than 180 days, as the Privacy Policy promises. At
+ * most once an hour per server process, on the first page view or analytics
+ * panel load after that, so the promise holds on a quiet site too rather than
+ * waiting on a random share of writes. There is no scheduler to run it.
+ */
+export async function pruneOldViews(): Promise<void> {
+  const now = Date.now();
+  if (holder.graspViewsPrunedAt && now - holder.graspViewsPrunedAt < PRUNE_EVERY_MS) return;
+  holder.graspViewsPrunedAt = now;
+  try {
+    await sql`delete from events where name = 'pageview' and user_id is null and created_at < now() - interval '180 days'`;
+  } catch (err) {
+    holder.graspViewsPrunedAt = undefined;
+    console.error("[grasp] could not prune old page views:", err);
   }
 }

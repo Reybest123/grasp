@@ -11,6 +11,7 @@
 // page is for, so each carries a `scope-ok` note for npm run check:scoping.
 
 import { sql } from "@/lib/db";
+import { pruneOldViews } from "@/lib/events";
 import { LIMITS as COST_LIMITS } from "@/lib/costModel";
 import {
   PLAN_PRICE_BY_CURRENCY,
@@ -112,6 +113,7 @@ function stageOf(row: Record<string, any>): string {
 }
 
 export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
+  await pruneOldViews();
   const days = RANGES[range];
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
 
