@@ -18,11 +18,9 @@ import { LockIcon } from "@/components/icons";
 type AdminState = { plan: Plan | null; unlimited: boolean };
 
 export function AdminPanel({
-  configured,
   initial,
   email,
 }: {
-  configured: boolean;
   initial: AdminState | null;
   /** the account signed in on this browser, once unlocked */
   email: string | null;
@@ -42,24 +40,16 @@ export function AdminPanel({
       {state ? (
         <Controls state={state} setState={setState} email={email} />
       ) : (
-        <Unlock configured={configured} onUnlocked={setState} />
+        <Unlock onUnlocked={setState} />
       )}
     </div>
   );
 }
 
-function Unlock({
-  configured,
-  onUnlocked,
-}: {
-  configured: boolean;
-  onUnlocked: (state: AdminState) => void;
-}) {
+function Unlock({ onUnlocked }: { onUnlocked: (state: AdminState) => void }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(
-    configured ? "" : "Admin is not set up on this server. Set ADMIN_PASSWORD and restart."
-  );
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -120,7 +110,7 @@ function Unlock({
         {error && <ErrorNote message={error} className="mt-4" />}
         <button
           type="submit"
-          disabled={busy || !configured}
+          disabled={busy}
           className="mt-6 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
         >
           {busy ? "Checking…" : "Unlock"}

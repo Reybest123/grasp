@@ -5,11 +5,9 @@ import { ADMIN_DEFAULT, adminConfigured, passwordMatches, readAdmin, writeAdmin 
 import { authRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
+  // Not on graspstudy.com: ADMIN_PASSWORD is only set on the staging site.
   if (!adminConfigured()) {
-    return NextResponse.json(
-      { error: "Admin is not set up on this server. Set ADMIN_PASSWORD and restart." },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
   const gate = await authRateLimit("admin", req, "admin");

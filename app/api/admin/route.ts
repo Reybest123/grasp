@@ -2,10 +2,13 @@
 // browser that has already unlocked /admin can change it.
 
 import { NextRequest, NextResponse } from "next/server";
-import { clearAdmin, readAdmin, writeAdmin } from "@/lib/admin";
+import { adminConfigured, clearAdmin, readAdmin, writeAdmin } from "@/lib/admin";
 import { isPlan } from "@/lib/plan";
 
+const notFound = () => NextResponse.json({ error: "Not found." }, { status: 404 });
+
 export async function PATCH(req: NextRequest) {
+  if (!adminConfigured()) return notFound();
   const current = await readAdmin();
   if (!current) {
     return NextResponse.json({ error: "Admin is locked. Enter the password again." }, { status: 401 });
@@ -21,6 +24,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE() {
+  if (!adminConfigured()) return notFound();
   await clearAdmin();
   return NextResponse.json({ ok: true });
 }
