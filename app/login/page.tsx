@@ -1,6 +1,10 @@
 import { AuthForm } from "@/components/auth/AuthForm";
 
-export const metadata = { title: "Log in — Grasp" };
+export const metadata = {
+  title: "Log in",
+  description: "Log in to Grasp to get back to your subject notebooks, recordings and quizzes.",
+  alternates: { canonical: "/login" },
+};
 
 /**
  * `next` carries where the student was headed before proxy.ts sent them here,

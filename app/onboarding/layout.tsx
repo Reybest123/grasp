@@ -5,6 +5,8 @@ import { guardOnboardingPage } from "@/lib/session";
 import { CurrencyProvider } from "@/lib/currencyStore";
 import { resolveCurrency } from "@/lib/currencyServer";
 
+export const metadata = { title: "Get started" };
+
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await guardOnboardingPage();
   const currency = await resolveCurrency(user);

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { EXPIRED_PATH, currentUser } from "@/lib/session";
 import { VerifyEmail } from "@/components/auth/VerifyEmail";
 
-export const metadata = { title: "Confirm your email — Grasp" };
+export const metadata = { title: "Confirm your email" };
 
 /**
  * Where an unconfirmed account is held until the link is clicked. proxy.ts keeps

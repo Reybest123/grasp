@@ -64,6 +64,18 @@ export function SubjectWorkspace({
   const rec = useRecording();
   const [activeId, setActiveId] = useState<string | undefined>(subject.notes[0]?.id);
 
+  // Name the tab after the subject, so a student with several open can tell
+  // them apart. Set here rather than through metadata because the subject is
+  // only known once the client store has loaded; the layout's "Notebooks" title
+  // is put back on the way out.
+  useEffect(() => {
+    const previous = document.title;
+    document.title = `${subject.name.trim() || "Untitled subject"} — Grasp`;
+    return () => {
+      document.title = previous;
+    };
+  }, [subject.name]);
+
   // A counter rather than a boolean: clicking the chip again after browsing
   // away has to land on Record a second time, and a boolean would already be set.
   useEffect(() => {

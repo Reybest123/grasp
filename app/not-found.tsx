@@ -1,6 +1,6 @@
 import { ErrorScreen } from "@/components/ErrorScreen";
 
-export const metadata = { title: "Page not found — Grasp" };
+export const metadata = { title: "Page not found" };
 
 /** Any URL that matches no route, in place of Next's bare "404" page. */
 export default function NotFound() {

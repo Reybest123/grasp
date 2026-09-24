@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { SetupAccountMenu } from "@/components/auth/SetupAccountMenu";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 
-export const metadata = { title: "Email confirmed — Grasp" };
+export const metadata = { title: "Email confirmed" };
 
 /**
  * Where the confirmation link lands, so the student gets a moment of "that

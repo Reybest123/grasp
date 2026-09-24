@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { Logo, LogoMark } from "@/components/Logo";
 import { ArrowRightIcon } from "@/components/icons";
 import { HeroShowcase } from "@/components/landing/HeroShowcase";
@@ -32,6 +34,44 @@ const STEPS: { n: string; title: string; body: string }[] = [
   },
 ];
 
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+// What Grasp is, for search engines. An Organization and the web app it makes,
+// not a LocalBusiness: there is no street address or opening hours to describe.
+// No `offers`, for the same reason the page itself carries no price.
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/apple-icon`,
+      email: "liamspencer549@gmail.com",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "WebApplication",
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Any (web browser)",
+      audience: { "@type": "EducationalAudience", educationalRole: "student" },
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+  ],
+};
+
 /**
  * The landing page.
  *
@@ -49,6 +89,11 @@ const STEPS: { n: string; title: string; body: string }[] = [
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50">
+      <script
+        type="application/ld+json"
+        // Our own constant, but escape "<" anyway so no string in it can close the tag.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }}
+      />
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <Logo />

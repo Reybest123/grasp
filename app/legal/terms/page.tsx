@@ -4,7 +4,11 @@ import { LegalPage } from "@/components/LegalPage";
 import { LegalSection } from "@/components/LegalSection";
 import { TRIAL_DAYS } from "@/lib/plan";
 
-export const metadata: Metadata = { title: "Terms of Service | Grasp" };
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: "The terms for using Grasp: accounts, plans, payments, refunds and AI-generated content.",
+  alternates: { canonical: "/legal/terms" },
+};
 
 export default function Terms() {
   return (

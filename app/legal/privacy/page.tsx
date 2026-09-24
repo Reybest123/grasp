@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { CONTACT_EMAIL, LegalPage } from "@/components/LegalPage";
 import { LegalSection } from "@/components/LegalSection";
 
-export const metadata: Metadata = { title: "Privacy Policy | Grasp" };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "What Grasp stores, what it never keeps, who processes it, and how to delete your account.",
+  alternates: { canonical: "/legal/privacy" },
+};
 
 // Keep this page true to the code. If what Grasp stores, sends or keeps changes
 // (db/schema.sql, lib/openai.ts, anything that sets a cookie), change it here too.

@@ -2,7 +2,7 @@ import { query } from "@/lib/db";
 import { EXPIRED_RESET_LINK, resetLinkAccount } from "@/lib/passwordReset";
 import { ResetPasswordForm } from "@/components/auth/PasswordReset";
 
-export const metadata = { title: "Reset password — Grasp" };
+export const metadata = { title: "Reset password" };
 
 /**
  * Where the reset email's link lands. The link is checked before the form is
