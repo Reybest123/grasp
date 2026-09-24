@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 import "@/styles/editor.css";
+import { PageViewTracker } from "@/components/PageViewTracker";
 
 // Two faces, two jobs. Bricolage carries the headings — it has enough character
 // at large sizes to give the product a voice, and it is tight enough not to
@@ -66,7 +67,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <PageViewTracker />
+      </body>
     </html>
   );
 }

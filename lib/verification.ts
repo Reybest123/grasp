@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { sql } from "@/lib/db";
 import { hashToken } from "@/lib/session";
 import { escapeHtml, sendEmail } from "@/lib/email";
+import { track } from "@/lib/events";
 
 /** Long enough to survive a student not checking mail until tomorrow. */
 const LINK_HOURS = 24;
@@ -86,7 +87,10 @@ export async function redeemVerification(token: string): Promise<string | null> 
   `) as { id: string }[];
 
   const userId = rows[0]?.id ?? null;
-  if (userId) await sql`delete from email_verifications where user_id = ${userId}`;
+  if (userId) {
+    await sql`delete from email_verifications where user_id = ${userId}`;
+    await track("email_confirmed", { userId });
+  }
   return userId;
 }
 

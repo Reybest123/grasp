@@ -87,7 +87,7 @@ export type RateGate =
  * A missing address simply skips that check and leaves the account bucket, which
  * is the stronger one, doing the work.
  */
-function addressOf(req: Request): string | null {
+export function addressOf(req: Request): string | null {
   // Cloudflare proxies graspstudy.com and sets CF-Connecting-IP to the visitor,
   // overwriting any the client sent. The fallbacks cover requests that skip
   // Cloudflare (local dev, Railway's own address), where the left-most

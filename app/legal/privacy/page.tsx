@@ -73,6 +73,16 @@ export default function Privacy() {
             from, which cannot be turned back into either, and these counts are deleted
             automatically within 24 hours.
           </li>
+          <li>
+            <b>Visits and sign-up steps:</b> when you open the home, sign-up, log-in or legal pages,
+            Grasp records which page it was, the site that linked you there and any campaign tag in
+            the link. Your network address and browser are combined into a one-way scrambled code
+            that changes every day, so visits can be counted without following anyone from one day
+            to the next. Grasp also records when you make an account, confirm your email, go to
+            checkout and start a plan. No cookie is used for this and nothing is shared with an
+            analytics company. Visit records are deleted after 180 days, and the rest go when your
+            account does.
+          </li>
         </ul>
       </LegalSection>
 

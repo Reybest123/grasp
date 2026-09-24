@@ -305,3 +305,34 @@ create table if not exists trial_claims (
   user_id          uuid references users(id) on delete set null,
   created_at       timestamptz not null default now()
 );
+
+-- Product analytics (lib/events.ts, shown at /admin/analytics). One row per page
+-- view on a public page and one per step a student takes towards a plan.
+-- `visitor` is a one-way hash of the network address and browser that changes
+-- every day, so it can count a day's visitors but cannot follow anyone across
+-- days or be turned back into an address. No cookie is set. Rows for a student
+-- go when the account does, and rows for a visitor with no account are pruned
+-- by age.
+create table if not exists events (
+  id           bigint generated always as identity primary key,
+  name         text not null,
+  visitor      text,
+  user_id      uuid references users(id) on delete cascade,
+  host         text,
+  path         text,
+  referrer     text,
+  utm_source   text,
+  utm_medium   text,
+  utm_campaign text,
+  detail       text,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists events_name_idx on events (name, created_at);
+create index if not exists events_age_idx on events (created_at);
+
+-- Signup, email confirmed and subscribed happen once per account, so the
+-- database refuses a second row rather than every caller having to check. A
+-- webhook retried or the checkout return landing beside it is then harmless.
+create unique index if not exists events_once_idx on events (user_id, name)
+  where user_id is not null and name in ('signup', 'email_confirmed', 'subscribed');

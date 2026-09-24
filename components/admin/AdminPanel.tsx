@@ -175,6 +175,12 @@ function Controls({
           </p>
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/admin/analytics"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:bg-slate-100"
+          >
+            Analytics
+          </Link>
           <button
             onClick={lock}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:bg-slate-100"

@@ -18,6 +18,7 @@ import Stripe from "stripe";
 import { query, sql } from "@/lib/db";
 import { PLAN_AVAILABLE, TRIAL_DAYS, isPlan, type Plan } from "@/lib/plan";
 import { claimOrOwnTrial } from "@/lib/trialClaims";
+import { track } from "@/lib/events";
 import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/currency";
 
 // Built on first use, not at module load, for the same reason lib/db.ts's pool
@@ -355,6 +356,7 @@ export async function syncSubscription(subscription: Stripe.Subscription): Promi
             proration_behavior: "none",
           });
           await writeUser(userId, ended, plan);
+          await recordSubscribed(userId, ended, plan);
           return;
         } catch (err) {
           console.error("[grasp] ending a reused-card trial early failed:", err);
@@ -364,6 +366,17 @@ export async function syncSubscription(subscription: Stripe.Subscription): Promi
   }
 
   await writeUser(userId, subscription, plan, periodEnd);
+  await recordSubscribed(userId, subscription, plan);
+}
+
+/**
+ * The analytics event for a student's first subscription (lib/events.ts). Once
+ * per account, so later syncs of the same or a later subscription are dropped
+ * by the database. `detail` says whether it began as a trial.
+ */
+async function recordSubscribed(userId: string, subscription: Stripe.Subscription, plan: Plan | undefined) {
+  if (subscription.status !== "trialing" && subscription.status !== "active") return;
+  await track("subscribed", { userId, detail: `${plan ?? "unknown"}:${subscription.status}` });
 }
 
 async function writeUser(

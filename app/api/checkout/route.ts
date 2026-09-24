@@ -16,6 +16,7 @@
 // plan for free the moment the three questions were answered.
 
 import { NextRequest, NextResponse } from "next/server";
+import { track } from "@/lib/events";
 import { query, sql } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { parseAnswers } from "@/lib/onboarding";
@@ -78,5 +79,6 @@ export async function POST(req: NextRequest) {
     cancelUrl: `${origin}/${returnTo === "renew" ? "home" : returnTo}`,
   });
   if (!session.ok) return NextResponse.json({ error: session.error }, { status: 502 });
+  await track("checkout_started", { userId: guard.user.id, detail: plan });
   return NextResponse.json({ url: session.url });
 }

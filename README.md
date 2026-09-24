@@ -74,7 +74,8 @@ charging a real card).
    `RESEND_API_KEY` sends the email that confirms a new account; an unconfirmed account cannot use
    the app. Without `EMAIL_FROM`, Resend's test sender only delivers to your own Resend login address.
    An optional `ADMIN_PASSWORD` unlocks `/admin`, where a browser can try the app as Pro or Max or
-   with every usage limit off; without it `/admin` stays locked.
+   with every usage limit off; without it `/admin` stays locked. Once unlocked, `/admin/analytics`
+   shows traffic, the signup funnel, trial conversion, subscribers and allowance use.
 
    Any Postgres works, local included. To use the Railway database from your machine, take the
    Postgres service's `DATABASE_PUBLIC_URL`; the `*.railway.internal` address only resolves inside
