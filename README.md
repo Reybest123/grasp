@@ -1,6 +1,6 @@
 # Grasp
 
-**AI note-taking for students, built for lectures, not boardrooms.**
+**AI note-taking for students.**
 
 Grasp turns a screenshot of your school timetable into a notebook for every subject, drafts notes
 live while you record a lecture, explains anything you highlight right inside your notes, and

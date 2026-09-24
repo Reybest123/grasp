@@ -106,7 +106,7 @@ Platform: **Website** (not a native app) — no app store fees, no OCR SDK neede
 - Recommended: paid social ads (Meta/TikTok Ads Manager) targeted at students by age/interest — faster signal than SEO, which is slower-burn
 - Suggested split if testing both: e.g. $50 paid social / $50 SEO/content
 - Not recommended at this budget: paying an influencer/creator directly — usually costs more than $100 for meaningful reach
-- Messaging should lean into the school-focused positioning explicitly (e.g. "built for lectures, not boardrooms") to differentiate from meeting-note competitors in the same ad space
+- Messaging should lean into the school-focused positioning explicitly (e.g. "AI note-taking for students") to differentiate from meeting-note competitors in the same ad space
 
 ---
 

@@ -132,7 +132,7 @@ export default function Home() {
           <div className="rise">
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold tracking-wide text-slate-600 shadow-ring">
               <LogoMark className="h-3.5 w-3.5 text-brand-600" />
-              Built for lectures, not boardrooms
+              AI note-taking for students
             </span>
             <h1 className="mt-6 max-w-xl text-[2.6rem] font-extrabold leading-[1.05] text-ink sm:text-[3.1rem]">
               AI notes that actually <Mark>understand school</Mark>

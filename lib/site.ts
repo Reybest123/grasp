@@ -11,7 +11,7 @@ export const SITE_URL = "https://graspstudy.com";
 
 export const SITE_NAME = "Grasp";
 
-export const SITE_TAGLINE = "AI notes built for students, not boardrooms";
+export const SITE_TAGLINE = "AI note-taking for students";
 
 export const SITE_DESCRIPTION =
   "Grasp turns your timetable into ready-to-use subject notebooks, explains anything you highlight, and quizzes you from your own notes.";

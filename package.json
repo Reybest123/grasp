@@ -2,7 +2,7 @@
   "name": "grasp",
   "version": "0.1.0",
   "private": true,
-  "description": "Grasp — AI note-taking website built for students, not boardrooms.",
+  "description": "Grasp — AI note-taking for students.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -402,7 +402,7 @@ function BrandPanel({ signup }: { signup: boolean }) {
       </div>
 
       <p className="relative mt-10 text-sm text-slate-400">
-        Built for lectures, not boardrooms.
+        AI note-taking for students.
       </p>
     </aside>
   );

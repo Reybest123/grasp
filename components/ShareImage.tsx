@@ -8,7 +8,7 @@ import { ImageResponse } from "next/og";
 import { SITE_TAGLINE } from "@/lib/site";
 
 export const SHARE_ALT =
-  "Grasp: AI notes built for students, not boardrooms. Your timetable becomes a notebook for every subject.";
+  "Grasp: AI note-taking for students. Your timetable becomes a notebook for every subject.";
 export const SHARE_SIZE = { width: 1200, height: 630 };
 
 const INK = "#0b2340";
