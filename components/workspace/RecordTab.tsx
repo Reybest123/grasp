@@ -21,6 +21,7 @@ import type { ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
 import { NoteSwitcher } from "@/components/workspace/NoteSwitcher";
+import { EmptyTab } from "@/components/workspace/EmptyTab";
 import { ErrorNote } from "@/components/ErrorNote";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
 import { WaitingState } from "@/components/WaitingState";
@@ -89,42 +90,40 @@ export function RecordTab({
   }
 
   const startPanel = (
-    <div className="grid place-items-center rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-ring">
-      <span className="grid h-16 w-16 place-items-center rounded-full bg-brand-50 text-brand-600">
-        <MicIcon className="h-8 w-8" />
-      </span>
-      <h3 className="mt-5 text-xl font-bold text-ink">Record a lecture</h3>
-      <p className="mt-2 max-w-md text-sm text-slate-600">
-        Grasp transcribes as you go and drafts structured notes live. When you stop, name it and
-        it&apos;s saved straight into your notes — the audio is never stored.
-      </p>
-
-      {fatal && <ErrorNote message={fatal} className="mt-5 w-full max-w-md" />}
-
-      {resources.length > 0 && (
-        <p className="mt-5 flex max-w-md items-start gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-left text-xs text-slate-500">
-          <BankIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-          Grasp will lean on the {resources.length} document
-          {resources.length === 1 ? "" : "s"} in your Resource Bank to work out which parts of the
-          lecture are the assessed ones, and name any it uses.
-        </p>
-      )}
-
-      <button
-        onClick={start}
-        disabled={rec.starting}
-        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-      >
-        <MicIcon className="h-4 w-4" />
-        {rec.starting ? "Starting…" : "Start recording"}
-      </button>
-      <p className="mt-3 max-w-md text-xs leading-5 text-slate-500">
-        Check your school allows recording before you start. {PLAN_LABEL[plan]} plan:{" "}
-        {profile.unlimited
-          ? "unlimited recording, with no length limit."
-          : `${weekLeft === null ? "…" : formatDuration(weekLeft, true)} of recording left this week, up to ${maxSeconds / 60} minutes a recording.`}
-      </p>
-    </div>
+    <EmptyTab
+      icon={<MicIcon />}
+      title="Record a lecture"
+      actionIcon={<MicIcon />}
+      actionLabel={rec.starting ? "Starting…" : "Start recording"}
+      onClick={start}
+      disabled={rec.starting}
+      before={
+        <>
+          {fatal && <ErrorNote message={fatal} className="mt-5 w-full" />}
+          {resources.length > 0 && (
+            <span className="mt-5 flex items-start gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-left text-xs text-slate-500">
+              <BankIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span>
+                Grasp will lean on the {resources.length} document
+                {resources.length === 1 ? "" : "s"} in your Resource Bank to work out which parts
+                of the lecture are the assessed ones, and name any it uses.
+              </span>
+            </span>
+          )}
+        </>
+      }
+      after={
+        <span className="mt-3 block text-xs leading-5 text-slate-500">
+          Check your school allows recording before you start. {PLAN_LABEL[plan]} plan:{" "}
+          {profile.unlimited
+            ? "unlimited recording, with no length limit."
+            : `${weekLeft === null ? "…" : formatDuration(weekLeft, true)} of recording left this week, up to ${maxSeconds / 60} minutes a recording.`}
+        </span>
+      }
+    >
+      Grasp transcribes as you go and drafts structured notes live. When you stop, name it and
+      it&apos;s saved straight into your notes. The audio is never stored.
+    </EmptyTab>
   );
 
   const busyPanel = (
@@ -358,7 +357,7 @@ export function RecordTab({
 
   // Nothing recorded yet: the tab is the one thing you can do on it. The list
   // and its "New recording" button would both be empty furniture.
-  if (recorded.length === 0) return <div className="mx-auto max-w-3xl">{main}</div>;
+  if (recorded.length === 0) return main;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">

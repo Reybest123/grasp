@@ -68,6 +68,7 @@ import { NoteToolbar } from "@/components/workspace/NoteToolbar";
 import { EquationEditor } from "@/components/workspace/EquationEditor";
 import { ExplainPanel } from "@/components/workspace/ExplainPanel";
 import { NoteSwitcher } from "@/components/workspace/NoteSwitcher";
+import { EmptyTab } from "@/components/workspace/EmptyTab";
 import { EnhanceMenu } from "@/components/workspace/EnhanceMenu";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
@@ -1474,26 +1475,15 @@ export function NotesTab({
     // (createSubject), so this is only reached on purpose, and it says so
     // rather than quietly putting a fresh "Untitled note" back.
     return (
-      <button
+      <EmptyTab
+        icon={<NoteIcon />}
+        title="You have no notes"
+        actionIcon={<PlusIcon />}
+        actionLabel="New note"
         onClick={() => addNote("", "")}
-        className="group grid min-h-[440px] w-full place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 p-10 text-center transition hover:border-brand-400 hover:bg-brand-50/40"
       >
-        <div className="max-w-md">
-          <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-slate-300 text-slate-400 transition group-hover:border-brand-400 group-hover:bg-white group-hover:text-brand-600">
-            <NoteIcon className="h-7 w-7" />
-          </span>
-          <h2 className="mt-5 text-2xl font-bold tracking-tight text-ink transition group-hover:text-brand-700">
-            You have no notes
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Start a note for {subjectName}, or record a lecture and Grasp will write one for you.
-          </p>
-          <span className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition group-hover:bg-brand-700">
-            <PlusIcon className="h-4 w-4" />
-            New note
-          </span>
-        </div>
-      </button>
+        Start a note for {subjectName}, or record a lecture and Grasp will write one for you.
+      </EmptyTab>
     );
   }
 
