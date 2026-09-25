@@ -26,6 +26,7 @@ import {
   escapeHtml,
 } from "@/lib/richText";
 import { NoteHistory, type Step } from "@/lib/history";
+import { useVisualViewport } from "@/lib/useVisualViewport";
 import {
   buildTable,
   closestCell,
@@ -190,6 +191,79 @@ export function NotesTab({
   const docked = useCompact();
   const [panelOpen, setPanelOpen] = useState(false);
   const [explainMode, setExplainMode] = useState<ExplainMode>("explain");
+
+  // The note card is a fixed-height panel: the toolbar stays at its top and
+  // the note scrolls inside it, so a long note never makes the page longer and
+  // the formatting buttons are always in reach. It fills from where it starts
+  // down to the foot of the window.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [cardH, setCardH] = useState<number | null>(null);
+  const visible = useVisualViewport();
+  // On a phone, while the note or its title has focus (so the keyboard is up),
+  // the card lifts out of the page and fills exactly the part of the screen the
+  // keyboard leaves, below the header. iOS never shrinks the page for its
+  // keyboard, so left in the page the card would run on behind the keys and
+  // the line being typed would be hidden under them.
+  const [writing, setWriting] = useState(false);
+  const writingMode = docked && writing;
+
+  useLayoutEffect(() => {
+    if (writingMode) return; // the in-page size is held while writing
+    const measure = () => {
+      const card = cardRef.current;
+      if (!card) return;
+      const top = card.getBoundingClientRect().top + window.scrollY;
+      // PAGE_FOOT is the subject page's own bottom padding (py-8).
+      const fit = Math.round(window.innerHeight - top - PAGE_FOOT);
+      setCardH(Math.max(docked ? 360 : 440, fit));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [docked, writingMode]);
+
+  // Focus moving between the title, the note and the toolbar is one stretch of
+  // writing, so leaving is only believed once focus has settled outside the card.
+  function onCardFocus() {
+    setWriting(true);
+  }
+  function onCardBlur() {
+    setTimeout(() => {
+      if (!cardRef.current?.contains(document.activeElement)) setWriting(false);
+    }, 150);
+  }
+  function doneWriting() {
+    (document.activeElement as HTMLElement | null)?.blur();
+    setWriting(false);
+  }
+
+  // When the keyboard opens or the card resizes around it, bring the caret back
+  // into view inside the note's own scroller.
+  useEffect(() => {
+    if (!writingMode) return;
+    const box = scrollRef.current;
+    const sel = window.getSelection();
+    if (!box || !sel?.rangeCount || !box.contains(sel.focusNode)) return;
+    const caret = caretRect(sel);
+    if (!caret) return;
+    const frame = box.getBoundingClientRect();
+    const margin = 24;
+    if (caret.bottom > frame.bottom - margin) box.scrollTop += caret.bottom - frame.bottom + margin;
+    else if (caret.top < frame.top + margin) box.scrollTop -= frame.top + margin - caret.top;
+  }, [writingMode, visible?.height, visible?.top]);
+
+  const HEADER = 69;
+  const writingTop = visible ? Math.max(HEADER, visible.top) + 8 : HEADER + 8;
+  const writingStyle: React.CSSProperties | undefined =
+    writingMode && visible
+      ? { top: writingTop, height: Math.max(160, visible.top + visible.height - writingTop - 8) }
+      : undefined;
 
   // Undo/redo. The stack lives in a ref (it is not render state); `canStep`
   // mirrors just enough of it to grey the toolbar buttons out.
@@ -1513,9 +1587,11 @@ export function NotesTab({
       />
 
       {/* Note list */}
-      <aside className="hidden lg:block">
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>
-        <ul className="space-y-1">
+      {/* Held to the card's height, so a long list scrolls rather than
+          lengthening the page the card was sized to fit. */}
+      <aside style={{ maxHeight: cardH ?? undefined }} className="hidden flex-col lg:flex">
+        <h3 className="mb-3 shrink-0 text-xs font-bold uppercase tracking-wide text-slate-400">Notes</h3>
+        <ul className="min-h-0 space-y-1 overflow-y-auto">
           {notes.map((n) => (
             // The delete button is a sibling of the note button, not nested in
             // it — a button inside a button is invalid and only one of them
@@ -1558,16 +1634,27 @@ export function NotesTab({
 
         <button
           onClick={() => addNote("", "")}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+          className="mt-4 flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
         >
           <PlusIcon className="h-4 w-4" /> New note
         </button>
       </aside>
 
-      {/* Editor — a flex column so the writing area absorbs any extra height
-          from a long note list, and the tip stays pinned to the bottom. */}
-      <div className="flex min-h-[440px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-start justify-between gap-4 px-8 pt-7">
+      {/* Editor — a fixed-height flex column: the title and toolbar stay put,
+          the note scrolls in the middle, and the tip stays pinned to the
+          bottom. While writing on a phone it lifts out of the page (see
+          `writingMode`), and this spacer holds its place so nothing jumps. */}
+      <div style={{ height: cardH ?? undefined }} className="relative min-h-[360px] roomy:min-h-[440px]">
+      <div
+        ref={cardRef}
+        style={writingStyle}
+        onFocus={onCardFocus}
+        onBlur={onCardBlur}
+        className={`flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${
+          writingStyle ? "fixed inset-x-2 z-30 shadow-xl" : "absolute inset-0"
+        }`}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 px-8 pt-7 compact:px-5 compact:pt-5">
           <input
             value={active.title}
             onChange={(e) => updateNote(active.id, { title: e.target.value })}
@@ -1579,6 +1666,15 @@ export function NotesTab({
             placeholder="Untitled note"
             className="w-full min-w-0 border-none bg-transparent text-2xl font-bold text-ink outline-none placeholder:text-slate-300"
           />
+          {writingMode && (
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={doneWriting}
+              className="mt-1 shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-ink transition hover:bg-slate-100"
+            >
+              Done
+            </button>
+          )}
           {/* The popup anchors to this button, so the wrapper is the position
               context rather than the header row. */}
           <div className="relative mt-1 shrink-0">
@@ -1586,10 +1682,14 @@ export function NotesTab({
               onClick={() => setEnhanceMenu((v) => !v)}
               disabled={enhancing}
               aria-expanded={enhanceMenu}
+              aria-label={blank ? "AI generate" : "AI enhance"}
+              title={blank ? "AI generate" : "AI enhance"}
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
             >
               <SparkleIcon className="h-4 w-4" />
-              {blank
+              {/* Icon only while writing on a phone, where the Done button
+                  shares the row and the title needs what is left. */}
+              {writingMode ? null : blank
                 ? enhancing
                   ? "Generating…"
                   : "AI generate"
@@ -1608,7 +1708,7 @@ export function NotesTab({
           </div>
         </div>
 
-        <div className="mt-4 border-y border-slate-100 bg-slate-50/60 px-6 py-1.5">
+        <div className="mt-4 shrink-0 border-y border-slate-100 bg-slate-50/60 px-6 py-1.5 compact:mt-3 compact:px-2 compact:py-0.5">
           <NoteToolbar
             editorRef={editorRef}
             onChange={commit}
@@ -1623,7 +1723,7 @@ export function NotesTab({
         </div>
 
         {enhanceResult && (
-          <div className="flex items-start gap-2 border-b border-slate-100 px-8 py-2.5">
+          <div className="flex shrink-0 items-start gap-2 border-b border-slate-100 px-8 py-2.5">
             <div className="min-w-0 flex-1 space-y-2">
               <ResourceCitation cited={enhanceResult.cited} />
               <AiFlag source="enhance" output={enhanceResult.output} className="py-1" />
@@ -1642,7 +1742,7 @@ export function NotesTab({
         {/* The sentinel means a spent allowance, which the limit dialog is
             already showing (lib/limitNotice.ts) — the same refusal twice. */}
         {enhanceError && enhanceError !== LIMIT_NOTICE && (
-          <div className="flex items-start gap-2 border-b border-red-100 bg-red-50 px-8 py-2.5 text-sm text-red-700">
+          <div className="flex shrink-0 items-start gap-2 border-b border-red-100 bg-red-50 px-8 py-2.5 text-sm text-red-700">
             <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
             <span className="flex-1">{enhanceError}</span>
             <button
@@ -1656,9 +1756,13 @@ export function NotesTab({
           </div>
         )}
 
+        {/* The note's own scroller. The positioned wrap inside it scrolls with
+            the text, so the placeholder and the cell highlight, measured
+            against it, travel with what they mark. */}
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div
           ref={wrapRef}
-          className="relative flex-1 cursor-text px-8 py-6"
+          className="relative min-h-full cursor-text px-8 py-6 compact:px-5"
           onClick={focusEditorEnd}
         >
           <div
@@ -1672,7 +1776,9 @@ export function NotesTab({
             onPointerDown={onEditorPointerDown}
             onContextMenu={onEditorContextMenu}
             onBlur={removeCaretMark}
-            className="hl-active editor min-h-full text-[15px] leading-7 text-slate-700 outline-none"
+            // 16px on a phone: iOS zooms the whole page into any editable text set
+            // smaller, which is what left a sideways scrollbar over the keyboard.
+            className="hl-active editor text-[15px] leading-7 text-slate-700 outline-none compact:text-base"
           />
           {/* The cell-block highlight. One rectangle over the selected cells,
               drawn above the text the way a selection is, so nothing about it
@@ -1703,15 +1809,18 @@ export function NotesTab({
               // it this inherited whatever size sat above it in the page,
               // rather than the note's, and only the size tiers' *relative*
               // em multipliers happened to still apply against that wrong base.
-              className="pointer-events-none absolute whitespace-nowrap text-[15px] leading-7 text-slate-400"
+              className="pointer-events-none absolute whitespace-nowrap text-[15px] leading-7 text-slate-400 compact:text-base"
             >
               Start typing your notes…
             </span>
           )}
         </div>
+        </div>
 
-        {!tipHidden && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-8 py-2.5">
+        {/* Not while writing on a phone, where every line the keyboard leaves
+            belongs to the note. */}
+        {!tipHidden && !writingMode && (
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 px-8 py-2.5 compact:px-5">
             <p className="text-xs text-slate-400">
               Tip: select any text to explain it, or hit Refine to have Grasp rewrite it in place.
             </p>
@@ -1726,6 +1835,7 @@ export function NotesTab({
           </div>
         )}
       </div>
+      </div>
 
       {/* Floating selection actions — Explain talks it through, Refine rewrites
           it. Which one is pressed is how the AI is told whether to edit. */}
@@ -1736,7 +1846,12 @@ export function NotesTab({
         <div
           ref={pillRef}
           onMouseDown={(e) => e.preventDefault()}
-          style={docked ? undefined : { top: pill.top, left: pill.left }}
+          style={
+            docked
+              ? // Lifted by the keyboard's height, which iOS leaves the page under.
+                { transform: `translate(-50%, -${visible?.bottomInset ?? 0}px)` }
+              : { top: pill.top, left: pill.left }
+          }
           className={`fixed z-40 flex -translate-x-1/2 animate-[fadeIn_120ms_ease-out] overflow-hidden rounded-full bg-ink font-semibold text-white shadow-lg ${
             docked
               ? "bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 text-sm"
@@ -1816,6 +1931,26 @@ function PillButton({
     </button>
   );
 }
+
+/** Where the caret is on screen. A collapsed range reports no rect when it
+ *  sits between elements (the end of the note, an empty line), so it falls
+ *  back to the element beside it. */
+function caretRect(sel: Selection): DOMRect | null {
+  const range = sel.getRangeAt(0).cloneRange();
+  range.collapse(false);
+  const rect = range.getClientRects()[0];
+  if (rect) return rect;
+  const node = range.endContainer;
+  const beside =
+    node.nodeType === Node.ELEMENT_NODE
+      ? node.childNodes[range.endOffset - 1] ?? node.childNodes[range.endOffset] ?? node
+      : node.parentNode;
+  const el = beside instanceof Element ? beside : beside?.parentElement;
+  return el ? el.getBoundingClientRect() : null;
+}
+
+/** The subject page's bottom padding, which the note card stops short of. */
+const PAGE_FOOT = 32;
 
 /** Whether the screen is at Tailwind's `compact` breakpoint (a phone). */
 function useCompact(): boolean {

@@ -17,14 +17,17 @@ const csp = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
+  // Dev lets the app frame itself: phone layouts are checked by loading a page
+  // in a same-origin iframe of phone size, since a desktop Chrome window cannot
+  // be made narrower than about 500px. Production allows no framing at all.
+  isDev ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
   ...(isDev ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   // Older browsers that ignore frame-ancestors.
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Frame-Options", value: isDev ? "SAMEORIGIN" : "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   // Keeps the token in a password-reset link from leaking to other sites.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

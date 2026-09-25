@@ -4,7 +4,7 @@
 // insert, the way Word and Docs do it. Kept separate from NoteToolbar so the
 // toolbar stays a row of buttons.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MAX_COLS, MAX_ROWS } from "@/lib/tables";
 
 export function TablePicker({
@@ -24,22 +24,44 @@ export function TablePicker({
     const onDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
     };
+    // Placed once, against where the button was, so anything that moves the
+    // button closes it rather than leaving it floating somewhere else.
+    const onMove = () => onClose();
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
     document.addEventListener("keydown", onKey);
     // Deferred a tick so the click that opened the picker doesn't close it.
     const id = window.setTimeout(() => document.addEventListener("pointerdown", onDown), 0);
     return () => {
       window.clearTimeout(id);
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
     };
   }, [onClose]);
+
+  // Fixed rather than absolute, placed under the table button: on a phone the
+  // toolbar is one row that scrolls sideways, and a scrolling row clips anything
+  // absolutely positioned inside it. Kept on screen at the right-hand edge.
+  const [spot, setSpot] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    const button = ref.current?.parentElement?.getBoundingClientRect();
+    const width = ref.current?.offsetWidth ?? 0;
+    if (!button) return;
+    setSpot({
+      top: button.bottom + 6,
+      left: Math.max(8, Math.min(button.left, window.innerWidth - width - 8)),
+    });
+  }, []);
 
   return (
     <div
       ref={ref}
       onMouseDown={(e) => e.preventDefault()}
       onMouseLeave={() => setSize({ rows: 0, cols: 0 })}
-      className="absolute left-0 top-full z-30 mt-1.5 w-max rounded-xl border border-slate-200 bg-white p-3 shadow-xl [animation:popIn_120ms_ease-out]"
+      style={spot ?? { visibility: "hidden" }}
+      className="fixed z-40 w-max rounded-xl border border-slate-200 bg-white p-3 shadow-xl [animation:popIn_120ms_ease-out]"
     >
       <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${MAX_COLS}, 1fr)` }}>
         {Array.from({ length: MAX_ROWS * MAX_COLS }, (_, i) => {

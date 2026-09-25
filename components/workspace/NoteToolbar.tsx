@@ -241,7 +241,9 @@ export function NoteToolbar({
     });
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    // One row that scrolls sideways on a phone, as in a phone's own notes app,
+    // rather than three wrapped rows eating the space the keyboard leaves.
+    <div className="flex flex-wrap items-center gap-1 compact:flex-nowrap compact:overflow-x-auto compact:py-1 compact:[scrollbar-width:none] compact:[&::-webkit-scrollbar]:hidden">
       <Button label="Undo" disabled={!canUndo} onClick={onUndo}>
         <UndoIcon className="h-4 w-4" />
       </Button>
@@ -337,7 +339,7 @@ export function NoteToolbar({
 
       <Divider />
 
-      <div className="flex items-center gap-1.5 pl-0.5">
+      <div className="flex shrink-0 items-center gap-1.5 pl-0.5 pr-1">
         {COLORS.map((c) => {
           const on = active.color === c.value.toLowerCase();
           return (
@@ -351,7 +353,7 @@ export function NoteToolbar({
               style={{ backgroundColor: c.value }}
               // The active swatch grows and takes a dark halo — a plain ring in
               // the swatch's own colour is invisible against the swatch itself.
-              className={`h-[18px] w-[18px] rounded-full transition ${
+              className={`h-[18px] w-[18px] shrink-0 rounded-full transition ${
                 on
                   ? "scale-110 ring-2 ring-slate-500 ring-offset-2 ring-offset-white"
                   : "ring-1 ring-inset ring-black/10 hover:scale-110"
@@ -385,7 +387,7 @@ function Button({
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={`grid h-8 w-8 place-items-center rounded-lg transition disabled:pointer-events-none disabled:opacity-35 ${
+      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition disabled:pointer-events-none disabled:opacity-35 ${
         active ? "bg-brand-100 text-brand-700" : "text-slate-500 hover:bg-slate-100 hover:text-ink"
       }`}
     >
@@ -395,5 +397,5 @@ function Button({
 }
 
 function Divider() {
-  return <span className="mx-1 h-5 w-px bg-slate-200" />;
+  return <span className="mx-1 h-5 w-px shrink-0 bg-slate-200" />;
 }
