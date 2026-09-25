@@ -158,10 +158,8 @@ export function QuizSetup({
         <p className="mt-1 text-sm text-slate-500">
           {hasNotes
             ? "Built from your own notes — not a generic question bank."
-            : "You have not written any notes for this subject yet, so this one will be general. Once you have notes, quizzes come straight from them."}
+            : "You have not written any notes for this subject yet. Say what the quiz should cover under Anything else, and once you have notes, quizzes come straight from them."}
         </p>
-
-        {error && <ErrorNote message={error} className="mt-5" />}
 
         {/* Topics — only meaningful once there is material behind them */}
         {hasNotes && subject.quizTopics.length > 0 && (
@@ -299,12 +297,16 @@ export function QuizSetup({
 
         <section className="mt-7">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            Anything else? (optional)
+            {hasNotes ? "Anything else? (optional)" : "Anything else?"}
           </h3>
           <textarea
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
-            placeholder="e.g. exam-style application questions, weight it toward the assessment criteria, go easy on the dates"
+            placeholder={
+              hasNotes
+                ? "e.g. exam-style application questions, weight it toward the assessment criteria, go easy on the dates"
+                : "e.g. photosynthesis, or the causes of World War One"
+            }
             className="mt-3 h-24 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-brand-500"
           />
         </section>
@@ -323,6 +325,9 @@ export function QuizSetup({
             Leave it blank and Grasp names it after what it covers. You can rename it later.
           </p>
         </section>
+
+        {/* Beside the button that was pressed, not at the top of a long form. */}
+        {error && <ErrorNote message={error} className="mt-7" />}
 
         <button
           onClick={() => onGenerate({ name, topics, instructions, noteIds, counts, resourceIds })}

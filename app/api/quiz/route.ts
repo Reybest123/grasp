@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { asBriefs, pickUsed, resourceBlock } from "@/lib/resources";
 import { requireUser } from "@/lib/session";
-import { claimQuiz } from "@/lib/usage";
+import { chargeAiCost, claimQuiz } from "@/lib/usage";
 import { LIMITS, joinNotes } from "@/lib/costModel";
 
 /** Keeps one press from running up a large call. Mirrors the cap in the UI. */
@@ -56,7 +56,6 @@ export async function POST(req: NextRequest) {
   // Capped so a quiz's cost has a ceiling (lib/costModel.ts). Past the cap the
   // later notes are left out rather than the request refused.
   const joined = joinNotes(notes);
-  const noteList = joined ? [joined] : [];
   const notesContext = joined
     ? `Here are the student's actual notes to base questions on:\n\n${joined}`
     : "";
@@ -66,17 +65,29 @@ export async function POST(req: NextRequest) {
   const focus = typeof instructions === "string" ? instructions.trim().slice(0, LIMITS.instructionsChars) : "";
   const schedule = typeof context === "string" ? context.trim().slice(0, LIMITS.contextChars) : "";
 
-  // A subject with no notes yet still gets a quiz — it just can't be personal.
-  // Saying so in the prompt is better than refusing: a brand-new account would
-  // otherwise hit a dead end on the first thing it tries.
-  const grounding = noteList.length
-    ? "Every question must be answerable from the notes below. Do not test material the notes never cover."
-    : "The student has not written any notes for this subject yet, so base the questions on the subject itself at a normal school level. Keep them general rather than pretending to know what the class has covered.";
-
   // §3.4 — the whole point of the bank for quizzes: weight the questions toward
   // what is actually assessed, in the command words the student is marked on.
   const briefs = asBriefs(resources);
   const block = resourceBlock(briefs, "json");
+
+  // A quiz needs something to be about: notes with something in them, a
+  // Resource Bank document, or a topic the student names. The subject's name
+  // alone is not enough — that is a quiz on nothing in particular. Every new
+  // subject starts with one blank note, so "a note was picked" is not the test;
+  // whether any note has a body is.
+  const hasNoteText = Array.isArray(notes)
+    && (notes as { body?: unknown }[]).some((n) => String(n?.body ?? "").trim().length > 0);
+  const insufficient = NextResponse.json(
+    {
+      insufficient: true,
+      error: hasNoteText
+        ? "There isn't enough in the notes you picked to write a quiz. Add more to them, or say what the quiz should cover under Anything else."
+        : 'Grasp needs something to write a quiz on. Pick notes with something in them, or say what the quiz should cover under Anything else, for example "photosynthesis".',
+    },
+    { status: 422 }
+  );
+  // The obvious case costs nothing: no model call and no quiz taken.
+  if (!hasNoteText && !focus && !topicList.length && !briefs.length) return insufficient;
 
   const wanted = [
     mcq ? `${mcq} multiple-choice question${mcq > 1 ? "s" : ""} (kind "mcq")` : "",
@@ -106,7 +117,11 @@ export async function POST(req: NextRequest) {
         role: "system",
         content:
           'You are Grasp, generating a personalized quiz for a student. ' +
-          grounding +
+          'First decide whether you have something to quiz on. That is any of: notes with real teachable content in them; the Resource Bank documents, if any are given; or a topic the student names, in their focus instructions, in the topics list, or as the title of a note (for example "biology", "photosynthesis", "the causes of World War One"). ' +
+          'The subject name alone is not something to quiz on. Instructions that name no topic are not either: gibberish, a single stray word that is not a topic, or requests about the quiz rather than its content such as "make it hard" or "a good quiz". A note titled "Untitled note" with nothing under it is empty. ' +
+          'Thin but real notes are enough: do not refuse because the notes are short. ' +
+          'If there is nothing to quiz on, respond ONLY with {"insufficient":true} and write no questions. ' +
+          'Otherwise: when the notes have real content, every question must be answerable from them, unless the student asks in their instructions to go wider. When there are no usable notes, write the questions on the topic the student named, or on the Resource Bank documents, at a normal school level, and keep them general rather than pretending to know what the class has covered. ' +
           ' Never use emojis. If the student has an assessment coming up soon, lean toward exam-style application questions. ' +
           'A "mcq" question has exactly 4 options and exactly one correct answer, given as a 0-based answerIndex; the wrong options must be plausible, not filler. The options are shown in a shuffled order, so no option may depend on its position or refer to others: never "All of the above", "None of the above", "Both A and B" or any letter. ' +
           'Work every question out yourself before writing it down, and check that answerIndex points at the option you worked out, and that no other option is also correct. The same goes for every modelAnswer. ' +
@@ -138,6 +153,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const parsed = JSON.parse(result.content || "{}");
+    if (parsed.insufficient === true) {
+      // Nothing to keep, so the quiz goes back. The call still cost something,
+      // and it comes out of the AI tokens so a refusal is not free to repeat.
+      await spend.release();
+      await chargeAiCost(guard.user, result.costUsd);
+      return insufficient;
+    }
     const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
     // The model occasionally returns an mcq with a stray fifth option or an
     // answerIndex past the end. Dropping those beats rendering a broken question.

@@ -437,3 +437,20 @@ export async function checkAiTokens(
     },
   };
 }
+
+/**
+ * Records a model call that produced nothing the student keeps (a quiz the
+ * model declined to write for lack of material) against the AI token
+ * allowance, so those calls are not free to repeat. Not gated: it runs after
+ * the call has already been paid for.
+ */
+export async function chargeAiCost(account: Account, costUsd: number): Promise<void> {
+  if (account.unlimited) return;
+  const result = await query(
+    () => sql`
+      insert into usage (user_id, kind, ref, units)
+      values (${account.id}, 'ai', ${randomUUID()}, ${tokensForCost(costUsd)})
+    `
+  );
+  if (!result.ok) console.error("[grasp] could not charge AI tokens for", account.id);
+}
