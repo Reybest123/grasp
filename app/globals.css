@@ -123,6 +123,34 @@ select[class~="border-slate-200"] {
 
 /* ------------------------------- animations ------------------------------- */
 
+/* Moving between pages that do not share a layout (landing, log in, sign up,
+   onboarding, the app). See components/RouteFade.tsx. The old page leaves
+   quickly so it does not compete; the new one arrives a beat later and rises a
+   few pixels, which reads as the page settling rather than swapping. */
+::view-transition-old(.route-out) {
+  animation: 160ms ease-in both routeOut;
+}
+::view-transition-new(.route-in) {
+  animation: 320ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both routeIn;
+}
+@keyframes routeOut {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes routeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(.route-out),
+  ::view-transition-new(.route-in) {
+    animation: none;
+  }
+}
+
 /* Centered confirm dialog entrance. */
 @keyframes popIn {
   from {

@@ -10,6 +10,7 @@ import { guardAppPage } from "@/lib/session";
 import { AppProviders } from "@/components/app/AppProviders";
 import { CurrencyProvider } from "@/lib/currencyStore";
 import { resolveCurrency } from "@/lib/currencyServer";
+import { RouteFade } from "@/components/RouteFade";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await guardAppPage();
@@ -19,7 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const currency = await resolveCurrency(user);
   return (
     <CurrencyProvider currency={currency}>
-      <AppProviders expired={user?.expired ?? false}>{children}</AppProviders>
+      <RouteFade>
+        <AppProviders expired={user?.expired ?? false}>{children}</AppProviders>
+      </RouteFade>
     </CurrencyProvider>
   );
 }

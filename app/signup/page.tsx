@@ -1,4 +1,5 @@
 import { AuthForm } from "@/components/auth/AuthForm";
+import { RouteFade } from "@/components/RouteFade";
 
 export const metadata = {
   title: "Sign up",
@@ -7,5 +8,9 @@ export const metadata = {
 };
 
 export default function SignupPage() {
-  return <AuthForm mode="signup" />;
+  return (
+    <RouteFade>
+      <AuthForm mode="signup" />
+    </RouteFade>
+  );
 }

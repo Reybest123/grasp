@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { EXPIRED_PATH, currentUser } from "@/lib/session";
 import { VerifyEmail } from "@/components/auth/VerifyEmail";
+import { RouteFade } from "@/components/RouteFade";
 
 export const metadata = { title: "Confirm your email" };
 
@@ -22,11 +23,13 @@ export default async function VerifyEmailPage({
 
   const { status } = await searchParams;
   return (
-    <VerifyEmail
-      email={user.email}
-      status={
-        status === "expired" || status === "error" || status === "unsent" ? status : undefined
-      }
-    />
+    <RouteFade>
+      <VerifyEmail
+        email={user.email}
+        status={
+          status === "expired" || status === "error" || status === "unsent" ? status : undefined
+        }
+      />
+    </RouteFade>
   );
 }

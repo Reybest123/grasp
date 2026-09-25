@@ -1,4 +1,5 @@
 import { AuthForm } from "@/components/auth/AuthForm";
+import { RouteFade } from "@/components/RouteFade";
 
 export const metadata = {
   title: "Log in",
@@ -22,5 +23,9 @@ export default async function LoginPage({
   // redirect — somewhere to send a student after authenticating them.
   // A backslash counts too: browsers read "/\evil.com" as "//evil.com".
   const safe = next && /^\/(?![/\\])/.test(next) && !next.includes("\\") ? next : undefined;
-  return <AuthForm mode="login" next={safe} verified={verified === "1"} reset={reset === "1"} />;
+  return (
+    <RouteFade>
+      <AuthForm mode="login" next={safe} verified={verified === "1"} reset={reset === "1"} />
+    </RouteFade>
+  );
 }
