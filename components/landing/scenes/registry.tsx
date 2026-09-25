@@ -8,8 +8,6 @@ export type Scene = {
   icon: JSX.Element;
   /** The heading of this feature's own section further down the page. */
   title: string;
-  /** The phrase inside the title carrying the highlighter swipe. */
-  mark: string;
   body: string;
   /** The notebook chrome this scene is drawn inside. */
   subject: string;
@@ -32,8 +30,7 @@ export const SCENES: Scene[] = [
     id: "explain",
     label: "Grasp explains",
     icon: <SparkleIcon className="h-4 w-4" />,
-    title: "Highlight anything you",
-    mark: "do not follow",
+    title: "Highlight anything you do not follow",
     body: "Highlight a line in your notes and the explanation appears right next to it. Ask follow-up questions in the same thread. If Grasp gets something wrong, tell it and it fixes the note itself.",
     subject: "Biology",
     monogram: "B",
@@ -44,8 +41,7 @@ export const SCENES: Scene[] = [
     id: "quiz",
     label: "Quizzes",
     icon: <QuizIcon className="h-4 w-4" />,
-    title: "Quizzed on your work,",
-    mark: "not a question bank",
+    title: "Quizzed on your work, not a question bank",
     body: "Pick your topics and how many multiple choice, short and long answers you want. Every question comes from your notes. Written answers are marked against them, and a half-right answer gets half marks.",
     subject: "Biology",
     monogram: "B",
@@ -56,8 +52,7 @@ export const SCENES: Scene[] = [
     id: "record",
     label: "Live notes",
     icon: <MicIcon className="h-4 w-4" />,
-    title: "Record the lesson, watch the",
-    mark: "notes write themselves",
+    title: "Record the lesson, watch the notes write themselves",
     body: "Hit record and watch the notes being written while the lesson is still going. Press stop, give it a name, and it saves into that subject. The audio is deleted as soon as it has been transcribed.",
     subject: "Biology",
     monogram: "B",
@@ -68,8 +63,7 @@ export const SCENES: Scene[] = [
     id: "resources",
     label: "Resource Bank",
     icon: <BankIcon className="h-4 w-4" />,
-    title: "It knows what you are",
-    mark: "actually marked on",
+    title: "It knows what you are actually marked on",
     body: "Add your marking criteria, term planner or past papers once. Grasp reads them and aims your notes, explanations and quizzes at what those documents actually reward. It tells you which one it used.",
     subject: "Biology",
     monogram: "B",

@@ -1,6 +1,5 @@
 "use client";
 
-import { Mark } from "@/components/landing/Mark";
 import { SceneView } from "@/components/landing/SceneView";
 import { ShowcaseFrame } from "@/components/landing/ShowcaseFrame";
 import type { Scene } from "@/components/landing/scenes/registry";
@@ -24,13 +23,15 @@ export function FeatureSpotlight({ scene, flip }: { scene: Scene; flip: boolean 
       className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16"
     >
       <div className={flip ? "lg:order-last" : ""}>
-        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-brand-700 shadow-ring">
-          <span className="text-brand-600">{scene.icon}</span>
+        <p className="flex items-center gap-2 text-sm font-semibold text-brand-700">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-brand-600">
+            {scene.icon}
+          </span>
           {scene.label}
-        </span>
+        </p>
 
-        <h3 className="mt-5 text-3xl font-extrabold leading-[1.12] text-ink sm:text-[2.2rem]">
-          {scene.title} <Mark>{scene.mark}</Mark>
+        <h3 className="mt-4 max-w-md text-3xl font-extrabold leading-[1.1] tracking-[-0.02em] text-ink sm:text-[2.2rem]">
+          {scene.title}
         </h3>
 
         <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-slate-600">{scene.body}</p>
