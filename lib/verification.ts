@@ -88,7 +88,11 @@ export async function redeemVerification(token: string): Promise<string | null> 
 
   const userId = rows[0]?.id ?? null;
   if (userId) {
-    await sql`delete from email_verifications where user_id = ${userId}`;
+    // The link stays valid until it expires, so a second click (a mail scanner
+    // usually gets there first) still says which account it belongs to. It can
+    // only ever confirm an address that is already confirmed, and it never signs
+    // anyone in. Only expired links are cleared.
+    await sql`delete from email_verifications where user_id = ${userId} and expires_at <= now()`;
     await track("email_confirmed", { userId });
   }
   return userId;
