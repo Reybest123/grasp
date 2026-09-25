@@ -4,6 +4,7 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site"
 import "./globals.css";
 import "@/styles/editor.css";
 import { PageViewTracker } from "@/components/PageViewTracker";
+import { AmbientGlow } from "@/components/AmbientGlow";
 
 // Two faces, two jobs. Bricolage carries the headings — it has enough character
 // at large sizes to give the product a voice, and it is tight enough not to
@@ -68,6 +69,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body>
+        <AmbientGlow />
         {children}
         <PageViewTracker />
       </body>

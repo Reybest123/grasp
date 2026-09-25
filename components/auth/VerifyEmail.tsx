@@ -64,7 +64,7 @@ export function VerifyEmail({
 
   return (
     // Fixed to the viewport, the same as the signup form before it.
-    <main className="flex h-dvh flex-col overflow-hidden bg-slate-50">
+    <main className="flex h-dvh flex-col overflow-hidden">
       <header className="shrink-0 px-6 py-4">
         <Logo />
       </header>

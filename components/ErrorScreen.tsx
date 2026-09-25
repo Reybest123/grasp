@@ -72,7 +72,7 @@ export function ErrorScreen({
   if (!framed) return <div className="flex min-h-[calc(100dvh-69px)] flex-col">{content}</div>;
 
   return (
-    <main className="flex min-h-dvh flex-col bg-slate-50">
+    <main className="flex min-h-dvh flex-col">
       <header className="shrink-0 px-6 py-4">
         <Logo />
       </header>

@@ -20,7 +20,7 @@ const NO_CONNECTION = "Grasp could not reach the server. Please check your conne
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex h-dvh flex-col overflow-hidden bg-slate-50">
+    <main className="flex h-dvh flex-col overflow-hidden">
       <header className="flex shrink-0 items-center justify-between px-6 py-4">
         <Logo />
         <Link

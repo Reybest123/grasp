@@ -19,7 +19,7 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen">
       <header className="mx-auto max-w-3xl px-6 py-5">
         <Logo />
       </header>

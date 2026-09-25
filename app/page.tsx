@@ -89,21 +89,17 @@ const STRUCTURED_DATA = {
 export default function Home() {
   return (
     <RouteFade>
-      <main className="relative isolate min-h-screen overflow-x-clip bg-slate-50">
+      <main className="relative isolate min-h-screen overflow-x-clip">
         <script
           type="application/ld+json"
           // Our own constant, but escape "<" anyway so no string in it can close the tag.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }}
         />
         {/* The page is one sheet of exercise-book paper: faint rules the whole
-            way down, and the orange margin rule in the left gutter. */}
+            way down. The orange glow behind it is AmbientGlow, in the root layout. */}
         <div aria-hidden="true" className="ruled pointer-events-none absolute inset-0 -z-10 opacity-50" />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 -z-10 left-[max(0.75rem,calc(50%-37rem))] hidden w-[5px] border-x border-brand-300/70 sm:block"
-        />
 
-        <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/85 backdrop-blur">
+        <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
             <Logo />
             <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
@@ -136,15 +132,7 @@ export default function Home() {
         {/* Hero — the product doing its four things beside the pitch, rather than
             another paragraph of centred text. */}
         <section className="relative">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-24 -top-10 h-[44rem] w-[52rem] rounded-full bg-[radial-gradient(closest-side,theme(colors.brand.200/.9),transparent)] blur-2xl"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -left-48 top-64 h-[28rem] w-[36rem] rounded-full bg-[radial-gradient(closest-side,theme(colors.sky.200/.5),transparent)] blur-2xl"
-          />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pb-24 pt-16 lg:grid-cols-[1fr_1fr] lg:gap-16 lg:pb-28 lg:pt-24">
+          <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pb-10 pt-16 lg:grid-cols-[1fr_1fr] lg:gap-16 lg:pb-12 lg:pt-24">
             <div className="rise">
               <h1 className="max-w-xl text-[2.9rem] font-extrabold leading-[1.02] tracking-[-0.025em] text-ink sm:text-[3.9rem]">
                 AI notes <Mark>built for school</Mark>
@@ -175,7 +163,7 @@ export default function Home() {
 
         {/* How it works — the first thing a student ever does, shown happening
             rather than described. */}
-        <section id="how-it-works" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-24">
+        <section id="how-it-works" className="mx-auto max-w-6xl scroll-mt-20 px-6 pb-24 pt-16">
           <SectionHead
             title="One screenshot and your notebooks are set up"
             body="Upload your timetable. Grasp reads it and builds a notebook for every subject. That is the whole setup."
@@ -218,7 +206,7 @@ export default function Home() {
         {/* The close. Open type on the page, not a card: a box here read as an
             advert dropped onto the paper. */}
         <section className="mx-auto max-w-6xl px-6">
-          <div className="grid items-end gap-10 border-t border-slate-300/70 pb-28 pt-20 lg:grid-cols-[1.4fr_1fr]">
+          <div className="grid items-end gap-10 pb-28 pt-8 lg:grid-cols-[1.4fr_1fr]">
             <h2 className="max-w-2xl text-[2.6rem] font-extrabold leading-[1.02] tracking-[-0.025em] text-ink sm:text-[3.6rem]">
               Get your notebooks set up now
             </h2>

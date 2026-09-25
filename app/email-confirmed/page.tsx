@@ -21,7 +21,7 @@ export default async function EmailConfirmedPage() {
 
   return (
     <RouteFade>
-      <main className="relative flex h-dvh flex-col overflow-hidden bg-slate-50">
+      <main className="relative flex h-dvh flex-col overflow-hidden">
         <div
           aria-hidden="true"
           className="ruled fade-out-b pointer-events-none absolute inset-0 opacity-60"

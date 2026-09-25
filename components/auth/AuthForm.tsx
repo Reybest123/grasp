@@ -215,7 +215,7 @@ export function AuthForm({
     <main className="grid h-dvh grid-rows-[minmax(0,1fr)] overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <BrandPanel signup={signup} />
 
-      <div className="flex min-h-0 flex-col bg-slate-50">
+      <div className="flex min-h-0 flex-col">
         <header className="flex shrink-0 items-center justify-between px-6 py-3 lg:justify-end">
           <span className="lg:hidden">
             <Logo />
