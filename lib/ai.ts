@@ -110,8 +110,6 @@ function cite(data: Used, resources: ResourceBrief[]): Citation[] {
 // is not kept, so this never runs a second time for the same document.
 export async function extractResource(params: {
   name: string;
-  /** left off when the student would rather Grasp worked out what it is */
-  kind?: ResourceKind;
   subjectName: string;
   /** which subject's bank this is going into, so the route can check its cap */
   subjectId: string;
@@ -129,9 +127,9 @@ export async function extractResource(params: {
     "/api/resource-extract",
     params
   );
-  if (data.error) return { kind: params.kind ?? "Other", summary: "", entries: [], error: data.error };
+  if (data.error) return { kind: "Other", summary: "", entries: [], error: data.error };
   return {
-    kind: data.kind ?? params.kind ?? "Other",
+    kind: data.kind ?? "Other",
     summary: data.summary ?? "",
     entries: Array.isArray(data.entries) ? data.entries : [],
     error: null,

@@ -201,10 +201,11 @@
   word-break: break-word;
 }
 
+/* The first row is still a <th> row (lib/tables.ts keeps it one), but it looks
+   like every other row: a shaded, bold header read as a different kind of cell
+   the student had not asked for. */
 .editor th {
-  background: #f8fafc;
-  font-weight: 700;
-  color: #0f1222;
+  font-weight: inherit;
 }
 
 /* A cell-block selection is drawn as one overlay rectangle over the cells
@@ -225,6 +226,13 @@
 
 .editor.cells {
   caret-color: transparent;
+}
+
+/* A selection running from outside a table into it: NotesTab draws the rows it
+   touches as whole blocks, so only the table's own native paint is hidden. */
+.editor.mixed table::selection,
+.editor.mixed table ::selection {
+  background: transparent;
 }
 
 /* ---------------------------------- math ---------------------------------- */

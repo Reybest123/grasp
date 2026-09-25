@@ -81,6 +81,7 @@ const OFF = {
   align: "left" as Align,
   color: DEFAULT_TEXT_COLOR,
   inTable: false,
+  inMath: false,
 };
 
 export function NoteToolbar({
@@ -125,7 +126,7 @@ export function NoteToolbar({
     // Out of the editor (the title, another note) there is no table to be in,
     // so the list buttons must not stay greyed out from the last caret spot.
     if (!inEditor()) {
-      setActive((a) => (a.inTable ? { ...a, inTable: false } : a));
+      setActive((a) => (a.inTable || a.inMath ? { ...a, inTable: false, inMath: false } : a));
       return;
     }
     // Block state is read off the DOM rather than queryCommandState: the lists
@@ -134,7 +135,12 @@ export function NoteToolbar({
     const sel = window.getSelection();
     const block = closestOwnBlock(el, sel?.anchorNode ?? null);
     const kind = listKindOf(block);
+    const node = sel?.anchorNode ?? null;
+    const at = node instanceof Element ? node : node?.parentElement;
     setActive({
+      // Inside an equation none of the note's formatting applies; the equation
+      // bar is what edits it.
+      inMath: !!at?.closest(".math"),
       // Lists and checklists are kept out of tables: a cell is one short value,
       // and a bullet or checkbox inside it only breaks the table's rows apart.
       inTable:
@@ -243,6 +249,15 @@ export function NoteToolbar({
   return (
     // One row that scrolls sideways on a phone, as in a phone's own notes app,
     // rather than three wrapped rows eating the space the keyboard leaves.
+    // A disabled fieldset disables every button inside it at once, which is how
+    // the whole toolbar greys out while an equation is open. Mousedown is
+    // swallowed across the bar so pressing a greyed button, or the gaps between
+    // buttons, does not take focus out of the note and close the equation.
+    <fieldset
+      disabled={active.inMath}
+      onMouseDown={(e) => e.preventDefault()}
+      className="m-0 min-w-0 border-0 p-0"
+    >
     <div className="flex flex-wrap items-center gap-1 compact:flex-nowrap compact:overflow-x-auto compact:py-1 compact:[scrollbar-width:none] compact:[&::-webkit-scrollbar]:hidden">
       <Button label="Undo" disabled={!canUndo} onClick={onUndo}>
         <UndoIcon className="h-4 w-4" />
@@ -318,7 +333,9 @@ export function NoteToolbar({
         <ChecklistIcon className="h-4 w-4" />
       </Button>
 
-      <Button label="Equation" onClick={onEquation}>
+      {/* Not in a table: an equation's editing does not survive a cell's own
+          keyboard handling (Tab, Enter, the arrows). */}
+      <Button label="Equation" disabled={active.inTable} onClick={onEquation}>
         <EquationIcon className="h-4 w-4" />
       </Button>
 
@@ -353,7 +370,7 @@ export function NoteToolbar({
               style={{ backgroundColor: c.value }}
               // The active swatch grows and takes a dark halo — a plain ring in
               // the swatch's own colour is invisible against the swatch itself.
-              className={`h-[18px] w-[18px] shrink-0 rounded-full transition ${
+              className={`h-[18px] w-[18px] shrink-0 rounded-full transition disabled:pointer-events-none disabled:opacity-35 ${
                 on
                   ? "scale-110 ring-2 ring-slate-500 ring-offset-2 ring-offset-white"
                   : "ring-1 ring-inset ring-black/10 hover:scale-110"
@@ -363,6 +380,7 @@ export function NoteToolbar({
         })}
       </div>
     </div>
+    </fieldset>
   );
 }
 

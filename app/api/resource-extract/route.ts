@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { name, kind, dataUrl, text, subjectName, subjectId } = await req.json().catch(() => ({}));
+  const { name, dataUrl, text, subjectName, subjectId } = await req.json().catch(() => ({}));
 
   const filename = typeof name === "string" && name.trim() ? name.trim().slice(0, 200) : "document";
   const hasFile = typeof dataUrl === "string" && dataUrl.startsWith("data:");
@@ -122,7 +122,6 @@ export async function POST(req: NextRequest) {
   const intro =
     `Subject: ${typeof subjectName === "string" && subjectName.trim() ? subjectName.trim().slice(0, 100) : "(unknown)"}\n` +
     `File name: ${filename}\n` +
-    (isResourceKind(kind) ? `The student filed it as: ${kind}. Correct this if the document is plainly something else.\n` : "") +
     `\nRead the document and return the JSON.`;
 
   const parts: Part[] = [{ type: "text", text: intro }];
@@ -187,7 +186,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      kind: isResourceKind(parsed.kind) ? parsed.kind : isResourceKind(kind) ? kind : "Other",
+      kind: isResourceKind(parsed.kind) ? parsed.kind : "Other",
       summary,
       entries,
     });

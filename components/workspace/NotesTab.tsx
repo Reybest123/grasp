@@ -497,6 +497,10 @@ export function NotesTab({
     const el = editorRef.current;
     if (!el) return;
     if (activeMathRef.current?.isConnected) return;
+    // Never in a table, by the toolbar button (greyed out there) or Alt+=: an
+    // equation's editing does not survive a cell's own Tab, Enter and arrows.
+    const at = window.getSelection();
+    if (at?.rangeCount && (closestCell(el, at.anchorNode) || closestCell(el, at.focusNode))) return;
     removeCaretMark();
     el.focus();
 
@@ -1041,9 +1045,11 @@ export function NotesTab({
 
     function measure() {
       const cells = cellSel ? cellsBetween(cellSel.anchor, cellSel.focus) : [];
-      // A single cell is a normal text selection, not a block one — leave it to
-      // the browser so selecting a few words inside one cell still works.
-      if (!el || !wrap || cells.length < 2) {
+      // A block can be one cell: a drag that leaves the cell it started in
+      // makes one (see the pointermove handler), which is what makes a table
+      // of one cell selectable at all. Selecting words inside a cell never
+      // sets a block, so that is still the browser's own text selection.
+      if (!el || !wrap || cells.length < 1) {
         el?.classList.remove("cells");
         setCellBox(null);
         return;
@@ -1068,6 +1074,52 @@ export function NotesTab({
     return () => window.removeEventListener("resize", measure);
   }, [cellSel]);
 
+  // A selection that runs from outside a table into it (or right through it)
+  // lights the table's rows it touches as whole blocks, the way Word does,
+  // instead of the ragged document-order run the browser paints through the
+  // cells. `.editor.mixed` hides that native paint inside tables only, so the
+  // paragraphs either side keep their ordinary highlight.
+  const [rowBoxes, setRowBoxes] = useState<React.CSSProperties[]>([]);
+  useEffect(() => {
+    const el = editorRef.current;
+    const wrap = wrapRef.current;
+    function measure() {
+      if (!el || !wrap) return;
+      const sel = window.getSelection();
+      const boxes: React.CSSProperties[] = [];
+      if (!cellSel && sel?.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode)) {
+        const range = sel.getRangeAt(0);
+        const frame = wrap.getBoundingClientRect();
+        for (const table of el.querySelectorAll("table")) {
+          if (!range.intersectsNode(table)) continue;
+          // Wholly inside one table is a cell block or text in a cell, which
+          // have their own handling.
+          if (table.contains(range.startContainer) && table.contains(range.endContainer)) continue;
+          const rows = [...table.rows].filter((r) => range.intersectsNode(r));
+          if (!rows.length) continue;
+          const first = rows[0].getBoundingClientRect();
+          const last = rows[rows.length - 1].getBoundingClientRect();
+          boxes.push({
+            top: first.top - frame.top,
+            left: first.left - frame.left,
+            width: first.width,
+            height: last.bottom - first.top,
+          });
+        }
+      }
+      el.classList.toggle("mixed", boxes.length > 0);
+      setRowBoxes((prev) => (prev.length === 0 && boxes.length === 0 ? prev : boxes));
+    }
+    measure();
+    document.addEventListener("selectionchange", measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      document.removeEventListener("selectionchange", measure);
+      window.removeEventListener("resize", measure);
+      el?.classList.remove("mixed");
+    };
+  }, [cellSel]);
+
   // A drag that starts in a cell and crosses into another is a block selection.
   // Tracked on the document because a drag routinely ends outside the editor.
   useEffect(() => {
@@ -1075,11 +1127,22 @@ export function NotesTab({
       const anchor = dragAnchor.current;
       const el = editorRef.current;
       if (!anchor || !el) return;
+      const table = anchor.closest("table");
+      if (!table) return;
       const over = closestCell(el, document.elementFromPoint(e.clientX, e.clientY));
-      if (!over || over.closest("table") !== anchor.closest("table")) return;
       // Back inside the cell it started in: hand the selection back to the
       // browser so a drag within one cell selects text the way it always did.
-      setCellSel(over === anchor ? null : { anchor, focus: over });
+      if (over === anchor) return setCellSel(null);
+      if (over && over.closest("table") === table) return setCellSel({ anchor, focus: over });
+      // Dragged out of the table altogether: the block reaches the edge cell
+      // nearest the pointer, as in Word, rather than the native range running
+      // on through the paragraphs around the table. For a one-cell table this
+      // is the only way the cell becomes a block.
+      const box = table.getBoundingClientRect();
+      const x = Math.min(Math.max(e.clientX, box.left + 2), box.right - 2);
+      const y = Math.min(Math.max(e.clientY, box.top + 2), box.bottom - 2);
+      const edge = closestCell(el, document.elementFromPoint(x, y));
+      if (edge && edge.closest("table") === table) setCellSel({ anchor, focus: edge });
     }
     function onUp() {
       dragAnchor.current = null;
@@ -1115,7 +1178,7 @@ export function NotesTab({
    *  selection's span when there is one, otherwise the single clicked cell. */
   const menuSpan = useMemo(() => {
     const cells = cellSel ? cellsBetween(cellSel.anchor, cellSel.focus) : [];
-    const span = cells.length > 1 ? blockSpan(cells) : null;
+    const span = cells.length > 0 ? blockSpan(cells) : null;
     if (!span) return { rows: 1, cols: 1 };
     return { rows: span.r1 - span.r0 + 1, cols: span.c1 - span.c0 + 1 };
   }, [cellSel]);
@@ -1366,7 +1429,7 @@ export function NotesTab({
     // A block of cells is selected: the keys that act on a selection act on all
     // of them, and anything else drops back to the ordinary caret in one cell.
     const cellBlock = selectedCells();
-    if (cellBlock.length > 1) {
+    if (cellBlock.length > 0) {
       if (e.key === "Escape") {
         e.preventDefault();
         clearCellSel();
@@ -1801,6 +1864,14 @@ export function NotesTab({
               className="pointer-events-none absolute rounded-[2px] bg-brand-500/25 ring-1 ring-brand-500/50"
             />
           )}
+          {rowBoxes.map((box, i) => (
+            <div
+              key={i}
+              aria-hidden
+              style={box}
+              className="pointer-events-none absolute rounded-[2px] bg-brand-500/25 ring-1 ring-brand-500/50"
+            />
+          ))}
           {hint && (
             <span
               aria-hidden

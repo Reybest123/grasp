@@ -7,7 +7,6 @@
 // saved onto the subject is the extraction that comes back.
 
 import { useRef, useState } from "react";
-import { RESOURCE_KINDS, type ResourceKind } from "@/lib/resources";
 import {
   RESOURCE_ACCEPT,
   isTextFile,
@@ -33,8 +32,6 @@ const ACCEPT = RESOURCE_ACCEPT;
 
 export type ResourcePayload = {
   name: string;
-  /** left off when the student wants Grasp to work out what the document is */
-  kind?: ResourceKind;
   dataUrl?: string;
   text?: string;
 };
@@ -70,7 +67,6 @@ export function ResourceAdd({
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState("");
   const [name, setName] = useState("");
-  const [kind, setKind] = useState<ResourceKind | "auto">("auto");
   const [dragging, setDragging] = useState(false);
   const [localError, setLocalError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +96,6 @@ export function ResourceAdd({
       if (tooLong) return setLocalError(tooLong);
       return onAdd({
         name: name.trim() || `${subjectName} document`,
-        kind: kind === "auto" ? undefined : kind,
         text,
       });
     }
@@ -116,7 +111,6 @@ export function ResourceAdd({
       }
       onAdd({
         name: name.trim() || file.name,
-        kind: kind === "auto" ? undefined : kind,
         ...(asText ? { text: contents } : { dataUrl: contents }),
       });
     } catch {
@@ -261,26 +255,6 @@ export function ResourceAdd({
             </p>
           </div>
         )}
-
-        <section className="mt-7">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">What is it?</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(["auto", ...RESOURCE_KINDS] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setKind(k)}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  kind === k
-                    ? "border-brand-600 bg-brand-600 text-white"
-                    : "border-slate-300 text-slate-600 hover:border-slate-400"
-                }`}
-              >
-                {k === "auto" ? "Let Grasp work it out" : k}
-              </button>
-            ))}
-          </div>
-        </section>
 
         <section className="mt-7">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">
