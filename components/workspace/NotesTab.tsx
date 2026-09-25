@@ -191,6 +191,7 @@ export function NotesTab({
   const docked = useCompact();
   const [panelOpen, setPanelOpen] = useState(false);
   const [explainMode, setExplainMode] = useState<ExplainMode>("explain");
+  const explainInputRef = useRef<HTMLTextAreaElement>(null);
 
   // The note card is a fixed-height panel: the toolbar stays at its top and
   // the note scrolls inside it, so a long note never makes the page longer and
@@ -970,6 +971,13 @@ export function NotesTab({
 
   function openPanel(mode: ExplainMode) {
     pressingPill.current = false;
+    // Focus goes straight to the panel's message box, inside this tap: iOS
+    // only raises the keyboard for a focus made during the gesture, so leaving
+    // it to the panel's own effect left the phone typing into the note. The
+    // passage is already held in `selectedText`, so the highlight is let go
+    // of too, or its drag handles stay live over the note.
+    explainInputRef.current?.focus({ preventScroll: true });
+    window.getSelection()?.removeAllRanges();
     setExplainMode(mode);
     setPanelOpen(true);
     setPill(null);
@@ -1648,6 +1656,9 @@ export function NotesTab({
       <div
         ref={cardRef}
         style={writingStyle}
+        // Nothing in the note can be reached while Explain or Refine is open;
+        // the panel has to be closed first.
+        inert={panelOpen}
         onFocus={onCardFocus}
         onBlur={onCardBlur}
         className={`flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${
@@ -1878,6 +1889,7 @@ export function NotesTab({
         context={context}
         resources={resources}
         onApplyRevision={commitHtml}
+        inputRef={explainInputRef}
       />
 
       <EquationEditor

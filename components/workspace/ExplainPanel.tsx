@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useVisualViewport } from "@/lib/useVisualViewport";
 import { explainChat, type ChatMsg, type ExplainMode } from "@/lib/ai";
 import type { Citation, ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
@@ -45,6 +46,7 @@ export function ExplainPanel({
   context,
   resources,
   onApplyRevision,
+  inputRef: givenInputRef,
 }: {
   open: boolean;
   mode: ExplainMode;
@@ -56,6 +58,9 @@ export function ExplainPanel({
   /** the subject's Resource Bank, already read and extracted (§3.4) */
   resources: ResourceBrief[];
   onApplyRevision: (revisedHtml: string) => void;
+  /** The message box, so the tap that opens the panel can focus it itself.
+   *  iOS only raises the keyboard for a focus made inside the tap. */
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const [history, setHistory] = useState<ChatMsg[]>([]);
   // Kept beside the thread, keyed by message index, because the thread is
@@ -72,7 +77,11 @@ export function ExplainPanel({
   const [input, setInput] = useState("");
   const [failure, setFailure] = useState<string | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const ownInputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = givenInputRef ?? ownInputRef;
+  // Where the keyboard begins. On a phone the sheet sits on it rather than on
+  // the foot of the page, which iOS leaves behind the keys.
+  const visible = useVisualViewport();
 
   const started = history.length > 0;
 
@@ -131,17 +140,12 @@ export function ExplainPanel({
   }, [open, selected, mode]);
 
   // The editor still has focus when the panel opens, so a keystroke meant for
-  // the panel would land in the note. On a touch screen focusing the box would
-  // throw the keyboard up over half the sheet when typing is optional, so there
-  // the editor is only let go of.
+  // the panel would land in the note. The box takes focus on every device; on
+  // a phone the opening tap has already focused it (see `inputRef`), which is
+  // what brings the keyboard up, and this only catches anything that did not.
   useEffect(() => {
-    if (!open) return;
-    if (window.matchMedia("(pointer: coarse)").matches) {
-      (document.activeElement as HTMLElement | null)?.blur();
-    } else {
-      inputRef.current?.focus({ preventScroll: true });
-    }
-  }, [open]);
+    if (open) inputRef.current?.focus({ preventScroll: true });
+  }, [open, inputRef]);
 
   // Switching mode sends nothing: the student gets the same compose step they
   // would have had opening the panel in that mode, and the thread carries over.
@@ -150,10 +154,8 @@ export function ExplainPanel({
     modeRef.current = mode;
     setFresh(true);
     setFailure(null);
-    if (!window.matchMedia("(pointer: coarse)").matches) {
-      inputRef.current?.focus({ preventScroll: true });
-    }
-  }, [open, mode]);
+    inputRef.current?.focus({ preventScroll: true });
+  }, [open, mode, inputRef]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
@@ -196,12 +198,17 @@ export function ExplainPanel({
   }
 
   const modeLabel = mode === "refine" ? "Refine" : "Explain";
+  // Only a phone's bottom sheet, and only while a keyboard is covering the foot.
+  const sheetLifted = open && !!visible && visible.bottomInset > 0 && isCompact();
 
   return (
     <>
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-200 ${
+        // cursor-pointer: iOS sends no click to an element it does not think
+        // is clickable, so without it a tap here would neither close the panel
+        // nor do anything else.
+        className={`fixed inset-0 z-40 cursor-pointer bg-black/20 transition-opacity duration-200 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
@@ -209,6 +216,11 @@ export function ExplainPanel({
           screen and hides the note it is talking about, so it rises from the
           bottom instead and leaves the top of the note in view. */}
       <aside
+        style={
+          sheetLifted && visible
+            ? { bottom: visible.bottomInset, maxHeight: visible.height - 12 }
+            : undefined
+        }
         className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[420px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out compact:bottom-0 compact:top-auto compact:h-[85dvh] compact:max-w-none compact:rounded-t-3xl compact:border-l-0 ${
           open
             ? "translate-x-0 translate-y-0"
@@ -378,6 +390,9 @@ function ModeButton({
 }) {
   return (
     <button
+      // Keeps the message box focused, so switching mode on a phone does not
+      // drop the keyboard.
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       disabled={disabled}
       title={hint}
@@ -391,5 +406,14 @@ function ModeButton({
       {children}
       {label}
     </button>
+  );
+}
+
+/** Tailwind's `compact` screen, read on render; a phone's sheet is the only
+ *  one a keyboard sits under. */
+function isCompact(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 767px), (max-height: 500px)").matches
   );
 }
