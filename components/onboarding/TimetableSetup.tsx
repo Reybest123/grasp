@@ -18,7 +18,7 @@ import { FoundSubjectEditor } from "@/components/onboarding/FoundSubjectEditor";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   MAX_UPLOAD_BYTES,
-  TIMETABLE_ACCEPT,
+  droppedFile,
   timetableFileSupported,
   tooLargeMessage,
   unsupportedFileMessage,
@@ -35,7 +35,6 @@ import {
 import { WaitingState } from "@/components/WaitingState";
 
 const MAX_BYTES = MAX_UPLOAD_BYTES;
-const ACCEPT = TIMETABLE_ACCEPT;
 
 type Stage = "upload" | "reading" | "done";
 
@@ -153,7 +152,6 @@ export function TimetableSetup({
           <input
             ref={inputRef}
             type="file"
-            accept={ACCEPT}
             onChange={(e) => {
               take(e.target.files?.[0]);
               // Cleared so picking the same file again (after removing or a
@@ -204,7 +202,9 @@ export function TimetableSetup({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragging(false);
-                take(e.dataTransfer.files?.[0]);
+                const dropped = droppedFile(e.dataTransfer);
+                  if (dropped.error) setError(dropped.error);
+                  else take(dropped.file);
               }}
               className={`group grid w-full place-items-center rounded-3xl border-2 border-dashed px-6 py-12 text-center transition ${
                 dragging

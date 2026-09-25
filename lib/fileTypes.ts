@@ -15,8 +15,11 @@ const TEXT_EXTENSIONS = ["txt", "md", "csv"];
 /** The largest upload either form takes: the request body limit, since base64 adds a third. */
 export const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
-export const TIMETABLE_ACCEPT = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf", ...IMAGE_TYPES, PDF_TYPE].join(",");
-export const RESOURCE_ACCEPT = [TIMETABLE_ACCEPT, ".txt", ".md", ".csv", ...TEXT_TYPES].join(",");
+// There is deliberately no `accept` list for the file inputs. With one, the
+// system picker greys out or hides every other file, and a student looking
+// for their HEIC photo or Word document could not tell why it was missing.
+// The picker shows everything, and a file Grasp cannot read is refused by
+// name the moment it is picked (unsupportedFileMessage).
 
 const RESOURCE_LIST = "a PNG, JPG, WEBP or GIF image, a PDF, or a TXT, MD or CSV text file";
 const TIMETABLE_LIST = "a PNG, JPG, WEBP or GIF image, or a PDF";
@@ -55,6 +58,26 @@ export function unsupportedFileMessage(file: FileLike, kind: "resource" | "timet
   const label = extensionOf(file.name ?? "") || (/^[a-z0-9]{2,5}$/i.test(fromType) ? fromType : "");
   const subject = label ? `${label.toUpperCase()} files are` : "This file type is";
   return `${subject} not supported. Please upload ${kind === "resource" ? RESOURCE_LIST : TIMETABLE_LIST}.`;
+}
+
+/**
+ * The file in a drop, or why there is none. Dragging an image straight off a
+ * web page, or a run of selected text, drops a link or text rather than a
+ * file (Firefox never hands over the image; other browsers sometimes do, and
+ * then it is checked like any other file). Left unexplained, the drop just
+ * did nothing.
+ */
+export function droppedFile(dt: DataTransfer): { file?: File; error?: string } {
+  const file = dt.files?.[0];
+  if (file) return { file };
+  const types = Array.from(dt.types ?? []);
+  if (types.includes("text/uri-list") || types.includes("text/html")) {
+    return {
+      error:
+        "That came from a web page, not from a file on your device. Please save it to your device first, then drop or choose the saved file.",
+    };
+  }
+  return { error: "Only files can be dropped here. Please drop a file from your device." };
 }
 
 export function tooLargeMessage(kind: "resource" | "timetable"): string {

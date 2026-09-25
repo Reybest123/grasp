@@ -8,7 +8,7 @@
 
 import { useRef, useState } from "react";
 import {
-  RESOURCE_ACCEPT,
+  droppedFile,
   isTextFile,
   resourceFileSupported,
   tooLargeMessage,
@@ -28,7 +28,6 @@ import { WaitingState } from "@/components/WaitingState";
 
 const MAX_BYTES = RESOURCE_MAX_BYTES;
 
-const ACCEPT = RESOURCE_ACCEPT;
 
 export type ResourcePayload = {
   name: string;
@@ -177,8 +176,12 @@ export function ResourceAdd({
             <input
               ref={inputRef}
               type="file"
-              accept={ACCEPT}
-              onChange={(e) => take(e.target.files?.[0])}
+              onChange={(e) => {
+                take(e.target.files?.[0]);
+                // Cleared so picking the same file again (after a refusal)
+                // still fires a change and shows the message again.
+                e.target.value = "";
+              }}
               className="hidden"
             />
             {file ? (
@@ -210,7 +213,9 @@ export function ResourceAdd({
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragging(false);
-                  take(e.dataTransfer.files?.[0]);
+                  const dropped = droppedFile(e.dataTransfer);
+                  if (dropped.error) setLocalError(dropped.error);
+                  else take(dropped.file);
                 }}
                 className={`grid w-full place-items-center gap-1 rounded-2xl border-2 border-dashed p-10 text-center transition ${
                   dragging
