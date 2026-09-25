@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { ErrorNote } from "@/components/ErrorNote";
 import { PasswordInput } from "@/components/PasswordInput";
 import { CheckIcon } from "@/components/icons";
+import { DeleteAccountDialog } from "@/components/auth/DeleteAccountDialog";
 
 const INPUT =
   "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
@@ -269,50 +270,11 @@ function DeleteSection() {
   // control does not say why it is disabled, and the reason here is something
   // the student can actually go and fix.
   const [blocked, setBlocked] = useState(false);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
   const recording = rec.phase !== "idle";
 
   function press() {
     if (planActive) return setBlocked(true);
     setOpen(true);
-  }
-
-  function cancel() {
-    setOpen(false);
-    setPassword("");
-    setError("");
-  }
-
-  async function remove(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    if (!password) return setError("Please enter your password to confirm.");
-
-    setBusy(true);
-    try {
-      const res = await fetch("/api/auth/account", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Try again.");
-        setBusy(false);
-        return;
-      }
-      // Leaving the route group ends a live recording anyway; stopping it here
-      // releases the microphone rather than leaving that to the unmount.
-      rec.discard();
-      router.push("/");
-      // `busy` stays set through the navigation, so the button cannot be pressed
-      // again for an account that no longer exists.
-    } catch {
-      setError("Grasp could not reach the server. Check your connection.");
-      setBusy(false);
-    }
   }
 
   return (
@@ -327,15 +289,13 @@ function DeleteSection() {
             cannot be undone.
           </p>
         </div>
-        {!open && (
-          <button
-            onClick={press}
-            disabled={!status.loaded}
-            className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-red-200 disabled:hover:bg-white"
-          >
-            Delete account
-          </button>
-        )}
+        <button
+          onClick={press}
+          disabled={!status.loaded}
+          className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-red-200 disabled:hover:bg-white"
+        >
+          Delete account
+        </button>
       </div>
 
       {/* `planActive` as well as `blocked`, so the notice clears itself if the
@@ -354,47 +314,22 @@ function DeleteSection() {
         </p>
       )}
 
-      {open && (
-        <form onSubmit={remove} noValidate className="mt-5 border-t border-slate-100 pt-5">
-          {recording && (
-            <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <DeleteAccountDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        description="Every subject, note, quiz and Resource Bank document goes with it, straight away. This cannot be undone."
+        notice={
+          recording && (
+            <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               You&apos;re still recording your {rec.subjectName} lecture. Deleting your account
               ends it.
             </p>
-          )}
-          {error && <ErrorNote message={error} className="mb-5" />}
-
-          <Field label="Password" hint="Enter it to confirm this is your account.">
-            <span className="block sm:max-w-sm">
-              <PasswordInput
-                value={password}
-                onChange={setPassword}
-                autoComplete="current-password"
-                autoFocus
-                className={INPUT}
-              />
-            </span>
-          </Field>
-
-          <div className="mt-5 flex flex-wrap gap-2.5">
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {busy ? "Deleting…" : "Delete my account"}
-            </button>
-            <button
-              type="button"
-              onClick={cancel}
-              disabled={busy}
-              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Keep my account
-            </button>
-          </div>
-        </form>
-      )}
+          )
+        }
+        // Leaving the route group ends a live recording anyway; stopping it here
+        // releases the microphone rather than leaving that to the unmount.
+        onDeleted={rec.discard}
+      />
     </Section>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
-// Deleting an account from the screens before a plan is chosen, where there is
-// no Settings page to do it from. Asks for the password, the same as Settings,
-// so a laptop left signed in is not one click away from losing the account.
+// The one delete-account popup, used by Settings and by the screens before a
+// plan is chosen. Asks for the password so a laptop left signed in is not one
+// click away from losing the account.
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -13,7 +13,21 @@ import { PasswordInput } from "@/components/PasswordInput";
 const INPUT =
   "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
 
-export function DeleteAccountDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function DeleteAccountDialog({
+  open,
+  onClose,
+  description = "Your account is removed straight away. This cannot be undone.",
+  notice,
+  onDeleted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  description?: string;
+  /** Shown above the password box, e.g. that a live recording will end. */
+  notice?: ReactNode;
+  /** Runs once the account is gone, before the page leaves for `/`. */
+  onDeleted?: () => void;
+}) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -75,6 +89,7 @@ export function DeleteAccountDialog({ open, onClose }: { open: boolean; onClose:
       }
       // `busy` stays set through the navigation, so the button cannot be
       // pressed again for an account that no longer exists.
+      onDeleted?.();
       router.replace("/");
     } catch {
       setError("Grasp could not reach the server. Check your connection.");
@@ -106,9 +121,10 @@ export function DeleteAccountDialog({ open, onClose }: { open: boolean; onClose:
           Delete your account?
         </h2>
         <p id="delete-account-body" className="mt-1.5 text-center text-sm leading-6 text-slate-600">
-          Your account is removed straight away. This cannot be undone.
+          {description}
         </p>
 
+        {notice}
         {error && <ErrorNote message={error} className="mt-5" />}
 
         <label className="mt-5 block">
