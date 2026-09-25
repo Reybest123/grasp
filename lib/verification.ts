@@ -69,11 +69,17 @@ export async function sendVerification(
  * Redeems a link. Returns the account it confirmed, or null for a link that is
  * unknown or expired.
  *
- * Every link the account has is cleared once one works. A second click on the
- * same link then finds nothing, which the route handles by checking whether
- * the student is already confirmed rather than calling the link broken.
+ * `canSignIn` is true while the account was confirmed within the last
+ * `SIGN_IN_MINUTES`, which is how long the link may also sign its account in. A
+ * mail scanner usually opens the link seconds before the student does, so the
+ * student's own click has to count too; after that the link only confirms, so
+ * an old one lying in an inbox is not a way into the account.
  */
-export async function redeemVerification(token: string): Promise<string | null> {
+const SIGN_IN_MINUTES = 30;
+
+export async function redeemVerification(
+  token: string
+): Promise<{ userId: string; canSignIn: boolean } | null> {
   if (!/^[0-9a-f]{64}$/.test(token)) return null;
 
   const rows = (await sql`
@@ -83,8 +89,9 @@ export async function redeemVerification(token: string): Promise<string | null> 
     where v.token_hash = ${hashToken(token)}
       and v.expires_at > now()
       and users.id = v.user_id
-    returning users.id
-  `) as { id: string }[];
+    returning users.id,
+      users.email_verified_at > now() - make_interval(mins => ${SIGN_IN_MINUTES}) as can_sign_in
+  `) as { id: string; can_sign_in: boolean }[];
 
   const userId = rows[0]?.id ?? null;
   if (userId) {
@@ -95,7 +102,7 @@ export async function redeemVerification(token: string): Promise<string | null> 
     await sql`delete from email_verifications where user_id = ${userId} and expires_at <= now()`;
     await track("email_confirmed", { userId });
   }
-  return userId;
+  return userId ? { userId, canSignIn: rows[0].can_sign_in } : null;
 }
 
 function confirmationMail(name: string, link: string): { subject: string; html: string; text: string } {
