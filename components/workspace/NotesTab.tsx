@@ -213,7 +213,10 @@ export function NotesTab({
     if (writingMode) return; // the in-page size is held while writing
     const measure = () => {
       const card = cardRef.current;
-      if (!card) return;
+      // Hidden while another tab is showing (SubjectWorkspace keeps it
+      // mounted); there is nothing to measure, and the body resizing as the
+      // tab comes back runs this again.
+      if (!card || !card.getClientRects().length) return;
       const top = card.getBoundingClientRect().top + window.scrollY;
       // PAGE_FOOT is the subject page's own bottom padding (py-8).
       const fit = Math.round(window.innerHeight - top - PAGE_FOOT);

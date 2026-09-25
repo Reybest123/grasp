@@ -56,6 +56,12 @@ export function SubjectWorkspace({
   focusRecord?: number;
 }) {
   const [tab, setTab] = useState<Tab>("notes");
+  // A tab stays mounted, only hidden, once it has been opened, so coming back
+  // to it lands where the student left it: the quiz they were taking or its
+  // results, the recording they were reading, a half-filled Resource Bank
+  // form. Unmounting on every switch sent each one back to its start page.
+  const [visited, setVisited] = useState<ReadonlySet<Tab>>(() => new Set<Tab>(["notes"]));
+  if (!visited.has(tab)) setVisited(new Set(visited).add(tab));
   const [quizView, setQuizView] = useState<QuizView>("grid");
   const [quizOpenId, setQuizOpenId] = useState<string | null>(null);
   // Notes live in the subject store, not local state, so edits and formatting
@@ -186,13 +192,7 @@ export function SubjectWorkspace({
   }
 
   function selectTab(key: Tab) {
-    rec.guard(() => {
-      setTab(key);
-      // Leaving the Quizzes tab used to unmount its state; a fresh visit still
-      // starts on the grid.
-      setQuizOpenId(null);
-      setQuizView("grid");
-    });
+    rec.guard(() => setTab(key));
   }
 
   const color = getColor(subject.colorKey);
@@ -308,7 +308,8 @@ export function SubjectWorkspace({
       </div>
 
       <section className="px-6 py-8 sm:px-8">
-        {tab === "notes" && (
+        {visited.has("notes") && (
+          <div hidden={tab !== "notes"}>
           <NotesTab
             notes={subject.notes}
             activeId={activeId}
@@ -320,8 +321,10 @@ export function SubjectWorkspace({
             subjectName={subject.name}
             resources={resources}
           />
+          </div>
         )}
-        {tab === "record" && (
+        {visited.has("record") && (
+          <div hidden={tab !== "record"}>
           <RecordTab
             subjectId={subject.id}
             subjectName={subject.name}
@@ -338,8 +341,10 @@ export function SubjectWorkspace({
             }}
             onOpenSubject={(id) => onOpenSubject?.(id)}
           />
+          </div>
         )}
-        {tab === "quizzes" && (
+        {visited.has("quizzes") && (
+          <div hidden={tab !== "quizzes"}>
           <QuizzesTab
             subject={subject}
             notes={subject.notes}
@@ -354,13 +359,16 @@ export function SubjectWorkspace({
             openId={quizOpenId}
             setOpenId={setQuizOpenId}
           />
+          </div>
         )}
-        {tab === "resources" && (
+        {visited.has("resources") && (
+          <div hidden={tab !== "resources"}>
           <ResourcesTab
             subject={subject}
             addResource={addResource}
             deleteResource={deleteResource}
           />
+          </div>
         )}
       </section>
     </div>
