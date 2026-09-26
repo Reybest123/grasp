@@ -8,14 +8,14 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 - [x] OpenAI Tier 2 (US$50 top-up), auto-reload on, US$120 monthly limit with alerts at 80% and 100%
 - [x] Legal pass: Queensland law, Australian Consumer Law wording, Cloudflare and overseas processing in the Privacy Policy
 - [x] Timetable read is once per account
-- [x] `www.graspstudy.com` redirects to `graspstudy.com` (Cloudflare Page Rule, forwarding URL `https://graspstudy.com/$1`)
+- [x] `www.graspstudy.com` redirects to `graspstudy.com` (Cloudflare Page Rule, forwarding URL `https://graspstudy.com/$1`), tested working 2026-09-26
 - [x] One shared database kept on purpose (CLAUDE.md section 12)
 
 ## Before Stripe live mode
 
 - [ ] Post the TFN application
 - [ ] Get an ABN (free). Then tell Claude, so the business name and ABN go on the Terms.
-- [ ] Check with Stripe support who has to own the account. Stripe's terms normally need the account holder to be 18. If a parent or guardian can be the account owner, with their details and the ABN, that is likely how it works for you. It has not been confirmed, so ask Stripe before relying on it, and talk to the parent before that day. Whoever owns the account is who Stripe pays out to and who its identity checks are about.
+- [ ] Talk to your dad about being the business representative on the Stripe account. As understood (not confirmed): you open the account with your own email and invite him in during setup as the representative, so he does not need his own Stripe account. If Stripe blocks you on age during signup, ask their support. Whoever is the representative is who Stripe's identity checks are about.
 
 ## Stripe live mode (this is the launch blocker)
 
