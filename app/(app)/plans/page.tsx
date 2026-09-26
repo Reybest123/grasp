@@ -252,8 +252,27 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   const current = profile.plan ?? DEFAULT_PLAN;
   const [busyPlan, setBusyPlan] = useState<Plan | null>(null);
   const [error, setError] = useState("");
+  // A switch on a live subscription takes effect the moment it is pressed, and
+  // from a Pro trial it ends the trial and charges Max straight away, so it is
+  // confirmed first. Choosing a plan after one has ended goes to Checkout,
+  // which is its own confirmation.
+  const [confirmPlan, setConfirmPlan] = useState<Plan | null>(null);
+  const onTrial = profile.trialEndsAt !== null;
+
+  function switchNotice(plan: Plan): string {
+    const price = `${planPrice(plan, currency)} a ${BILLING_PERIOD}`;
+    if (onTrial) {
+      return `Switching ends your free ${PLAN_LABEL[current]} trial today and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} now, and every ${BILLING_PERIOD} after that.`;
+    }
+    const cost =
+      plan === "max"
+        ? `The difference for the rest of this ${BILLING_PERIOD} is added to your next bill`
+        : `Credit for the unused part of this ${BILLING_PERIOD} on ${PLAN_LABEL[current]} comes off your next bill`;
+    return `Switching ends your ${PLAN_LABEL[current]} plan now and starts ${PLAN_LABEL[plan]} straight away, at ${price}. ${cost}.`;
+  }
 
   async function choose(plan: Plan) {
+    setConfirmPlan(null);
     setBusyPlan(plan);
     setError("");
     try {
@@ -303,7 +322,7 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
             // advertising it back to them is an offer Grasp would not honour.
             <PlanCard key={plan} plan={plan} currency={currency} compact trialBadge={false}>
               <button
-                onClick={() => choose(plan)}
+                onClick={() => (switching ? setConfirmPlan(plan) : choose(plan))}
                 disabled={isCurrent || busyPlan !== null}
                 className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed ${
                   isCurrent
@@ -317,6 +336,17 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={confirmPlan !== null}
+        tone="brand"
+        title={confirmPlan ? `Switch to ${PLAN_LABEL[confirmPlan]} now?` : ""}
+        body={confirmPlan ? switchNotice(confirmPlan) : ""}
+        confirmLabel={confirmPlan ? `Switch to ${PLAN_LABEL[confirmPlan]}` : ""}
+        cancelLabel={onTrial ? "Keep my trial" : `Keep ${PLAN_LABEL[current]}`}
+        onConfirm={() => confirmPlan && choose(confirmPlan)}
+        onCancel={() => setConfirmPlan(null)}
+      />
     </div>
   );
 }

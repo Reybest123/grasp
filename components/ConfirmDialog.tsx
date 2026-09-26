@@ -17,6 +17,7 @@ export function ConfirmDialog({
   body,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
+  tone = "danger",
   onConfirm,
   onCancel,
 }: {
@@ -25,6 +26,8 @@ export function ConfirmDialog({
   body: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** "brand" for a confirm that changes something rather than destroying it (a plan switch). */
+  tone?: "danger" | "brand";
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -86,7 +89,11 @@ export function ConfirmDialog({
         aria-describedby="confirm-dialog-body"
         className="relative w-full max-w-[400px] animate-[popIn_140ms_ease-out] rounded-2xl bg-white p-6 text-center shadow-2xl"
       >
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-red-600">
+        <span
+          className={`mx-auto grid h-12 w-12 place-items-center rounded-full ${
+            tone === "brand" ? "bg-brand-50 text-brand-600" : "bg-red-50 text-red-600"
+          }`}
+        >
           <AlertIcon className="h-6 w-6" />
         </span>
 
@@ -107,7 +114,9 @@ export function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${
+              tone === "brand" ? "bg-brand-600 hover:bg-brand-700" : "bg-red-600 hover:bg-red-700"
+            }`}
           >
             {confirmLabel}
           </button>
