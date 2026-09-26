@@ -1,5 +1,7 @@
 # Grasp launch and budget plan
 
+The tick-list of what to do, in order, is `LAUNCH_CHECKLIST.md`.
+
 When to pay for what, and what has to be done before launch. Everything is in AUD unless marked US$. Converted at A$1 = US$0.65, the same rate `CLAUDE.md` §6 uses. Overseas services usually add 10% GST for Australian customers.
 
 Prices were written on 2026-09-26 from memory, not read off each provider's site. Check the provider's pricing page before paying.
@@ -20,7 +22,7 @@ Prices were written on 2026-09-26 from memory, not read off each provider's site
 
 1. **Railway Hobby plan.** Done 2026-09-26. US$5 a month, which includes US$5 of usage; expect about US$10–15 a month in total once the three services run all month, since usage past the included US$5 is billed on top.
 2. **Stripe live mode.** Activate the account (an ABN is free and recommended), create the live Prices with `npm run billing:setup`, set the four live env vars on Railway, create the live webhook, then buy Pro and Max yourself with a real card and refund both. Nobody has paid with a real card yet, so this is the one path that has never been tested end to end.
-   - **Age:** as far as is known, Stripe needs the account owner to be 18 or over, so a parent or guardian likely has to open the account and be named on it. Confirm with Stripe support first. A TFN and an ABN can be had at any age, and the ABN goes on the Terms once there is one.
+   - **Age:** Stripe's terms normally need the account holder to be 18. A parent or guardian owning the account, with the ABN, is likely how it works for a minor, but that has not been confirmed: ask Stripe support first. A TFN and an ABN can be had at any age, and the ABN goes on the Terms once there is one.
 3. **Turn on Stripe's failed-payment emails** in the Stripe dashboard. Grasp does not tell a student when their card fails; Stripe's emails are the only notice they get.
 4. **OpenAI.** Done. Auto-reload is on, the monthly spend limit is US$120 with alerts at 80% and 100%, and the account reached Tier 2 on 2026-09-26 after a US$50 top-up. The US$120 limit is a hard stop that switches the AI off for everyone, so raise it as students grow.
 5. **Legal pass.** Done 2026-09-26: Queensland law, the Australian Consumer Law wording, fairer change and closure terms, and Cloudflare and overseas processing in the Privacy Policy. Still to add: the business name and ABN, once there is one.
