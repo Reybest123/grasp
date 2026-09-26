@@ -251,20 +251,36 @@ export async function changePlan(
     const subscription = await stripe().subscriptions.retrieve(subscriptionId);
     const item = subscription.items.data[0];
     if (!item) return { ok: false, error: "Grasp could not find your subscription. Try again." };
+    // A switch is bought like a new plan: a full week of the new plan is charged
+    // now and the week starts again from today, with no credit and no partial
+    // charge for the old one (Terms, #refunds). Ending a trial restarts the
+    // cycle by itself; otherwise the billing anchor is moved to now. Only Pro
+    // has a trial, so a trialing subscription is always moving to Max.
+    //
+    // pending_if_incomplete applies the switch only once that charge succeeds:
+    // a declined card leaves the student on the plan they had, rather than on
+    // the new plan with an unpaid invoice. It does not accept metadata, so the
+    // plan label is written separately below.
     const updated = await stripe().subscriptions.update(subscriptionId, {
       items: [{ id: item.id, price: priceId(plan) }],
-      // Switches take effect at once. Moving up charges the difference for the
-      // rest of the period now: left on the next bill, a student could take Max
-      // and cancel before that bill ever came. Moving down gives no credit for
-      // the unused time on the higher plan (Terms, #refunds); Pro's price starts
-      // from the next bill.
-      proration_behavior: plan === "max" ? "always_invoice" : "none",
-      metadata: { ...subscription.metadata, plan },
-      // Only Pro has a trial. Switching to Max mid-trial ends it, so Max is
-      // charged straight away rather than free for the rest of the Pro trial.
-      ...(subscription.status === "trialing" && plan !== "pro" ? { trial_end: "now" as const } : {}),
+      proration_behavior: "none",
+      payment_behavior: "pending_if_incomplete",
+      ...(subscription.status === "trialing"
+        ? { trial_end: "now" as const }
+        : { billing_cycle_anchor: "now" as const }),
     });
+    if (updated.pending_update) {
+      return {
+        ok: false,
+        error: "Your card was declined, so your plan has not changed. Update your card and try again.",
+      };
+    }
     await syncSubscription(updated);
+    // Informational only (the plan is read from the price), so a failure here
+    // does not undo a switch that has already been paid for.
+    await stripe()
+      .subscriptions.update(subscriptionId, { metadata: { ...subscription.metadata, plan } })
+      .catch((err) => console.error("[grasp] Stripe plan metadata update failed:", err));
     return { ok: true };
   } catch (err) {
     console.error("[grasp] Stripe plan switch failed:", err);

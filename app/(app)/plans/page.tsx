@@ -252,22 +252,19 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   const current = profile.plan ?? DEFAULT_PLAN;
   const [busyPlan, setBusyPlan] = useState<Plan | null>(null);
   const [error, setError] = useState("");
-  // A switch on a live subscription takes effect the moment it is pressed, and
-  // from a Pro trial it ends the trial and charges Max straight away, so it is
+  // A switch on a live subscription takes effect and charges the moment it is
+  // pressed, ending a trial if one is running, so it is
   // confirmed first. Choosing a plan after one has ended goes to Checkout,
   // which is its own confirmation.
   const [confirmPlan, setConfirmPlan] = useState<Plan | null>(null);
   const onTrial = profile.trialEndsAt !== null;
 
+  // A switch is bought like a new plan (changePlan in lib/billing.ts): a full
+  // week of the new plan now, and the week starts again from today.
   function switchNotice(plan: Plan): string {
-    const price = `${planPrice(plan, currency)} a ${BILLING_PERIOD}`;
-    if (onTrial) {
-      return `Switching ends your free ${PLAN_LABEL[current]} trial today and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} now, and every ${BILLING_PERIOD} after that.`;
-    }
-    if (plan === "max") {
-      return `Switching ends your ${PLAN_LABEL[current]} plan now and starts ${PLAN_LABEL[plan]} straight away. You will be charged the difference for the rest of this ${BILLING_PERIOD} now, then ${price}.`;
-    }
-    return `Switching ends your ${PLAN_LABEL[current]} plan now and starts ${PLAN_LABEL[plan]} straight away. You will not get money back for the ${PLAN_LABEL[current]} days you have not used. ${PLAN_LABEL[plan]} is ${price} from your next bill.`;
+    const price = planPrice(plan, currency);
+    const ending = onTrial ? `your free ${PLAN_LABEL[current]} trial` : `your ${PLAN_LABEL[current]} plan`;
+    return `Switching ends ${ending} today and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} now for a ${BILLING_PERIOD} of ${PLAN_LABEL[plan]}, then ${price} every ${BILLING_PERIOD} from today.`;
   }
 
   async function choose(plan: Plan) {

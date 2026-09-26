@@ -64,11 +64,11 @@ export default function Terms() {
             ends, and is not renewed after that. You can resume it before then.
           </li>
           <li>
-            <b>Switching plans.</b> A switch between Pro and Max takes effect straight away.
-            Switching up to Max charges the difference for the rest of the current week at once;
-            switching during a free trial ends the trial and charges Max in full. Switching down to
-            Pro gives no credit or refund for the time left on Max, and Pro&apos;s price starts from
-            your next bill.
+            <b>Switching plans.</b> Switching between Pro and Max works like buying the new
+            plan. It takes effect straight away, you are charged a full week of the new plan at
+            once, and your weekly billing starts again from that day. Switching during a free trial
+            ends the trial. There is no credit or refund for the time left on the plan you switched
+            from.
           </li>
           <li>
             <b>Refunds.</b> Payments are not refundable, including for part of a week you did not
