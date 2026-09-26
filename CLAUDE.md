@@ -104,6 +104,7 @@ Platform: **Website** (not a native app) — no app store fees, no OCR SDK neede
 ## 8. Marketing / Go-to-Market Test
 
 - **The budget is flexible, not a fixed $100** (2026-09-26, at the user's request). Start with a small test (around A$150) to see which ads bring signups, then spend more on whatever works. The operator is happy to spend more when it is earning its keep; see `LAUNCH_PLAN.md`.
+- **Income records come from Stripe** (2026-09-26): the dashboard's payments and payouts reports export to CSV each month, and each payout matches a bank deposit. Grasp keeps no ledger of its own, and `/admin/analytics` revenue is list price times active subscribers, not a tax record (it ignores fees, refunds and proration). Costs are kept as invoices by the operator. GST is not charged yet; see `LAUNCH_PLAN.md`'s tax section.
 - Recommended: paid social ads (Meta/TikTok Ads Manager) targeted at students by age/interest — faster signal than SEO, which is slower-burn
 - If testing both: split the first test roughly half paid social, half SEO/content
 - Paying an influencer/creator directly usually costs more than a first test for meaningful reach; worth revisiting once the ads have shown what message works
