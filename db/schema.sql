@@ -70,6 +70,19 @@ alter table users add column if not exists plan_cancelled_at timestamptz;
 -- (lib/onboarding.ts). Only ever read and written whole, hence JSONB.
 alter table users add column if not exists onboarding jsonb;
 
+-- The timetable read is offered once, at the end of onboarding
+-- (lib/timetableRead.ts). timetable_done_at is set when a read finds subjects,
+-- when the student chooses to add their subjects themselves, or when the tries
+-- run out; after that the popup never opens again and the route refuses.
+-- timetable_tries counts reads that reached the model, so a wrong screenshot
+-- can be swapped for the right one a couple of times. Grown like
+-- email_verified_at: the default marks every account that already existed as
+-- done, and dropping it means every new account starts null. Not read by the
+-- session lookup, so a database without them breaks the timetable popup only.
+alter table users add column if not exists timetable_done_at timestamptz default now();
+alter table users alter column timetable_done_at drop default;
+alter table users add column if not exists timetable_tries integer not null default 0;
+
 -- Real billing (§6, lib/billing.ts). A card is required to start the Pro trial
 -- or to subscribe to Max, taken through a Stripe Checkout Session, and these
 -- four columns are what lib/billing.ts's syncSubscription keeps in step with

@@ -11,7 +11,7 @@
 // writes the subjects.
 
 import { useEffect, useRef, useState } from "react";
-import { extractTimetable, type ExtractedSubject } from "@/lib/ai";
+import { declineTimetable, extractTimetable, type ExtractedSubject } from "@/lib/ai";
 import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
 import { FoundSubjectEditor } from "@/components/onboarding/FoundSubjectEditor";
@@ -36,7 +36,8 @@ import { WaitingState } from "@/components/WaitingState";
 
 const MAX_BYTES = MAX_UPLOAD_BYTES;
 
-type Stage = "upload" | "reading" | "done";
+/** "final": no read is left on the account, so the only way is on. */
+type Stage = "upload" | "reading" | "done" | "final";
 
 function readDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -68,6 +69,7 @@ export function TimetableSetup({
   const [error, setError] = useState("");
   const [subjects, setSubjects] = useState<ExtractedSubject[]>([]);
   const [editing, setEditing] = useState<number | null>(null);
+  const [skipping, setSkipping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // Saves queue behind one another, so two quick edits cannot land out of order
   // and leave the older list as the one stored.
@@ -123,7 +125,7 @@ export function TimetableSetup({
     if (!mounted.current) return;
     if (result.error) {
       setError(result.error);
-      setStage("upload");
+      setStage(result.final ? "final" : "upload");
       return;
     }
 
@@ -131,6 +133,22 @@ export function TimetableSetup({
     // below is a statement of fact.
     await keep(result.subjects);
     setStage("done");
+  }
+
+  // Recorded on the account before moving on, so the offer is really gone and
+  // not just closed. A failure is shown rather than skipped past, or the popup
+  // would come back the next time the student finishes onboarding's redirect.
+  async function skip() {
+    if (!onSkip || skipping) return;
+    setSkipping(true);
+    const failed = await declineTimetable();
+    if (!mounted.current) return;
+    if (failed) {
+      setError(failed);
+      setSkipping(false);
+      return;
+    }
+    onSkip();
   }
 
   function update(index: number, next: ExtractedSubject) {
@@ -229,13 +247,27 @@ export function TimetableSetup({
             <p className="mt-5 text-center text-sm">
               <button
                 type="button"
-                onClick={onSkip}
+                onClick={skip}
+                disabled={skipping}
                 className="font-semibold text-slate-500 underline-offset-4 transition hover:text-ink hover:underline"
               >
-                Skip for now, I&apos;ll add my subjects myself
+                Skip, I&apos;ll add my subjects myself
               </button>
             </p>
           )}
+        </div>
+      )}
+
+      {stage === "final" && (
+        <div>
+          <ErrorNote message={error} />
+          <button
+            type="button"
+            onClick={onFinish}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
+          >
+            Go to my notebooks <ArrowRightIcon className="h-5 w-5" />
+          </button>
         </div>
       )}
 

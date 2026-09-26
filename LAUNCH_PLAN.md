@@ -67,16 +67,9 @@ Every AI feature has a weekly per-student cap (`lib/plan.ts`), so one student ca
 
 - **A leaked API key.** Whoever has it spends on your account with no cap at all.
 - **A bug** in a limit check.
-- **The timetable read**, which has no weekly limit (below).
 
-A monthly budget alert costs nothing and catches all three. An alert is better than a hard cap, which would switch every student's AI off until you raise it.
+A monthly budget alert costs nothing and catches both. An alert is better than a hard cap, which would switch every student's AI off until you raise it.
 
 ## The timetable read
 
-Checked in the code on 2026-09-26:
-
-- You do need a plan (a paid one, or a trial with a card) before you can reach it.
-- It is **not** once per account. The popup only opens by itself after Checkout, but typing `/home?setup=timetable` opens it again at any time, a read can be re-run inside the popup, and the server keeps no record of past reads.
-- One read costs at most about US$0.08. A normal student uses it once or twice, so this only matters if someone scripts it on purpose.
-
-It is low risk and not a launch blocker. The fix is small: a limit of a few reads a week, the same way quizzes are counted.
+Built 2026-09-26: it is offered **once per account**, at the end of onboarding. The popup has no close button. The student either has the timetable read or presses "Skip, I'll add my subjects myself", and either way it is never offered again. A wrong screenshot gets up to three tries before the offer ends. One read costs at most about US$0.08, so the most one account can ever cost here is about US$0.24.

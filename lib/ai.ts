@@ -215,9 +215,14 @@ export async function liveNotes(params: {
 export async function extractTimetable(dataUrl: string): Promise<{
   subjects: ExtractedSubject[];
   error: string | null;
+  /** no read is left on this account: the popup can only send the student on */
+  final?: boolean;
 }> {
-  const data = await postJson<{ subjects?: RawSubject[] }>("/api/timetable-extract", { dataUrl });
-  if (data.error) return { subjects: [], error: data.error };
+  const data = await postJson<{ subjects?: RawSubject[]; final?: boolean }>(
+    "/api/timetable-extract",
+    { dataUrl }
+  );
+  if (data.error) return { subjects: [], error: data.error, final: data.final === true };
 
   const subjects = (data.subjects ?? []).map((s) => ({
     name: s.name,
@@ -225,6 +230,28 @@ export async function extractTimetable(dataUrl: string): Promise<{
     classes: (s.classes ?? []).map((c) => ({ ...makeSlot(c.day, c.start, c.end), room: c.room })),
   }));
   return { subjects, error: null };
+}
+
+/**
+ * Whether this account may still have its timetable read. It is offered once
+ * (lib/timetableRead.ts). Null when the answer could not be had, which is not
+ * a no: a network blip must not cost a new student the offer.
+ */
+export async function timetableAvailable(): Promise<boolean | null> {
+  try {
+    const res = await fetch("/api/timetable-extract");
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.available === true;
+  } catch {
+    return null;
+  }
+}
+
+/** "I'll add my subjects myself": the read is not offered again. */
+export async function declineTimetable(): Promise<string | null> {
+  const data = await postJson<{ ok?: boolean }>("/api/timetable-extract/skip", {});
+  return data.error ?? null;
 }
 
 /** The route's own shape: slots without ids, since ids are minted client-side. */

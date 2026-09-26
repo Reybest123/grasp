@@ -6,8 +6,10 @@
 // setting up the thing behind it rather than as one more screen standing
 // between them and the app.
 //
-// Two ways out lead on to the notebooks — skipping, and "Go to my notebooks"
-// once the read is done. Closing it (X, Escape, the backdrop) just closes it.
+// The read is offered once per account (lib/timetableRead.ts), so the popup has
+// no close button, and neither Escape nor the backdrop closes it: a student
+// either has it read or chooses to add their subjects themselves, and both
+// lead on to the notebooks. A stray click cannot throw the offer away.
 //
 // The card is a column: the heading stays put and only the body below it
 // scrolls, so the scrollbar sits inside the card rather than along its edge.
@@ -15,44 +17,26 @@
 import { useEffect, useRef } from "react";
 import { TimetableSetup } from "@/components/onboarding/TimetableSetup";
 import type { ExtractedSubject } from "@/lib/ai";
-import { CloseIcon } from "@/components/icons";
 
 export function TimetableDialog({
   open,
-  onClose,
-  onSkip,
-  onFinish,
+  onDone,
   save,
   onSubjects,
 }: {
   open: boolean;
-  onClose: () => void;
-  /** "Skip for now"; closes by default */
-  onSkip?: () => void;
-  /** "Go to my notebooks"; closes by default */
-  onFinish?: () => void;
+  /** after skipping, after "Go to my notebooks", or once no read is left */
+  onDone: () => void;
   save?: (subjects: ExtractedSubject[]) => Promise<unknown>;
   onSubjects?: (subjects: ExtractedSubject[]) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
-  // Held in a ref for the same reason ConfirmDialog does: a caller's fresh
-  // function each render must not re-run the focus effect.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cardRef.current?.focus();
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCloseRef.current();
-    }
-    window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("keydown", onKey);
       if (opener?.isConnected) opener.focus();
     };
   }, [open]);
@@ -62,7 +46,7 @@ export function TimetableDialog({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
       {/* Light enough that the app stays legible behind it. */}
-      <div aria-hidden="true" onClick={onClose} className="absolute inset-0 bg-ink/35" />
+      <div aria-hidden="true" className="absolute inset-0 bg-ink/35" />
 
       <div
         ref={cardRef}
@@ -72,25 +56,14 @@ export function TimetableDialog({
         aria-labelledby="timetable-dialog-title"
         className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none sm:max-h-[calc(100dvh-4rem)]"
       >
-        <div className="relative shrink-0 px-6 pt-6 sm:px-8 sm:pt-8">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-50 hover:text-ink"
-          >
-            <CloseIcon className="h-5 w-5" />
-          </button>
-
-          <h2
-            id="timetable-dialog-title"
-            className="pr-10 text-2xl font-extrabold tracking-tight text-ink"
-          >
+        <div className="shrink-0 px-6 pt-6 sm:px-8 sm:pt-8">
+          <h2 id="timetable-dialog-title" className="text-2xl font-extrabold tracking-tight text-ink">
             Set up your workspace
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Upload a screenshot of your timetable. Grasp reads it and makes a notebook for every
-            subject, with your class times already in.
+            subject, with your class times already in. This is only offered now, while you set
+            up.
           </p>
         </div>
 
@@ -98,8 +71,8 @@ export function TimetableDialog({
           <TimetableSetup
             save={save}
             onSubjects={onSubjects}
-            onFinish={onFinish ?? onClose}
-            onSkip={onSkip ?? onClose}
+            onFinish={onDone}
+            onSkip={onDone}
           />
         </div>
       </div>

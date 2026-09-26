@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/openai";
 import { requireUser } from "@/lib/session";
 import { dataUrlPageCount } from "@/lib/pdf";
+import { claimTimetableRead, finishTimetable, timetableStatus } from "@/lib/timetableRead";
 
 /** A school week, transcribed lesson by lesson and then grouped, fits well
  *  inside this; it bounds what one read can cost. */
@@ -96,6 +97,23 @@ function asText(value: unknown, max: number): string {
 type Slot = { day: number; start: string; end?: string; room?: string };
 type Extracted = { name: string; teacher?: string; classes: Slot[] };
 
+/** Whether the popup may offer the read: once per account (lib/timetableRead.ts). */
+export async function GET() {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+  const result = await timetableStatus(guard.user);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  return NextResponse.json(result.status);
+}
+
+const USED_UP =
+  "Your timetable has already been set up. You can add or change subjects from your notebooks.";
+
+/** "1 more try" / "2 more tries", for a read that found nothing. */
+function triesNote(left: number): string {
+  return left === 1 ? " You have 1 more try." : ` You have ${left} more tries.`;
+}
+
 export async function POST(req: NextRequest) {
   // Every call spends a vision-model request, so it is for signed-in students
   // only. Without this, anyone could run the reader at Grasp's cost.
@@ -132,6 +150,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Taken only once the file has passed every free check above, so a refused
+  // file costs no try.
+  const claim = await claimTimetableRead(guard.user);
+  if (!claim.ok) {
+    if ("used" in claim) return NextResponse.json({ error: USED_UP, final: true }, { status: 409 });
+    return NextResponse.json({ error: claim.error }, { status: claim.status });
+  }
+
   // The stronger model, for the same reason the Resource Bank uses it: this
   // read happens once and the student's whole week inherits what it gets wrong.
   const result = await chatCompletion({
@@ -152,7 +178,11 @@ export async function POST(req: NextRequest) {
     temperature: 0.1,
     max_completion_tokens: MAX_OUTPUT_TOKENS,
   });
-  if (!result.ok) return result.response;
+  if (!result.ok) {
+    // The provider failed, so nothing was read: the try goes back.
+    await claim.release();
+    return result.response;
+  }
 
   // `lessons` is never read. It exists so the model transcribes the grid one
   // day at a time before it groups anything: asked for subjects directly, it
@@ -166,8 +196,21 @@ export async function POST(req: NextRequest) {
     parsed = JSON.parse(result.content || "{}");
   } catch {
     console.error("[grasp] timetable JSON did not parse:", result.content.slice(0, 300));
+    // The try is kept: the model ran, and a reply cut off at the output cap
+    // is exactly what an oversized file would produce on purpose.
+    if (claim.triesLeft === 0) {
+      await finishTimetable(guard.user);
+      return NextResponse.json(
+        {
+          error:
+            "Grasp could not read that timetable, and that was the last try, so add your subjects yourself.",
+          final: true,
+        },
+        { status: 502 }
+      );
+    }
     return NextResponse.json(
-      { error: "Grasp could not read that timetable just now. Try again in a moment." },
+      { error: "Grasp could not read that timetable just now." + triesNote(claim.triesLeft) },
       { status: 502 }
     );
   }
@@ -214,15 +257,20 @@ export async function POST(req: NextRequest) {
   // tells the student what to do about it where a generic failure does not.
   if (!subjects.length) {
     const reason = asText(parsed.reason, 200);
+    const found = `Grasp could not find any subjects on that.${reason ? " " + reason : ""}`;
+    if (claim.triesLeft > 0) {
+      const hint = reason ? "" : " Try a clearer screenshot of the timetable itself.";
+      return NextResponse.json({ error: found + hint + triesNote(claim.triesLeft) }, { status: 422 });
+    }
+    await finishTimetable(guard.user);
     return NextResponse.json(
-      {
-        error: reason
-          ? `Grasp could not find any subjects on that. ${reason}`
-          : "Grasp could not find any subjects on that. Try a clearer screenshot of the timetable itself.",
-      },
+      { error: `${found} That was the last try, so add your subjects yourself.`, final: true },
       { status: 422 }
     );
   }
 
+  // Written before the reply, so a student who closes the tab now still cannot
+  // come back for another read.
+  await finishTimetable(guard.user);
   return NextResponse.json({ subjects });
 }
