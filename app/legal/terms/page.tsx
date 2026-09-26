@@ -14,7 +14,7 @@ export default function Terms() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="18 September 2026"
+      updated="26 September 2026"
       intro="These terms are the agreement between you and Grasp when you use the website. By creating an account or using Grasp, you agree to them. If you do not agree, do not use Grasp."
     >
       <LegalSection title="Who can use Grasp">
@@ -62,6 +62,13 @@ export default function Terms() {
             <b>Cancelling.</b> You can cancel at any time from the Plans page. Your plan keeps
             working until the end of the period you have already paid for, or until your free trial
             ends, and is not renewed after that. You can resume it before then.
+          </li>
+          <li>
+            <b>Switching plans.</b> A switch between Pro and Max takes effect straight away.
+            Switching up to Max charges the difference for the rest of the current week at once;
+            switching during a free trial ends the trial and charges Max in full. Switching down to
+            Pro gives no credit or refund for the time left on Max, and Pro&apos;s price starts from
+            your next bill.
           </li>
           <li>
             <b>Refunds.</b> Payments are not refundable, including for part of a week you did not

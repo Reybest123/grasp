@@ -264,11 +264,10 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
     if (onTrial) {
       return `Switching ends your free ${PLAN_LABEL[current]} trial today and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} now, and every ${BILLING_PERIOD} after that.`;
     }
-    const cost =
-      plan === "max"
-        ? `The difference for the rest of this ${BILLING_PERIOD} is added to your next bill`
-        : `Credit for the unused part of this ${BILLING_PERIOD} on ${PLAN_LABEL[current]} comes off your next bill`;
-    return `Switching ends your ${PLAN_LABEL[current]} plan now and starts ${PLAN_LABEL[plan]} straight away, at ${price}. ${cost}.`;
+    if (plan === "max") {
+      return `Switching ends your ${PLAN_LABEL[current]} plan now and starts ${PLAN_LABEL[plan]} straight away. You will be charged the difference for the rest of this ${BILLING_PERIOD} now, then ${price}.`;
+    }
+    return `Switching ends your ${PLAN_LABEL[current]} plan now and starts ${PLAN_LABEL[plan]} straight away. You will not get money back for the ${PLAN_LABEL[current]} days you have not used. ${PLAN_LABEL[plan]} is ${price} from your next bill.`;
   }
 
   async function choose(plan: Plan) {
@@ -341,7 +340,25 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
         open={confirmPlan !== null}
         tone="brand"
         title={confirmPlan ? `Switch to ${PLAN_LABEL[confirmPlan]} now?` : ""}
-        body={confirmPlan ? switchNotice(confirmPlan) : ""}
+        body={
+          confirmPlan ? (
+            <>
+              {switchNotice(confirmPlan)}{" "}
+              {/* New tab: /legal sits outside the route group, and leaving for
+                  it in place would end a live recording. */}
+              <a
+                href="/legal/terms#refunds"
+                target="_blank"
+                rel="noopener"
+                className="font-semibold text-brand-600 underline-offset-2 hover:underline"
+              >
+                Learn more
+              </a>
+            </>
+          ) : (
+            ""
+          )
+        }
         confirmLabel={confirmPlan ? `Switch to ${PLAN_LABEL[confirmPlan]}` : ""}
         cancelLabel={onTrial ? "Keep my trial" : `Keep ${PLAN_LABEL[current]}`}
         onConfirm={() => confirmPlan && choose(confirmPlan)}

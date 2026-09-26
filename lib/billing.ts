@@ -253,7 +253,12 @@ export async function changePlan(
     if (!item) return { ok: false, error: "Grasp could not find your subscription. Try again." };
     const updated = await stripe().subscriptions.update(subscriptionId, {
       items: [{ id: item.id, price: priceId(plan) }],
-      proration_behavior: "create_prorations",
+      // Switches take effect at once. Moving up charges the difference for the
+      // rest of the period now: left on the next bill, a student could take Max
+      // and cancel before that bill ever came. Moving down gives no credit for
+      // the unused time on the higher plan (Terms, #refunds); Pro's price starts
+      // from the next bill.
+      proration_behavior: plan === "max" ? "always_invoice" : "none",
       metadata: { ...subscription.metadata, plan },
       // Only Pro has a trial. Switching to Max mid-trial ends it, so Max is
       // charged straight away rather than free for the rest of the Pro trial.

@@ -8,7 +8,7 @@
 // Enter out of habit should back out, not delete. Tab stays inside the dialog
 // while it is open, and focus goes back to whatever opened it afterwards.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { AlertIcon } from "@/components/icons";
 
 export function ConfirmDialog({
@@ -23,7 +23,7 @@ export function ConfirmDialog({
 }: {
   open: boolean;
   title: string;
-  body: string;
+  body: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   /** "brand" for a confirm that changes something rather than destroying it (a plan switch). */
