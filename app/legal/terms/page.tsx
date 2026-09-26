@@ -71,8 +71,15 @@ export default function Terms() {
             from.
           </li>
           <li>
-            <b>Refunds.</b> Payments are not refundable, including for part of a week you did not
-            use, except in the cases below.
+            <b>Your rights under the Australian Consumer Law.</b> Grasp&apos;s services come with
+            guarantees that cannot be excluded under the Australian Consumer Law. If Grasp has a
+            major failure, you are entitled to cancel and get a refund for the unused part of what
+            you paid, or compensation for its reduced value. Nothing in these terms takes those
+            rights away.
+          </li>
+          <li>
+            <b>Other refunds.</b> Apart from those rights and the cases below, a refund is not given
+            for part of a week you did not use, or for changing your mind.
           </li>
           <li>
             <b>When you will get a refund.</b> If you were charged by mistake or charged twice for
@@ -88,8 +95,8 @@ export default function Terms() {
             >
               liamspencer549@gmail.com
             </a>{" "}
-            within 14 days of the charge, from the email address on your account. Approved refunds
-            go back to the original payment method, usually within 10 business days.
+            from the email address on your account, ideally within 14 days of the charge. Approved
+            refunds go back to the original payment method, usually within 10 business days.
           </li>
           <li>
             <b>Price changes.</b> If a plan&apos;s price changes, you will be told at least 30 days
@@ -154,16 +161,23 @@ export default function Terms() {
       <LegalSection title="Ending your account">
         <p>
           You can delete your account from Settings once you have cancelled your plan on the Plans
-          page. Deleting it removes your account and everything in it. Grasp may suspend or close
-          an account that breaks these terms.
+          page. Deleting it removes your account and everything in it.
+        </p>
+        <p>
+          Grasp may suspend or close an account that seriously or repeatedly breaks these terms,
+          and will tell you why by email unless the law or the safety of other students prevents
+          it. If Grasp closes your account for any other reason, you will be told at least 30 days
+          ahead where possible and refunded for any paid time you had not used.
         </p>
       </LegalSection>
 
       <LegalSection title="The service">
         <p>
-          Grasp is provided as it is and as available. It may change, have interruptions, or lose
-          data despite reasonable care, so keep your own copy of anything you cannot afford to
-          lose. Features may be added, changed or removed.
+          Grasp takes reasonable care to keep the service running and your data safe, but it may
+          have interruptions or, despite that care, lose data, so keep your own copy of anything
+          you cannot afford to lose. Features may be added, changed or removed; if a change takes
+          away something important you are paying for, you can cancel and get a refund for the
+          unused part of your plan.
         </p>
       </LegalSection>
 
@@ -171,14 +185,33 @@ export default function Terms() {
         <p>
           As far as the law allows, Grasp is not responsible for indirect losses, or for losses
           that come from relying on AI-generated content, such as a result in a test or exam.
-          Nothing in these terms limits any rights you have that cannot legally be limited.
+          Nothing in these terms excludes, restricts or changes any right or remedy you have under
+          the Australian Consumer Law or any other law that cannot legally be excluded.
         </p>
       </LegalSection>
 
       <LegalSection title="Changes to these terms">
         <p>
           If these terms change, this page will be updated and the date at the top will change.
-          Continuing to use Grasp after a change means you accept the new terms.
+          If a change affects you in a significant way, for example your plan, what you pay or your
+          rights, you will be emailed at least 30 days before it applies, and you can cancel before
+          then. If you keep using Grasp after that, the new terms apply.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Law and disputes">
+        <p>
+          These terms are governed by the laws of Queensland, Australia. If you have a problem with
+          Grasp, email{" "}
+          <a
+            href="mailto:liamspencer549@gmail.com"
+            className="font-semibold text-brand-700 hover:underline"
+          >
+            liamspencer549@gmail.com
+          </a>{" "}
+          first so it can be sorted out directly. If it cannot, it can be taken to the courts of
+          Queensland. This does not stop you using a consumer protection agency, or the courts
+          where you live if the law there gives you that right.
         </p>
       </LegalSection>
     </LegalPage>

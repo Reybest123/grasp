@@ -1,6 +1,6 @@
 # Grasp launch and budget plan
 
-When to pay for what, and what has to be done before launch. Everything is in AUD. Converted at A$1 = US$0.65, the same rate `CLAUDE.md` §6 uses. Overseas services usually add 10% GST for Australian customers.
+When to pay for what, and what has to be done before launch. Everything is in AUD unless marked US$. Converted at A$1 = US$0.65, the same rate `CLAUDE.md` §6 uses. Overseas services usually add 10% GST for Australian customers.
 
 Prices were written on 2026-09-26 from memory, not read off each provider's site. Check the provider's pricing page before paying.
 
@@ -9,8 +9,8 @@ Prices were written on 2026-09-26 from memory, not read off each provider's site
 | Service | Plan | Cost |
 |---|---|---|
 | Claude | Pro | ~A$34/month |
-| OpenAI API | Pay as you go, auto-refill on | Grows with use; see below |
-| Railway (hosting + Postgres) | Free | A$0, but see "Before launch" |
+| OpenAI API | Pay as you go, Tier 2, auto-reload on, US$120/month limit | Grows with use; see below |
+| Railway (hosting + Postgres) | Hobby | US$5/month minimum, about US$10–15 in practice |
 | Resend (emails) | Free | A$0 |
 | Cloudflare (DNS + proxy) | Free | A$0 |
 | Domain (graspstudy.com) | Cloudflare Registrar | ~A$16/year |
@@ -18,11 +18,12 @@ Prices were written on 2026-09-26 from memory, not read off each provider's site
 
 ## Before launch
 
-1. **Move Railway to the Hobby plan.** About A$15–23/month (US$5 base, which includes US$5 of usage; three always-on services probably come to US$10–15). The free plan cannot keep `grasp`, `grasp-staging` and Postgres running around the clock. This is the one upgrade that cannot wait.
+1. **Railway Hobby plan.** Done 2026-09-26. US$5 a month, which includes US$5 of usage; expect about US$10–15 a month in total once the three services run all month, since usage past the included US$5 is billed on top.
 2. **Stripe live mode.** Activate the account (an ABN is free and recommended), create the live Prices with `npm run billing:setup`, set the four live env vars on Railway, create the live webhook, then buy Pro and Max yourself with a real card and refund both. Nobody has paid with a real card yet, so this is the one path that has never been tested end to end.
+   - **Age:** as far as is known, Stripe needs the account owner to be 18 or over, so a parent or guardian likely has to open the account and be named on it. Confirm with Stripe support first. A TFN and an ABN can be had at any age, and the ABN goes on the Terms once there is one.
 3. **Turn on Stripe's failed-payment emails** in the Stripe dashboard. Grasp does not tell a student when their card fails; Stripe's emails are the only notice they get.
-4. **An OpenAI spending alert.** Keep auto-refill on. Add a monthly budget with an email alert (for example at A$50), not a hard cap that would switch the AI off mid-week. See "OpenAI and auto-refill" below for why.
-5. **Legal pass.** Add an Australian governing-law clause to the Terms, and reread the refunds section.
+4. **OpenAI.** Done. Auto-reload is on, the monthly spend limit is US$120 with alerts at 80% and 100%, and the account reached Tier 2 on 2026-09-26 after a US$50 top-up. The US$120 limit is a hard stop that switches the AI off for everyone, so raise it as students grow.
+5. **Legal pass.** Done 2026-09-26: Queensland law, the Australian Consumer Law wording, fairer change and closure terms, and Cloudflare and overseas processing in the Privacy Policy. Still to add: the business name and ABN, once there is one.
 6. **Attach `www.graspstudy.com`.** Only the bare domain serves Grasp.
 7. **Delete the "Grasp has not launched" block** at the top of `CLAUDE.md` §11, and say so there.
 
@@ -48,7 +49,7 @@ Decided against (2026-09-26): splitting staging and production onto separate dat
 
 | When | What to do | Extra cost |
 |---|---|---|
-| Before the first big marketing push | Check the OpenAI usage tier. Low tiers have tight rate limits, and many students recording at once (Whisper) hit them first. Tiers rise automatically with total spend and account age; prepaying credits gets there sooner. | A$0 |
+| Before the first big marketing push | Tier 2 reached 2026-09-26. Tier 3 comes at US$100 of total credit bought, if many students recording at once starts hitting the per-minute limits. | A$0 extra (it is prepaid credit) |
 | ~80 signups a day, or 3,000 emails a month | **Resend Pro.** The free plan stops at 100 emails a day, and every signup sends at least one confirmation. | +~A$31/month |
 | A few hundred active students | Railway usage grows (memory, CPU, database size): expect US$20–50 a month. Check that Postgres backups are on; if the plan does not include them, that is the reason to move to Railway Pro (US$20 per seat). | +A$15–50/month |
 | Always, as students grow | Raise the OpenAI alert with revenue. Aim for about A$3 of AI per paying student a month, and compare it weekly with revenue in `/admin/analytics`. | Grows with students |

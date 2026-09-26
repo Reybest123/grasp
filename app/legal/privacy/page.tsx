@@ -15,7 +15,7 @@ export default function Privacy() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="18 September 2026"
+      updated="26 September 2026"
       intro="This explains what Grasp collects when you use it, what happens to it, who else handles it, and how to get it deleted. Grasp is a study tool for students, so it collects only what it needs to run your notebooks, and nothing for advertising."
     >
       <LegalSection title="What Grasp stores">
@@ -26,9 +26,9 @@ export default function Privacy() {
           </li>
           <li>
             <b>Your plan and setup answers:</b> which plan you are on, when your free trial ends,
-            when you cancelled your plan if you have, and
-            your answers to the three questions asked when you set up your account: your year level,
-            how you plan to use Grasp, and what you most want help with.
+            when you cancelled your plan if you have, your answers to the three questions asked
+            when you set up your account (your year level, how you plan to use Grasp, and what you
+            most want help with), and whether you have used the one-time timetable read.
           </li>
           <li>
             <b>Email confirmation:</b> when you confirmed your email address, and a record of each
@@ -44,8 +44,9 @@ export default function Privacy() {
             of documents you add to a Resource Bank.
           </li>
           <li>
-            <b>Usage records:</b> when you generate a quiz or make a recording, with the time, so
-            Grasp can apply your plan&apos;s weekly limits.
+            <b>Usage records:</b> when you generate or mark a quiz, make a recording (and how long it
+            ran), have a Resource Bank document read, or use AI tokens, with the time, so Grasp can
+            apply your plan&apos;s weekly limits.
           </li>
           <li>
             <b>Answers you flag:</b> if you mark an AI answer as wrong, a copy of that answer is kept
@@ -112,7 +113,7 @@ export default function Privacy() {
       </LegalSection>
 
       <LegalSection title="Who else handles your information">
-        <p>Grasp relies on four services to run:</p>
+        <p>Grasp relies on five services to run:</p>
         <ul>
           <li>
             <b>OpenAI</b> provides the AI features. When you use one, the material it needs is sent
@@ -132,17 +133,29 @@ export default function Privacy() {
             your IP address, to deliver the site and keep it secure.
           </li>
           <li>
+            <b>Cloudflare</b> sits in front of the website to deliver it quickly and protect it
+            from attacks. Every request passes through it, so it handles technical details such as
+            your IP address and the country it is from, which Grasp uses to show prices in your
+            currency.
+          </li>
+          <li>
             <b>Resend</b> sends the email that confirms your address and any password reset email you
             ask for. It receives your email address, your name and the link, and nothing from your
             study material.
           </li>
         </ul>
+        <p>
+          Grasp is run from Australia, but these services are based overseas, mainly in the United
+          States, so your information is stored and processed outside Australia. Each of them
+          handles it only to provide its service to Grasp.
+        </p>
       </LegalSection>
 
       <LegalSection title="Cookies and local storage">
         <p>
           Grasp sets one cookie, <code>grasp_session</code>, which keeps you logged in. It can only be
-          read by Grasp&apos;s server, and it expires after 30 days or when you log out. It is
+          read by Grasp&apos;s server, and it expires after 30 days, after 30 minutes with no Grasp tab
+          open, or when you log out. It is
           strictly necessary for your account to work, which is why Grasp does not show a cookie
           banner asking you to accept it. Grasp&apos;s own staff may also have a{" "}
           <code>grasp_admin</code> cookie, used only for testing; it is never set for students and
@@ -184,6 +197,11 @@ export default function Privacy() {
           </a>
           .
         </p>
+        <p>
+          If you are not happy with how your information has been handled, email first and you
+          will get a reply within 30 days. If that does not resolve it, you can complain to the
+          Office of the Australian Information Commissioner at oaic.gov.au.
+        </p>
       </LegalSection>
 
       <LegalSection title="Children">
@@ -209,7 +227,9 @@ export default function Privacy() {
 
       <LegalSection title="Changes to this policy">
         <p>
-          If this policy changes, this page will be updated and the date at the top will change.
+          If this policy changes, this page will be updated and the date at the top will change. If
+          a change affects how your information is used in a significant way, you will be emailed
+          before it applies.
         </p>
       </LegalSection>
     </LegalPage>
