@@ -76,3 +76,16 @@ A monthly budget alert costs nothing and catches both. An alert is better than a
 ## The timetable read
 
 Built 2026-09-26: it is offered **once per account**, at the end of onboarding. The popup has no close button. The student either has the timetable read or presses "Skip, I'll add my subjects myself", and either way it is never offered again. A wrong screenshot gets up to three tries before the offer ends. One read costs at most about US$0.08, so the most one account can ever cost here is about US$0.24.
+
+## Tax, records and business structure
+
+Not tax advice; an hour with a small-business accountant (about A$150–300) before launch settles all of it. Written 2026-09-26.
+
+- **GST is not being charged today, and does not have to be yet.** Prices are A$7.99 / A$19.99 with nothing added and no Stripe Tax. Below A$75,000 of turnover in 12 months (gross sales, not profit) registration is optional. Hit it, or expect to hit it, and you have 21 days to register.
+- **Registering does not raise the price the student sees.** It comes out of the price: A$7.99 stays A$7.99 and about 73c of it goes to the ATO. Revenue drops about 9%. Raising the price to keep the same take-home is a separate choice, and the Terms promise 30 days' notice of a price change.
+- **When registered, the price has to be shown as GST-inclusive** (a line on the plan cards) and BAS is lodged, usually quarterly. Stripe Tax can add the tax line to invoices later. It is not set up.
+- **Overseas students paying in USD** are generally GST-free. US state sales tax and EU/UK VAT are a later problem, checked before ads go outside Australia.
+- **Records.** Stripe is the income record: the dashboard's payments and balance reports export to CSV, and each payout matches a bank deposit. Keep a spreadsheet or free tool (Wave, Xero's cheapest plan) of costs: OpenAI, Railway, Claude Pro, the domain, ads. Keep every invoice and receipt (Railway, OpenAI and Cloudflare email them). The ATO wants records for 5 years. Put aside roughly a third of profit for income tax until an accountant says otherwise.
+- **Company vs sole trader.** A sole trader needs only an ABN (free) and has no liability protection. A Pty Ltd (private company) has ASIC's registration fee of about A$580 (2025 figure, check current), then an annual review fee of about A$330, plus an accountant's yearly tax return for it, commonly A$1,000+. It separates personal assets from the business. A director must be 18 or older, so who owns it depends on the age question in "Before launch". Sole trader first is normal, moving into a company once there is real revenue or real risk.
+- **Business name and trade mark.** If trading as "Grasp" under a personal name, register the name with ASIC (about A$40 a year) and search IP Australia's trade mark database.
+- **Also:** marketing emails need consent and an unsubscribe link (Spam Act); ad claims must not mislead (Australian Consumer Law).
