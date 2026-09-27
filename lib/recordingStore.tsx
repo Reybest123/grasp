@@ -50,6 +50,8 @@ export type RecordingState = {
    */
   weekLeft: number | null;
   transcript: string;
+  /** Seconds of recording in a row, most recent first, that produced no words */
+  quietSeconds: number;
   notesHtml: string;
   /** true once a final draft has run and the transcript turned out too short (§3.1) to write anything from */
   noMaterial: boolean;
@@ -101,6 +103,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const [seconds, setSeconds] = useState(0);
   const [weekLeft, setWeekLeft] = useState<number | null>(null);
   const [transcript, setTranscript] = useState("");
+  const [quietSeconds, setQuietSeconds] = useState(0);
   const [notesHtml, setNotesHtml] = useState("");
   const [noMaterial, setNoMaterial] = useState(false);
   const [nonsense, setNonsense] = useState(false);
@@ -198,7 +201,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setNotice("Some audio couldn't be transcribed just then — still recording.");
         return;
       }
-      if (!text) return;
+      // The server drops what Whisper made up from room noise, so an empty
+      // reply means nobody was heard, the same as a segment too quiet to send.
+      if (!text) {
+        setQuietSeconds((s) => s + SEGMENT_MS / 1000);
+        return;
+      }
+      setQuietSeconds(0);
       setNotice(null);
       transcriptRef.current = `${transcriptRef.current} ${text}`.trim();
       setTranscript(transcriptRef.current);
@@ -230,6 +239,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
           onSegment: ({ blob, ext }) => {
             chainRef.current = chainRef.current.then(() => ingest(blob, ext));
           },
+          // Through the chain too, so a quiet stretch is not counted before the
+          // segment ahead of it has been heard back from.
+          onQuiet: () => {
+            chainRef.current = chainRef.current.then(() =>
+              setQuietSeconds((s) => s + SEGMENT_MS / 1000)
+            );
+          },
         });
         handleRef.current = handle;
         recordingIdRef.current = crypto.randomUUID();
@@ -246,6 +262,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setCited([]);
         setSubjectName(subject.name);
         setTranscript("");
+        setQuietSeconds(0);
         setNotesHtml("");
         setNoMaterial(false);
         setNonsense(false);
@@ -331,6 +348,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     setSubjectId(null);
     setSubjectName("");
     setTranscript("");
+    setQuietSeconds(0);
     setNotesHtml("");
     setNoMaterial(false);
     setNonsense(false);
@@ -485,6 +503,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         seconds,
         weekLeft,
         transcript,
+        quietSeconds,
         notesHtml,
         noMaterial,
         nonsense,

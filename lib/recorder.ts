@@ -86,9 +86,12 @@ function friendly(err: unknown): RecorderError {
 export async function startSegmentedRecording({
   segmentMs,
   onSegment,
+  onQuiet,
 }: {
   segmentMs: number;
   onSegment: (segment: Segment) => void;
+  /** A full-length segment was too quiet to be worth sending. */
+  onQuiet: () => void;
 }): Promise<RecorderHandle> {
   if (
     typeof window === "undefined" ||
@@ -175,9 +178,9 @@ export async function startSegmentedRecording({
     };
     rec.onstop = () => {
       current = null;
-      const worthSending =
-        chunks.length > 0 && Date.now() - startedAt >= MIN_SEGMENT_MS && heardSomething();
-      if (worthSending) onSegment({ blob: new Blob(chunks, { type: mime }), ext });
+      const longEnough = chunks.length > 0 && Date.now() - startedAt >= MIN_SEGMENT_MS;
+      if (longEnough && heardSomething()) onSegment({ blob: new Blob(chunks, { type: mime }), ext });
+      else if (longEnough) onQuiet();
       startSegment();
     };
 

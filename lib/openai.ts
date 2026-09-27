@@ -148,10 +148,79 @@ export async function transcribeAudio(file: Blob, filename: string): Promise<Tra
   }
   return {
     ok: true,
-    text: String(data.text ?? "").trim(),
+    text: spokenText(data),
     seconds: Math.max(0, Number(data.duration) || 0),
   };
 }
+
+/**
+ * Whisper invents words when it is handed room noise with nobody speaking,
+ * and the recorder's level check only catches near-total silence, so a quiet
+ * spell in a real room still reaches it. A chunk Whisper thinks held no speech
+ * and was unsure of is dropped, by Whisper's own skip rule. Nothing stricter:
+ * a soft-spoken teacher also scores high on no_speech_prob.
+ */
+function spokenText(data: {
+  text?: unknown;
+  segments?: { text?: unknown; no_speech_prob?: unknown; avg_logprob?: unknown }[];
+}): string {
+  const text = Array.isArray(data.segments)
+    ? data.segments
+        .filter((s) => !((Number(s.no_speech_prob) || 0) > 0.6 && (Number(s.avg_logprob) || 0) < -1))
+        .map((s) => String(s.text ?? "").trim())
+        .filter(Boolean)
+        .join(" ")
+    : String(data.text ?? "").trim();
+  return isStockHallucination(text) ? "" : text;
+}
+
+/**
+ * What Whisper says, confidently enough to pass the scores, when it hears
+ * noise: YouTube sign-offs and subtitle credits, often in another language
+ * (plain room noise came back as Japanese "thanks for watching" in testing). A
+ * 20-second clip holding nothing else is noise; losing a real "thank you"
+ * costs the notes nothing. The patterns only apply to a short clip, so a
+ * lecture that mentions subtitles is not dropped.
+ */
+function isStockHallucination(text: string): boolean {
+  const bare = text.toLowerCase().replace(/[\p{P}\p{S}\s]+/gu, " ").trim();
+  return STOCK_PHRASES.has(bare) || (bare.length <= 80 && STOCK_PATTERNS.some((p) => p.test(bare)));
+}
+
+const STOCK_PATTERNS = [
+  /amara ?org/,
+  /subtitles? by/,
+  /untertitel/,
+  /sous titres/,
+  /subtítulos/,
+  /ご視聴/,
+  /チャンネル登録/,
+  /시청해 ?주셔서/,
+  /구독/,
+  /字幕/,
+  /订阅|訂閱/,
+  /продолжение следует/,
+  /субтитр/,
+];
+
+const STOCK_PHRASES = new Set([
+  "you",
+  "thank you",
+  "thanks",
+  "thank you very much",
+  "thank you so much",
+  "thanks for watching",
+  "thank you for watching",
+  "thanks for listening",
+  "thank you for listening",
+  "please subscribe",
+  "like and subscribe",
+  "bye",
+  "bye bye",
+  "okay",
+  "so",
+  "the end",
+]);
 
 /** Models fence HTML and JSON even when told not to. */
 export function stripFence(text: string): string {

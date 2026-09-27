@@ -26,6 +26,8 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
 import { WaitingState } from "@/components/WaitingState";
 
+const QUIET_WARN_SECONDS = 40;
+
 export function RecordTab({
   subjectId,
   subjectName,
@@ -276,6 +278,14 @@ export function RecordTab({
                 <AiFlag source="live-notes" output={rec.notesHtml} className="mt-4" />
               )}
             </>
+          ) : rec.phase === "recording" && !rec.transcript && rec.quietSeconds > 0 ? (
+            <div className="flex items-start gap-2 text-sm text-amber-800">
+              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                <span className="font-semibold">Nothing has been picked up yet.</span> Check
+                your microphone is on and close enough to whoever is speaking.
+              </p>
+            </div>
           ) : (
             <p className="text-sm text-slate-400">
               {rec.phase !== "recording" && !rec.transcript
@@ -283,6 +293,14 @@ export function RecordTab({
                 : rec.transcript
                   ? "Writing up what you've covered so far…"
                   : "Listening…"}
+            </p>
+          )}
+          {/* A pause in a lecture is normal, so this waits for a longer
+              stretch than the empty-start message above does. */}
+          {rec.phase === "recording" && rec.transcript && rec.quietSeconds >= QUIET_WARN_SECONDS && (
+            <p className="mt-4 flex items-start gap-2 text-sm text-amber-800">
+              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+              Nothing picked up in the last {rec.quietSeconds} seconds.
             </p>
           )}
         </div>
