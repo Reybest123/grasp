@@ -164,13 +164,21 @@ function spokenText(data: {
   text?: unknown;
   segments?: { text?: unknown; no_speech_prob?: unknown; avg_logprob?: unknown }[];
 }): string {
-  const text = Array.isArray(data.segments)
-    ? data.segments
-        .filter((s) => !((Number(s.no_speech_prob) || 0) > 0.6 && (Number(s.avg_logprob) || 0) < -1))
-        .map((s) => String(s.text ?? "").trim())
-        .filter(Boolean)
-        .join(" ")
-    : String(data.text ?? "").trim();
+  if (!Array.isArray(data.segments)) {
+    const text = String(data.text ?? "").trim();
+    return isStockHallucination(text) ? "" : text;
+  }
+  const chunks = data.segments
+    .filter((s) => !((Number(s.no_speech_prob) || 0) > 0.6 && (Number(s.avg_logprob) || 0) < -1))
+    .map((s) => String(s.text ?? "").trim())
+    .filter(Boolean);
+  const kept = chunks.filter((t) => !isStockHallucination(t));
+  // A clip that is mostly video sign-offs is noise throughout: the made-up
+  // sentences between them ("Happy to cook for the whole family") have nothing
+  // to catch. Only sign-offs count, not filler like "Okay." a lecture has too.
+  const videoLike = chunks.filter(soundsLikeAVideo).length;
+  if (videoLike >= 3 && videoLike > kept.length) return "";
+  const text = kept.join(" ");
   return isStockHallucination(text) ? "" : text;
 }
 
@@ -183,9 +191,29 @@ function spokenText(data: {
  * lecture that mentions subtitles is not dropped.
  */
 function isStockHallucination(text: string): boolean {
-  const bare = text.toLowerCase().replace(/[\p{P}\p{S}\s]+/gu, " ").trim();
-  return STOCK_PHRASES.has(bare) || (bare.length <= 80 && STOCK_PATTERNS.some((p) => p.test(bare)));
+  return STOCK_PHRASES.has(bareText(text)) || soundsLikeAVideo(text);
 }
+
+const bareText = (text: string) => text.toLowerCase().replace(/[\p{P}\p{S}\s]+/gu, " ").trim();
+
+/**
+ * Nobody speaks an emoji (Emoji_Presentation, so ®, ™ and arrows are not
+ * counted), and a lesson does not end like a video. Only short chunks, so a
+ * lecture sentence that happens to mention a channel is kept.
+ */
+function soundsLikeAVideo(text: string): boolean {
+  if (/\p{Emoji_Presentation}/u.test(text)) return true;
+  const bare = bareText(text);
+  return bare.length <= 100 && [...SIGN_OFFS, ...STOCK_PATTERNS].some((p) => p.test(bare));
+}
+
+const SIGN_OFFS = [
+  /\b(like and|please|and) subscribe\b/,
+  /\bsubscribe to (my|our) channel\b/,
+  /\bmy channel\b/,
+  /\bthanks? (you )?for watching\b/,
+  /\b(share|like) this video\b/,
+];
 
 const STOCK_PATTERNS = [
   /amara ?org/,
@@ -220,6 +248,11 @@ const STOCK_PHRASES = new Set([
   "okay",
   "so",
   "the end",
+  "silence",
+  "silence silence",
+  "god bless",
+  "namaste",
+  "goodbye",
 ]);
 
 /** Models fence HTML and JSON even when told not to. */

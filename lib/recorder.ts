@@ -39,17 +39,25 @@ export class RecorderError extends Error {}
 const MIN_SEGMENT_MS = 1000;
 
 /**
- * Peak level, 0-1, below which a segment counts as silence and is not sent.
+ * A segment is only sent if someone was heard in it. A silent segment is worse
+ * than useless: Whisper hallucinates on quiet audio, from "Thank you." up to
+ * whole paragraphs of YouTube sign-offs and emoji, which would land in the
+ * student's notes as if the lecturer had said them.
  *
- * A silent segment is worse than useless. Whisper hallucinates filler on
- * silence — two seconds of digital silence comes back as "you", and longer
- * stretches produce things like "Thank you." — so a quiet spell in a lecture
- * would inject words the lecturer never said into the student's notes, and pay
- * per request to do it. Deliberately conservative: real rooms have a noise
- * floor well above digital silence, and dropping speech would be far worse
- * than occasionally paying for a quiet segment.
+ * It used to be one peak level at 0.008, which is a single step of the 8-bit
+ * meter, so the faintest flicker of room noise passed. Now the loudness (RMS)
+ * is read every METER_MS against the room's own background level, tracked as
+ * a slowly rising minimum, and a reading only counts as voice when it is
+ * VOICE_OVER_FLOOR times that background and above VOICE_RMS_MIN. A steady fan
+ * or hiss becomes the background and never counts; speech comes in bursts
+ * above it. The segment needs MIN_VOICED_MS of such readings.
  */
-const SILENCE_PEAK = 0.008;
+const METER_MS = 100;
+const VOICE_RMS_MIN = 0.004;
+const VOICE_OVER_FLOOR = 3;
+const MIN_VOICED_MS = 1000;
+/** Per reading; the background can double in about 35 seconds of constant sound. */
+const FLOOR_RISE = 1.002;
 
 /** Whisper reads the container from the filename, so the extension travels with the mime. */
 const CANDIDATES: [mime: string, ext: string][] = [
@@ -126,26 +134,39 @@ export async function startSegmentedRecording({
   // the context's destination, so this never plays the lecture back aloud.
   let audioCtx: AudioContext | null = null;
   let meter: ReturnType<typeof setInterval> | null = null;
-  let peak = 0;
+  let voicedMs = 0;
+  // The background level carries across segments, so each does not relearn it.
+  let floor = Infinity;
   try {
     audioCtx = new AudioContext();
+    // Some browsers create it suspended outside a click, which would read as
+    // silence throughout and drop every segment.
+    void audioCtx.resume().catch(() => {});
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
     audioCtx.createMediaStreamSource(stream).connect(analyser);
-    const frame = new Uint8Array(analyser.fftSize);
+    const frame = new Float32Array(analyser.fftSize);
+    let lastTick = performance.now();
     meter = setInterval(() => {
-      analyser.getByteTimeDomainData(frame);
-      for (let i = 0; i < frame.length; i += 1) {
-        const level = Math.abs(frame[i] - 128) / 128;
-        if (level > peak) peak = level;
-      }
-    }, 200);
+      // A hidden tab's timers slow to about once a second, so a reading stands
+      // for the time since the last one, not a fixed METER_MS; otherwise a
+      // lecture recorded from another tab would never reach MIN_VOICED_MS.
+      const now = performance.now();
+      const elapsed = Math.min(now - lastTick, 1000);
+      lastTick = now;
+      analyser.getFloatTimeDomainData(frame);
+      let sum = 0;
+      for (let i = 0; i < frame.length; i += 1) sum += frame[i] * frame[i];
+      const rms = Math.sqrt(sum / frame.length);
+      floor = Math.max(1e-5, Math.min(rms, floor * FLOOR_RISE));
+      if (rms > VOICE_RMS_MIN && rms > floor * VOICE_OVER_FLOOR) voicedMs += elapsed;
+    }, METER_MS);
   } catch {
     // No metering available: fall back to sending every segment rather than
     // risk dropping real speech.
     audioCtx = null;
   }
-  const heardSomething = () => audioCtx === null || peak >= SILENCE_PEAK;
+  const heardSomething = () => audioCtx === null || voicedMs >= MIN_VOICED_MS;
 
   const release = () => {
     if (meter) clearInterval(meter);
@@ -170,7 +191,7 @@ export async function startSegmentedRecording({
     const chunks: Blob[] = [];
     const rec = new MediaRecorder(stream, { mimeType: mime });
     const startedAt = Date.now();
-    peak = 0;
+    voicedMs = 0;
     current = rec;
 
     rec.ondataavailable = (e) => {
