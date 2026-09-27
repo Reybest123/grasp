@@ -62,7 +62,24 @@ Cloudflare stays free at any size Grasp is likely to reach. Sentry (error alerts
 
 ## Marketing
 
-No fixed budget. Start with a small test (around A$150) on Meta/TikTok ads aimed at students, see which ad brings signups, then put more money into whatever works. `CLAUDE.md` §8 has the approach.
+No fixed budget. Post the 9:16 video free on Instagram and TikTok first, then test paid ads with around A$150, see which brings signups, and put more money into whatever works. `CLAUDE.md` §8 has the approach. Added 2026-09-27.
+
+**The A$150 test (a guess until it runs).** About A$50 on Meta (Instagram and Facebook), A$50 on TikTok Ads, A$50 on YouTube Shorts or Snapchat, each for 5-7 days with the same video. TikTok's minimum is about A$30 a day per campaign, so it may need a shorter run.
+
+| Channel | Typical cost (A$) | Practical minimum |
+|---|---|---|
+| Meta (Instagram, Facebook) | 1-3 per 1,000 views, 0.50-2 per click | 5-10 a day |
+| TikTok Ads | 2-6 per 1,000 views, 0.50-2.50 per click | about 30 a day |
+| YouTube Shorts | 0.02-0.10 per view | 5-10 a day |
+| Snapchat | 2-5 per 1,000 views | 5-10 a day |
+| Reddit | 1-3 per 1,000 views | 5-10 a day |
+
+- **Judge by cost per signup, then cost per paying customer**, not views or likes. A first guess is A$5-20 a signup. Read it from `/admin/analytics`, which credits signups by UTM tag (see the launch checklist).
+- **Break-even.** Pro is A$7.99 a week. A subscriber who stays a month pays about A$32 against at most about A$16 of AI cost, so a fairly high cost per paying customer is affordable if students stay past the trial.
+- **Watch the drop-off between signup and choosing a plan.** A big gap means the ad is attracting people who expected it to be free.
+- **Meta targets 18 and over by interest;** under-18s only get age and location targeting, so expect broader reach for high schoolers.
+- **Ad copy: no price, and never "free" or "no card needed".** The Terms say a card is taken at trial start. "Sign up today" and the QR code are fine; "7-day trial" is also accurate if wanted. Silence is fine, implying it costs nothing is not (Australian Consumer Law, and Meta and TikTok policy).
+- **Later:** paid student creators and school or uni clubs cost more up front but convert better than cold ads.
 
 ## OpenAI and auto-refill
 

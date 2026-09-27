@@ -32,7 +32,9 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 
 - [ ] Delete the "Grasp has not launched" block at the top of CLAUDE.md section 11 and say so there
 - [ ] Look at `/admin/analytics` (staging site) to make sure signups and payments are showing
-- [ ] Start about A$150 of Meta/TikTok ads aimed at students. Spend more on whatever brings signups.
+- [ ] Tag every ad link with UTM parameters before it goes live, so `/admin/analytics` can credit signups to the right ad. Use `utm_source` (tiktok, instagram, youtube, snapchat), `utm_medium` (paid or organic), `utm_campaign` (the video's name) and `utm_content` (which variant). Example: `https://graspstudy.com/?utm_source=tiktok&utm_medium=paid&utm_campaign=promo1`. The QR code in the video needs its own tagged link (`utm_medium=qr`), because it is scanned rather than clicked. Open each tagged link once and check the visit shows up.
+- [ ] Post the video free on Instagram and TikTok first (organic, `utm_medium=organic` in the bio link)
+- [ ] Then start about A$150 of paid ads, split as in `LAUNCH_PLAN.md`'s Marketing section. Spend more on whatever brings signups at the lowest cost per signup.
 
 ## After launch, watch for
 
