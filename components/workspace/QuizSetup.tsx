@@ -269,7 +269,7 @@ export function QuizSetup({
               <BankIcon className="h-3.5 w-3.5" /> Weight it to your Resource Bank
             </h3>
             <p className="mt-1 text-xs text-slate-500">
-              Grasp pushes the questions toward what these say is assessed, and names any it used.
+              Grasp pushes the questions toward what these say is assessed.
             </p>
             <div className="mt-3 space-y-1 rounded-xl border border-slate-200 p-2">
               {resources.map((r) => (

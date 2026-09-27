@@ -22,11 +22,8 @@ import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/l
 import { useSubjects } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
 import { freesUpLabel, publishLimit } from "@/lib/limitNotice";
-import {
-  DEFAULT_PLAN,
-  RECORDING_SEGMENT_MS,
-  recordingMaxSeconds,
-} from "@/lib/plan";
+import { DEFAULT_PLAN, RECORDING_SEGMENT_MS } from "@/lib/plan";
+import { LIMITS } from "@/lib/costModel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const SEGMENT_MS = RECORDING_SEGMENT_MS;
@@ -34,6 +31,28 @@ const SEGMENT_MS = RECORDING_SEGMENT_MS;
 // Redrafting on every segment is a model call every 20 seconds for no visible
 // gain — wait until enough new material has landed to change the notes.
 const MIN_NEW_CHARS = 220;
+
+// Past the first stretch of a lecture the server only allows a draft as the
+// audio grows by LIMITS.liveSparseGrowth (lib/costModel.ts). Waiting for a
+// larger step here keeps the client under that, so the final pass is never the
+// draft that gets refused.
+const SPARSE_GROWTH = 0.2;
+
+/** A saved transcript is split below LIMITS.noteChars, leaving room for the HTML around it. */
+const TRANSCRIPT_PART_CHARS = 50_000;
+
+function splitTranscript(text: string): string[] {
+  const parts: string[] = [];
+  let rest = text.trim();
+  while (rest.length > TRANSCRIPT_PART_CHARS) {
+    const cut = rest.lastIndexOf(" ", TRANSCRIPT_PART_CHARS);
+    const at = cut > 0 ? cut : TRANSCRIPT_PART_CHARS;
+    parts.push(rest.slice(0, at));
+    rest = rest.slice(at).trim();
+  }
+  parts.push(rest);
+  return parts;
+}
 
 export type RecordPhase = "idle" | "recording" | "naming";
 
@@ -65,8 +84,9 @@ export type RecordingState = {
   notice: string | null;
   /** a failed start, kept against the subject that attempted it */
   fatal: { subjectId: string; message: string } | null;
-  name: string;
-  setName: (name: string) => void;
+  /** a recording just saved itself while its Record tab was on screen: open it in Notes */
+  openNote: { subjectId: string; noteId: string } | null;
+  clearOpenNote: () => void;
   /** true while the live recording UI is actually on screen — see `guard` */
   viewing: boolean;
   setViewing: (viewing: boolean) => void;
@@ -83,19 +103,20 @@ export type RecordingState = {
   }) => Promise<void>;
   stop: () => Promise<void>;
   discard: () => void;
-  /** writes the note into the subject it was recorded for; returns its id */
+  /**
+   * Writes the lecture into the subject it was recorded for; returns its id.
+   * Stop does this itself when notes were written, so this is for keeping the
+   * transcript of one that could not be written up.
+   */
   save: () => { subjectId: string; noteId: string } | null;
 };
 
 const RecordingContext = createContext<RecordingState | null>(null);
 
 export function RecordingProvider({ children }: { children: React.ReactNode }) {
-  const { subjects, updateSubject } = useSubjects();
+  const { updateSubject } = useSubjects();
   const { profile, ready: profileReady } = useProfile();
   const plan = profile.plan ?? DEFAULT_PLAN;
-  // The server enforces the same ceiling for the plan; stopping here is what
-  // keeps the student from running into it.
-  const maxSeconds = profile.unlimited ? Infinity : recordingMaxSeconds(plan);
 
   const [phase, setPhase] = useState<RecordPhase>("idle");
   const [subjectId, setSubjectId] = useState<string | null>(null);
@@ -113,7 +134,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const [finishing, setFinishing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [fatal, setFatal] = useState<{ subjectId: string; message: string } | null>(null);
-  const [name, setName] = useState("");
+  const [openNote, setOpenNote] = useState<{ subjectId: string; noteId: string } | null>(null);
+  const clearOpenNote = useCallback(() => setOpenNote(null), []);
+  const titleRef = useRef("");
+  const viewingRef = useRef(false);
 
   const handleRef = useRef<RecorderHandle | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -126,6 +150,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const transcriptRef = useRef("");
   const notesRef = useRef("");
   const lastDraftRef = useRef(0);
+  // Seconds of audio sent to Whisper this recording, and as of the last draft:
+  // what the server's sparse draft allowance is measured in.
+  const heardRef = useRef(0);
+  const lastDraftHeardRef = useRef(0);
   const subjectIdRef = useRef<string | null>(null);
   const contextRef = useRef("");
   const subjectNameRef = useRef("");
@@ -138,13 +166,26 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   /** When this week's recording time comes back, for the dialog raised on running out. */
   const weekResetsRef = useRef<string | null>(null);
   const stopRef = useRef<() => Promise<void>>(async () => {});
+  // Stop is reached from the button, the week running out and a refused
+  // segment. Only the first may run: a second would pay for another final pass
+  // and could save or reset a recording started after the first finished.
+  const stoppingRef = useRef(false);
 
-  const draft = useCallback(async (final: boolean) => {
+  const draft = useCallback(async (final: boolean): Promise<"written" | "empty" | "failed" | "skipped"> => {
     const text = transcriptRef.current;
-    if (!text) return;
-    if (!final && text.length - lastDraftRef.current < MIN_NEW_CHARS) return;
+    if (!text) return "skipped";
+    if (!final && text.length - lastDraftRef.current < MIN_NEW_CHARS) return "skipped";
+    if (
+      !final &&
+      heardRef.current > LIMITS.liveDenseSeconds &&
+      heardRef.current < lastDraftHeardRef.current * (1 + SPARSE_GROWTH)
+    ) {
+      return "skipped";
+    }
+    const session = recordingIdRef.current;
 
     lastDraftRef.current = text.length;
+    lastDraftHeardRef.current = heardRef.current;
     setDrafting(true);
     const { html, cited: used, error, outcome } = await liveNotes({
       transcript: text,
@@ -154,10 +195,12 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       resources: resourcesRef.current,
       recordingId: recordingIdRef.current,
     });
+    // Discarded, or replaced by a new recording, while this was written.
+    if (recordingIdRef.current !== session) return "failed";
     setDrafting(false);
     // A failed draft leaves the previous notes on screen; the next segment will
     // try again, and the transcript is still accumulating regardless.
-    if (error) return;
+    if (error) return "failed";
     if (html) {
       notesRef.current = html;
       setNotesHtml(html);
@@ -166,7 +209,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       // Each draft rewrites the notes whole, so its citations replace the last
       // set rather than piling up across a lecture.
       setCited(used);
-    } else if (final) {
+      return "written";
+    }
+    if (final) {
+      // The mid-lecture draft is not the lecture's notes, and keeping it would
+      // make Save keep it in place of the transcript.
+      notesRef.current = "";
+      setNotesHtml("");
       // The route only comes back with nothing when the final transcript was
       // too short to hold two sentences of material, or when it came back
       // garbled — never for a lecture that genuinely had something to say.
@@ -180,6 +229,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setNonsense(false);
       }
     }
+    return "empty";
   }, []);
 
   const ingest = useCallback(
@@ -201,6 +251,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setNotice("Some audio couldn't be transcribed just then — still recording.");
         return;
       }
+      heardRef.current += SEGMENT_MS / 1000;
       // The server drops what Whisper made up from room noise, so an empty
       // reply means nobody was heard, the same as a segment too quiet to send.
       if (!text) {
@@ -250,9 +301,12 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         handleRef.current = handle;
         recordingIdRef.current = crypto.randomUUID();
         limitHitRef.current = false;
+        stoppingRef.current = false;
         transcriptRef.current = "";
         notesRef.current = "";
         lastDraftRef.current = 0;
+        heardRef.current = 0;
+        lastDraftHeardRef.current = 0;
         chainRef.current = Promise.resolve();
         subjectIdRef.current = subject.id;
         subjectNameRef.current = subject.name;
@@ -285,39 +339,6 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     [ingest]
   );
 
-  const stop = useCallback(async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
-    setPhase("naming");
-    setName(`${subjectNameRef.current} lecture — ${new Date().toLocaleDateString()}`);
-    setFinishing(true);
-    try {
-      await handleRef.current?.stop(); // flushes the segment still in progress
-      handleRef.current = null;
-      await chainRef.current; // drain whatever is still transcribing
-      await draft(true); // one pass over the whole lecture
-    } finally {
-      setFinishing(false);
-    }
-  }, [draft]);
-
-  useEffect(() => {
-    stopRef.current = stop;
-  }, [stop]);
-
-  // The advertised caps, enforced rather than just printed: the length of one
-  // recording, and the time left this week.
-  useEffect(() => {
-    if (phase !== "recording") return;
-    const outOfTime = weekLeft !== null && seconds >= weekLeft;
-    if (!outOfTime && seconds < maxSeconds) return;
-    // Which of the two caps stopped it is the difference between "that is this
-    // week gone" and "that is as long as one recording runs", so only the
-    // first raises the limit dialog.
-    if (outOfTime) publishLimit({ kind: "recording", freesUp: freesUpLabel(weekResetsRef.current) });
-    void stop();
-  }, [phase, seconds, maxSeconds, weekLeft, stop]);
-
   // Re-read whenever no recording is running, so the time left shown before
   // Start reflects the recording that just ended as the server charged it.
   const unlimited = profile.unlimited;
@@ -341,8 +362,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     transcriptRef.current = "";
     notesRef.current = "";
     lastDraftRef.current = 0;
+    heardRef.current = 0;
+    lastDraftHeardRef.current = 0;
     subjectIdRef.current = null;
     resourcesRef.current = [];
+    recordingIdRef.current = "";
+    stoppingRef.current = false;
+    setDrafting(false);
     setPhase("idle");
     setCited([]);
     setSubjectId(null);
@@ -366,27 +392,73 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     const id = subjectIdRef.current;
     if (!id) return null;
     // If every draft failed, keep the lecture rather than lose it — the raw
-    // transcript is still the student's own material.
-    const body = notesRef.current || textToHtml(transcriptRef.current);
-    const noteId = "n" + Date.now();
-    const existing = subjects.find((s) => s.id === id)?.notes ?? [];
-    updateSubject(id, {
-      notes: [
-        {
-          id: noteId,
-          title: name.trim() || "Untitled recording",
-          body,
-          updated: new Date().toISOString(),
-          // Marks it as written by a lecture rather than typed, which is what
-          // puts it in the Record tab's list. It is still an ordinary note.
-          recorded: true,
-        },
-        ...existing,
-      ],
-    });
+    // transcript is still the student's own material. A long one is split so
+    // no note is past the length the AI features will read.
+    const bodies = notesRef.current
+      ? [notesRef.current]
+      : splitTranscript(transcriptRef.current).map(textToHtml);
+    const stamp = Date.now();
+    const updated = new Date().toISOString();
+    const notes = bodies.map((body, i) => ({
+      id: `n${stamp}${bodies.length > 1 ? `-${i + 1}` : ""}`,
+      title: bodies.length > 1 ? `${titleRef.current} (part ${i + 1} of ${bodies.length})` : titleRef.current,
+      body,
+      updated,
+      // Marks it as written by a lecture rather than typed, which is what
+      // puts it in the Record tab's list. It is still an ordinary note.
+      recorded: true,
+    }));
+    // Read the subject as it stands when this lands, since saving runs at the
+    // end of stop() and a note edited during the polish must not be lost.
+    updateSubject(id, (subject) => ({ notes: [...notes, ...subject.notes] }));
     reset();
-    return { subjectId: id, noteId };
-  }, [subjects, updateSubject, name, reset]);
+    return { subjectId: id, noteId: notes[0].id };
+  }, [updateSubject, reset]);
+
+  const stop = useCallback(async () => {
+    if (stoppingRef.current) return;
+    stoppingRef.current = true;
+    const session = recordingIdRef.current;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    setPhase("naming");
+    titleRef.current = `${subjectNameRef.current} lecture — ${new Date().toLocaleDateString()}`;
+    setFinishing(true);
+    let outcome: Awaited<ReturnType<typeof draft>> = "skipped";
+    try {
+      await handleRef.current?.stop(); // flushes the segment still in progress
+      handleRef.current = null;
+      await chainRef.current; // drain whatever is still transcribing
+      outcome = await draft(true); // one pass over the whole lecture
+    } finally {
+      setFinishing(false);
+    }
+    if (recordingIdRef.current !== session) return; // discarded during the polish
+
+    // Written up: saved straight into the subject's notes, and opened there if
+    // the student is watching. The note can be renamed in the editor. With no
+    // finished notes but a transcript, the Record tab says why and offers to
+    // keep what there is. With nothing at all there is nothing to keep.
+    if (outcome === "written") {
+      const saved = save();
+      if (saved && viewingRef.current) setOpenNote(saved);
+    } else if (!transcriptRef.current) {
+      const id = subjectIdRef.current;
+      reset();
+      if (id) setFatal({ subjectId: id, message: "Nothing was picked up, so nothing was saved." });
+    }
+  }, [draft, save, reset]);
+
+  useEffect(() => {
+    stopRef.current = stop;
+  }, [stop]);
+
+  // The week's recording time, enforced rather than just printed.
+  useEffect(() => {
+    if (phase !== "recording" || weekLeft === null || seconds < weekLeft) return;
+    publishLimit({ kind: "recording", freesUp: freesUpLabel(weekResetsRef.current) });
+    void stop();
+  }, [phase, seconds, weekLeft, stop]);
 
   // Releasing the mic matters: an unmount with the recorder still running would
   // leave the browser's recording indicator lit with nothing driving it.
@@ -412,6 +484,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   // neither shows the draft any more. Once the student is already away from it
   // they have been told, so further moves are silent.
   const [viewing, setViewing] = useState(false);
+  useEffect(() => {
+    viewingRef.current = viewing;
+  }, [viewing]);
   const [leavingView, setLeavingView] = useState(false);
   const proceedRef = useRef<(() => void) | null>(null);
 
@@ -513,8 +588,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         finishing,
         notice,
         fatal,
-        name,
-        setName,
+        openNote,
+        clearOpenNote,
         viewing,
         setViewing,
         guard,

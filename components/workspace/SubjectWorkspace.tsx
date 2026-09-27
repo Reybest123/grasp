@@ -331,10 +331,6 @@ export function SubjectWorkspace({
             context={context}
             resources={resources}
             notes={subject.notes}
-            onSaved={(noteId) => {
-              setActiveId(noteId);
-              setTab("notes");
-            }}
             onOpenNote={(noteId) => {
               setActiveId(noteId);
               setTab("notes");

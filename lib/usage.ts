@@ -9,12 +9,10 @@ import { randomUUID } from "node:crypto";
 import { query, sql, transaction, type Sql } from "@/lib/db";
 import {
   DEFAULT_PLAN,
-  PLAN_LABEL,
   RECORDING_SEGMENT_MS,
   aiTokenLimit,
   markingLimit,
   quizLimit,
-  recordingMaxSeconds,
   recordingSeconds,
   resourceReadLimit,
   type Plan,
@@ -68,9 +66,14 @@ const LIMITS: Record<UsageKind, (plan: Plan) => number> = {
  */
 const planOf = (account: Account): Plan => account.plan ?? DEFAULT_PLAN;
 
+/** The longest one recording can be charged: the whole week, and the segment in flight. */
+function recordingCeiling(plan: Plan): number {
+  return recordingSeconds(plan) + CAPS.recordingGraceSeconds;
+}
+
 /** The stop flush can add one segment past the last full one. */
 function maxSegments(plan: Plan): number {
-  return Math.ceil((recordingMaxSeconds(plan) * 1000) / RECORDING_SEGMENT_MS) + 1;
+  return Math.ceil((recordingCeiling(plan) * 1000) / RECORDING_SEGMENT_MS) + 1;
 }
 
 function failed(error: string, status: number): { ok: false; response: Response } {
@@ -247,51 +250,43 @@ export async function claimRecordingSegment(
     return refused("recording", week.data.resetsAt);
   }
 
-  // The segment count alone does not bound Whisper's bill, which is by the
-  // minute: a client could send long clips as "segments". Audio already
-  // transcribed for this recording is the real ceiling.
-  const heard = await query(async () => {
-    const rows = (await sql`
-      select units from usage
-      where user_id = ${account.id} and kind = 'audio' and ref = ${recordingId}
-    `) as { units: number }[];
-    return rows[0]?.units ?? 0;
-  });
-  if (!heard.ok) return failed(heard.error, heard.status);
-  if (heard.data >= recordingMaxSeconds(plan) + CAPS.recordingGraceSeconds) {
-    return capped(
-      `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
-    );
-  }
-
-  const bumped = await query(async () => {
+  // The weekly check above counts this recording's audio only once Whisper
+  // has heard it. So segments of one recording are taken a couple at a time:
+  // the recorder sends them one after another, and without this a client could
+  // send hundreds at once, every one passing that check before any counted.
+  const counts = await query(async () => {
     const rows = (await sql`
       insert into usage (user_id, kind, ref)
       values (${account.id}, 'recording', ${recordingId})
       on conflict (user_id, kind, ref) do update set units = usage.units + 1
       returning units
     `) as { units: number }[];
-    return rows[0]?.units ?? 1;
+    const done = (await sql`
+      select units from usage
+      where user_id = ${account.id} and kind = 'segdone' and ref = ${recordingId}
+    `) as { units: number }[];
+    return { claimed: rows[0]?.units ?? 1, done: done[0]?.units ?? 0 };
   });
-  if (!bumped.ok) return failed(bumped.error, bumped.status);
+  if (!counts.ok) return failed(counts.error, counts.status);
 
-  if (bumped.data > maxSegments(plan)) {
-    return capped(
-      `A recording can run for ${recordingMaxSeconds(plan) / 60} minutes at most on the ${PLAN_LABEL[plan]} plan.`
+  // Hands this segment's count back: on refusal here, and when Whisper fails,
+  // so a failure does not eat into the recording's draft allowance.
+  const release = async () => {
+    await query(
+      () =>
+        sql`update usage set units = units - 1 where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId} and units > 1`
     );
-  }
-  // Whisper failing on a segment hands its count back, so a failure does not
-  // eat into the recording's draft allowance.
-  return {
-    ok: true,
-    release: async () => {
-      await query(
-        () =>
-          sql`update usage set units = units - 1 where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId} and units > 1`
-      );
-    },
   };
+  if (counts.data.claimed > maxSegments(plan)) return refused("recording", week.data.resetsAt);
+  if (counts.data.claimed - counts.data.done > MAX_SEGMENTS_IN_FLIGHT) {
+    await release();
+    return failed("Grasp is still transcribing the last part of this recording.", 409);
+  }
+  return { ok: true, release };
 }
+
+/** The recorder sends one at a time; one more covers the segment flushed on Stop. */
+const MAX_SEGMENTS_IN_FLIGHT = 2;
 
 /** Adds a transcribed segment's length to its recording's running total. */
 export async function recordAudioSeconds(
@@ -301,13 +296,19 @@ export async function recordAudioSeconds(
 ): Promise<void> {
   if (account.unlimited) return;
   const units = Math.max(1, Math.ceil(seconds));
-  await query(
-    () => sql`
+  await query(async () => {
+    await sql`
       insert into usage (user_id, kind, ref, units)
       values (${account.id}, 'audio', ${recordingId}, ${units})
       on conflict (user_id, kind, ref) do update set units = usage.units + ${units}
-    `
-  );
+    `;
+    // Segments finished, against those claimed in claimRecordingSegment.
+    await sql`
+      insert into usage (user_id, kind, ref)
+      values (${account.id}, 'segdone', ${recordingId})
+      on conflict (user_id, kind, ref) do update set units = usage.units + 1
+    `;
+  });
 }
 
 /**
@@ -345,7 +346,7 @@ export async function claimLiveDraft(
     return failed("Grasp has no audio for this recording yet, so there is nothing to write up.", 409);
   }
   const { segments, heard, drafts } = result.data;
-  const charged = Math.min(chargedSeconds(heard), recordingMaxSeconds(plan));
+  const charged = Math.min(chargedSeconds(heard), recordingCeiling(plan));
   if (drafts > Math.min(segments + 1, draftCeiling(charged, RECORDING_SEGMENT_MS))) {
     return capped("Grasp is already up to date with this recording.");
   }

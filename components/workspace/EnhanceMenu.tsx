@@ -106,9 +106,6 @@ export function EnhanceMenu({
               </label>
             );
           })}
-          <p className="px-1.5 pt-1 text-[11px] text-slate-400">
-            Grasp names any it actually uses.
-          </p>
         </div>
       )}
 

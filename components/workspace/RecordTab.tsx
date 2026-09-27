@@ -10,11 +10,11 @@
 // copy — so an edit made in the editor is already reflected here, and deleting
 // one there removes it from here too. There is one note, in two places.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Note } from "@/lib/subjects";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { useProfile } from "@/lib/profileStore";
-import { DEFAULT_PLAN, PLAN_LABEL, formatDuration, recordingMaxSeconds } from "@/lib/plan";
+import { DEFAULT_PLAN, PLAN_LABEL, formatDuration } from "@/lib/plan";
 import { useNow } from "@/lib/subjectsStore";
 import { updatedLabel } from "@/lib/schedule";
 import type { ResourceBrief } from "@/lib/resources";
@@ -34,7 +34,6 @@ export function RecordTab({
   context,
   resources,
   notes,
-  onSaved,
   onOpenNote,
   onOpenSubject,
 }: {
@@ -45,7 +44,6 @@ export function RecordTab({
   resources: ResourceBrief[];
   /** every note on the subject — the recorded ones are picked out here */
   notes: Note[];
-  onSaved: (noteId: string) => void;
   /** hand a recorded note to the Notes tab, which is where it is edited */
   onOpenNote: (noteId: string) => void;
   onOpenSubject: (subjectId: string) => void;
@@ -54,7 +52,6 @@ export function RecordTab({
   const now = useNow();
   const { profile } = useProfile();
   const plan = profile.plan ?? DEFAULT_PLAN;
-  const maxSeconds = profile.unlimited ? Infinity : recordingMaxSeconds(plan);
 
   const recorded = notes.filter((n) => n.recorded);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -67,15 +64,10 @@ export function RecordTab({
 
   // Ticks down with the recording's own timer, so it moves every second.
   const weekLeft = rec.weekLeft === null ? null : Math.max(0, rec.weekLeft - rec.seconds);
-  const remaining = Math.min(maxSeconds - rec.seconds, weekLeft ?? Infinity);
-  const hasContent = Boolean(rec.notesHtml || rec.transcript.trim());
-  // Both leave the transcript as the only thing to save, but they read
-  // differently: one says nothing was recorded, the other that the audio
-  // wasn't clear enough to write up — see lib/recordingStore.tsx.
-  const noNotes = rec.noMaterial || rec.nonsense;
   // Stop moves straight to "naming", but the final pass over the whole
   // transcript is still running behind it — that gap is what the polishing
-  // state fills.
+  // state fills. A lecture that was written up then saves itself; one that
+  // could not be is left here to keep or discard.
   const polishing = rec.phase === "naming" && rec.finishing;
 
   // Resolved rather than trusted: a recording deleted from the Notes tab leaves
@@ -84,8 +76,15 @@ export function RecordTab({
 
   function save() {
     const saved = rec.save();
-    if (saved) onSaved(saved.noteId);
+    if (saved) onOpenNote(saved.noteId);
   }
+
+  const { openNote, clearOpenNote } = rec;
+  useEffect(() => {
+    if (openNote?.subjectId !== subjectId) return;
+    onOpenNote(openNote.noteId);
+    clearOpenNote();
+  }, [openNote, subjectId, onOpenNote, clearOpenNote]);
 
   function start() {
     void rec.start({ id: subjectId, name: subjectName, context, resources });
@@ -108,7 +107,7 @@ export function RecordTab({
               <span>
                 Grasp will lean on the {resources.length} document
                 {resources.length === 1 ? "" : "s"} in your Resource Bank to work out which parts
-                of the lecture are the assessed ones, and name any it uses.
+                of the lecture are the assessed ones.
               </span>
             </span>
           )}
@@ -118,13 +117,13 @@ export function RecordTab({
         <span className="mt-3 block text-xs leading-5 text-slate-500">
           Check your school allows recording before you start. {PLAN_LABEL[plan]} plan:{" "}
           {profile.unlimited
-            ? "unlimited recording, with no length limit."
-            : `${weekLeft === null ? "…" : formatDuration(weekLeft, true)} of recording left this week, up to ${maxSeconds / 60} minutes a recording.`}
+            ? "unlimited recording."
+            : `${weekLeft === null ? "…" : formatDuration(weekLeft, true)} of recording left this week.`}
         </span>
       }
     >
-      Grasp transcribes as you go and drafts structured notes live. When you stop, name it and
-      it&apos;s saved straight into your notes. The audio is never stored.
+      Grasp transcribes as you go and drafts structured notes live. When you stop, they&apos;re
+      saved straight into your notes. The audio is never stored.
     </EmptyTab>
   );
 
@@ -134,12 +133,18 @@ export function RecordTab({
         <MicIcon className="h-8 w-8" />
       </span>
       <h3 className="mt-5 text-xl font-bold text-ink">
-        {rec.phase === "recording" ? "Already recording" : "A recording is waiting"}
+        {rec.phase === "recording"
+          ? "Already recording"
+          : rec.finishing
+            ? "Saving a recording"
+            : "A recording is waiting"}
       </h3>
       <p className="mt-2 max-w-md text-sm text-slate-600">
         {rec.phase === "recording"
           ? `Grasp is recording your ${rec.subjectName} lecture. Finish that one before starting another.`
-          : `Your ${rec.subjectName} recording hasn't been saved yet. Finish it before starting another.`}
+          : rec.finishing
+            ? `Your ${rec.subjectName} notes are being written up and saved. You can start another in a moment.`
+            : `Your ${rec.subjectName} recording hasn't been saved yet. Finish it before starting another.`}
       </p>
       <button
         onClick={() => rec.subjectId && onOpenSubject(rec.subjectId)}
@@ -167,7 +172,7 @@ export function RecordTab({
                   ? "Not enough to write up"
                   : rec.nonsense
                     ? "Couldn't make out the recording"
-                    : "Notes ready"}
+                    : "Couldn't finish the notes"}
             </span>
           )}
         </div>
@@ -175,15 +180,10 @@ export function RecordTab({
           {rec.phase === "recording" && weekLeft !== null && (
             <span
               className={`text-xs font-semibold tabular-nums ${
-                remaining <= 60 ? "text-amber-600" : "text-slate-500"
+                weekLeft <= 60 ? "text-amber-600" : "text-slate-500"
               }`}
             >
               {formatDuration(weekLeft, true)} left this week
-            </span>
-          )}
-          {rec.phase === "recording" && remaining <= 60 && remaining < (weekLeft ?? Infinity) && (
-            <span className="text-xs font-semibold text-amber-600">
-              Stops in {mmss(Math.max(remaining, 0))}
             </span>
           )}
           <span className="font-mono text-sm tabular-nums text-slate-500">{mmss(rec.seconds)}</span>
@@ -274,8 +274,14 @@ export function RecordTab({
                 dangerouslySetInnerHTML={{ __html: rec.notesHtml }}
               />
               <ResourceCitation cited={rec.cited} className="mt-4 bg-white" />
+              {/* Stopped with notes still on screen means the final pass failed:
+                  these are the last draft, not the whole lecture. */}
               {rec.phase === "naming" && (
-                <AiFlag source="live-notes" output={rec.notesHtml} className="mt-4" />
+                <p className="mt-4 flex items-start gap-2 text-sm text-amber-800">
+                  <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                  Grasp couldn&apos;t finish these notes, so they stop at the last draft. The end
+                  of the lecture may be missing.
+                </p>
               )}
             </>
           ) : rec.phase === "recording" && !rec.transcript && rec.quietSeconds > 0 ? (
@@ -288,8 +294,8 @@ export function RecordTab({
             </div>
           ) : (
             <p className="text-sm text-slate-400">
-              {rec.phase !== "recording" && !rec.transcript
-                ? "Nothing was captured."
+              {rec.phase !== "recording"
+                ? "Grasp couldn't write up notes just now. Save the transcript to keep what was said."
                 : rec.transcript
                   ? "Writing up what you've covered so far…"
                   : "Listening…"}
@@ -333,35 +339,22 @@ export function RecordTab({
         </div>
       )}
 
-      {/* Only once the polish has landed. Naming a note while it is still being
-          written asks the student to title something they cannot read yet, and
-          the Save button spent that whole wait disabled. */}
+      {/* Only reached when there are no notes to save on their own: keep the
+          transcript, or throw the recording away. */}
       {rec.phase === "naming" && !polishing && (
-        <div className="mt-5">
-          <label className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            {noNotes ? "Name this transcript" : "Name this note"}
-          </label>
-          <input
-            value={rec.name}
-            onChange={(e) => rec.setName(e.target.value)}
-            autoFocus
-            className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
-          />
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={rec.discard}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
-            >
-              Discard
-            </button>
-            <button
-              onClick={save}
-              disabled={!hasContent}
-              className="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-            >
-              {noNotes ? "Save transcript" : "Save to notes"}
-            </button>
-          </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={rec.discard}
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
+          >
+            Discard
+          </button>
+          <button
+            onClick={save}
+            className="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+          >
+            {rec.notesHtml ? "Save these notes" : "Save transcript"}
+          </button>
         </div>
       )}
     </div>
@@ -486,6 +479,7 @@ function RecordedNote({
           dangerouslySetInnerHTML={{ __html: note.body }}
         />
       </div>
+      <AiFlag source="live-notes" output={note.body} className="mt-4" />
     </div>
   );
 }

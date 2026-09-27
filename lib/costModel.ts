@@ -59,10 +59,14 @@ export const LIMITS = {
   /** fast speech is about 1,100 characters a minute; this leaves room above it */
   transcriptCharsPerMinute: 1_300,
   liveDraftOutputTokens: 2_000,
-  liveFinalOutputTokens: 4_000,
+  /**
+   * Room for a long lecture's notes (a recording has no length limit), while
+   * keeping the saved note under noteChars, the most the AI features will read.
+   */
+  liveFinalOutputTokens: 14_000,
   /** a 20-second segment is a few hundred KB; this only bounds one oversized one */
   segmentBytes: 2_000_000,
-  /** audio past the plan's length still transcribed, for the segment flushed on Stop */
+  /** audio past the week's allowance still transcribed, for the segment in flight when it runs out */
   recordingGraceSeconds: 30,
   /**
    * The least a recording takes off the weekly time allowance. Each recording
@@ -72,6 +76,13 @@ export const LIMITS = {
   recordingMinChargeSeconds: 60,
   /** a draft's reply is capped at this plus twice the transcript it was given */
   liveOutputBaseTokens: 500,
+  /**
+   * A recording has a draft per segment for this long. Each draft re-reads the
+   * whole transcript, so past it drafts only come as the audio heard grows by
+   * `liveSparseGrowth`, which keeps a long lecture's cost in line with its length.
+   */
+  liveDenseSeconds: 20 * 60,
+  liveSparseGrowth: 0.1,
 
   /** a note's HTML, and the passage highlighted in it */
   noteChars: 60_000,
@@ -156,14 +167,24 @@ export function chargedSeconds(heardSeconds: number): number {
   return Math.max(heardSeconds, LIMITS.recordingMinChargeSeconds);
 }
 
+/** Drafts before the final pass: one per segment up to liveDenseSeconds, then one per liveSparseGrowth. */
+function liveDrafts(charged: number, segmentMs: number): { dense: number; sparse: number } {
+  const dense = Math.ceil((Math.min(charged, LIMITS.liveDenseSeconds) * 1000) / segmentMs);
+  const sparse =
+    charged > LIMITS.liveDenseSeconds
+      ? Math.ceil(Math.log(charged / LIMITS.liveDenseSeconds) / Math.log(1 + LIMITS.liveSparseGrowth))
+      : 0;
+  return { dense, sparse };
+}
+
 /**
  * Note drafts, the final pass included, a recording is allowed for the seconds
- * it is charged: one per segment's worth of audio, plus the final pass. The
- * client only redrafts once enough new words have landed, so it rarely needs
- * one per segment.
+ * it is charged. The client only redrafts once enough new words have landed,
+ * so it rarely needs all of them.
  */
 export function draftCeiling(charged: number, segmentMs: number): number {
-  return Math.ceil((charged * 1000) / segmentMs) + 1;
+  const { dense, sparse } = liveDrafts(charged, segmentMs);
+  return dense + sparse + 1;
 }
 
 /** A draft's reply cap: notes are shorter than the speech they come from. */
@@ -178,25 +199,27 @@ export function liveOutputTokens(final: boolean, transcriptChars: number): numbe
  */
 function recordingWorstUsd(charged: number, segmentMs: number): number {
   const whisper = (charged / 60) * WHISPER_USD_PER_MINUTE;
-  const calls = draftCeiling(charged, segmentMs);
+  const { dense, sparse } = liveDrafts(charged, segmentMs);
   const transcript = transcriptCharCap(charged);
+  const denseTranscript = transcriptCharCap(Math.min(charged, LIMITS.liveDenseSeconds));
   const fixed = PROMPT_CHARS + RESOURCE_BLOCK_CHARS + LIMITS.contextChars;
-  let llm = 0;
-  for (let k = 1; k <= calls; k++) {
-    const final = k === calls;
-    const read = final ? transcript : Math.ceil((transcript * k) / (calls - 1));
-    llm += costUsd("gpt-4o-mini", tokensIn(fixed + Math.min(read, transcript)), liveOutputTokens(final, read));
-  }
+  const draft = (final: boolean, read: number) =>
+    costUsd("gpt-4o-mini", tokensIn(fixed + read), liveOutputTokens(final, read));
+  let llm = draft(true, transcript);
+  for (let k = 1; k <= dense; k++) llm += draft(false, Math.ceil((denseTranscript * k) / dense));
+  // A sparse draft can be taken at any point, so each is priced at the full transcript.
+  llm += sparse * draft(false, transcript);
   return whisper + llm;
 }
 
 /**
  * A week's recording time used to the full, at its worst. The allowance can be
- * split into recordings of any length up to `maxSeconds`, so this takes the
- * length that costs most per second. Short ones are dearest, which is what
+ * split into recordings of any length, so this takes the length that costs most
+ * per second. Short ones are dearest, which is what
  * LIMITS.recordingMinChargeSeconds is there to hold down.
  */
-export function recordingTimeWorstUsd(weeklySeconds: number, maxSeconds: number, segmentMs: number): number {
+export function recordingTimeWorstUsd(weeklySeconds: number, segmentMs: number): number {
+  const maxSeconds = weeklySeconds + LIMITS.recordingGraceSeconds;
   let perSecond = 0;
   for (let s = LIMITS.recordingMinChargeSeconds; s <= maxSeconds; s += 5) {
     perSecond = Math.max(perSecond, recordingWorstUsd(s, segmentMs) / s);

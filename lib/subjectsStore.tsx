@@ -53,7 +53,8 @@ type Store = {
   addSubject: (name: string, patch?: Partial<Pick<Subject, "teacher" | "colorKey">>) => Subject;
   /** onboarding (§2): the timetable becomes the whole subject list */
   replaceSubjects: (built: NewSubject[]) => Promise<void>;
-  updateSubject: (id: string, patch: Partial<Subject>) => void;
+  /** a function patch reads the subject as it stands, for writes that land after an await */
+  updateSubject: (id: string, patch: Partial<Subject> | ((s: Subject) => Partial<Subject>)) => void;
   removeSubject: (id: string) => void;
 };
 
@@ -260,8 +261,10 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   }, [retrySoon]);
 
   const updateSubject = useCallback(
-    (id: string, patch: Partial<Subject>) => {
-      setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    (id: string, patch: Partial<Subject> | ((s: Subject) => Partial<Subject>)) => {
+      setSubjects((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, ...(typeof patch === "function" ? patch(s) : patch) } : s))
+      );
       scheduleFlush(id);
     },
     [scheduleFlush]

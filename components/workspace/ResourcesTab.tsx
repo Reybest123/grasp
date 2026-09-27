@@ -100,7 +100,7 @@ export function ResourcesTab({
         >
           Add any resource you think Grasp might find useful for this subject: a handout, a
           worksheet, a past paper, a textbook page, marking criteria. Grasp reads it once, then
-          uses it in your notes, explanations and quizzes, and tells you every time it does.
+          uses it in your notes, explanations and quizzes.
         </EmptyTab>
       ) : (
         <>

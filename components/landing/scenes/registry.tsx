@@ -64,7 +64,7 @@ export const SCENES: Scene[] = [
     label: "Resource Bank",
     icon: <BankIcon className="h-4 w-4" />,
     title: "It knows what you are actually marked on",
-    body: "Add your marking criteria, term planner or past papers once. Grasp reads them and aims your notes, explanations and quizzes at what those documents actually reward. It tells you which one it used.",
+    body: "Add your marking criteria, term planner or past papers once. Grasp reads them and aims your notes, explanations and quizzes at what those documents actually reward.",
     subject: "Biology",
     monogram: "B",
     tint: "from-emerald-400 to-teal-500",

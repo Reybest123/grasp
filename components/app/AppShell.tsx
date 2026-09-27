@@ -202,7 +202,7 @@ function RecordingChip({ onOpen }: { onOpen: (subjectId: string) => void }) {
       {recording ? (
         <span className="font-mono tabular-nums">{mmss(rec.seconds)}</span>
       ) : (
-        <span>Unsaved</span>
+        <span>{rec.finishing ? "Saving" : "Unsaved"}</span>
       )}
     </button>
   );

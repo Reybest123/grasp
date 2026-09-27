@@ -127,13 +127,6 @@ export const QUIZ_LIMIT: Record<Plan, number> = { pro: 10, max: 25 };
 export const RECORDING_SECONDS: Record<Plan, number> = { pro: 100 * 60, max: 300 * 60 };
 
 /**
- * The longest a single recording runs, in seconds. Each draft re-reads the
- * transcript so far, so a recording's cost per minute grows with its length;
- * this is what keeps that bounded.
- */
-export const RECORDING_MAX_SECONDS: Record<Plan, number> = { pro: 20 * 60, max: 30 * 60 };
-
-/**
  * How much audio goes to Whisper at a time. Short enough that the notes feel
  * live, long enough that the model has real context and the request count over
  * a lecture stays sane. Lives here because the server derives the per-recording
@@ -157,10 +150,6 @@ export function recordingSeconds(plan: Plan): number {
   return RECORDING_SECONDS[plan];
 }
 
-export function recordingMaxSeconds(plan: Plan): number {
-  return RECORDING_MAX_SECONDS[plan];
-}
-
 /** Quiz markings a week, enforced by `/api/mark-quiz`: each quiz can be marked, then retaken and marked again. */
 export function markingLimit(plan: Plan): number {
   return QUIZ_LIMIT[plan] * LIMITS.markingsPerQuiz;
@@ -181,11 +170,7 @@ function fixedWorstUsd(plan: Plan) {
   return {
     quizzes: QUIZ_LIMIT[plan] * quizWorstUsd(),
     resourceReads: RESOURCE_READ_LIMIT[plan] * RESOURCE_READ_WORST_USD,
-    recordings: recordingTimeWorstUsd(
-      RECORDING_SECONDS[plan],
-      RECORDING_MAX_SECONDS[plan],
-      RECORDING_SEGMENT_MS
-    ),
+    recordings: recordingTimeWorstUsd(RECORDING_SECONDS[plan], RECORDING_SEGMENT_MS),
   };
 }
 
