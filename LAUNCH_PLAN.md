@@ -23,7 +23,11 @@ Prices were written on 2026-09-26 from memory, not read off each provider's site
 1. **Railway Hobby plan.** Done 2026-09-26. US$5 a month, which includes US$5 of usage; expect about US$10–15 a month in total once the three services run all month, since usage past the included US$5 is billed on top.
 2. **Stripe live mode.** Activate the account (an ABN is free and recommended), create the live Prices with `npm run billing:setup`, set the four live env vars on Railway, create the live webhook, then buy Pro and Max yourself with a real card and refund both. Nobody has paid with a real card yet, so this is the one path that has never been tested end to end.
    - **Age:** Stripe's terms normally need the account holder to be 18. A parent or guardian owning the account, with the ABN, is likely how it works for a minor, but that has not been confirmed: ask Stripe support first. A TFN and an ABN can be had at any age, and the ABN goes on the Terms once there is one.
-3. **Turn on Stripe's failed-payment emails** in the Stripe dashboard. Grasp does not tell a student when their card fails; Stripe's emails are the only notice they get.
+3. **Stripe dashboard settings, in live mode** (none of these can be set from code):
+   - **Failed-payment emails** (Settings > Billing > Customer emails). Grasp locks the app and says the card was declined, but only once the student opens it; Stripe's email reaches them when they are not using Grasp.
+   - **Statement descriptor** `GRASPSTUDY` (Settings > Business > Public details), so a weekly charge is recognised on a bank statement rather than disputed as fraud.
+   - **Add `customer.subscription.trial_will_end`** to the live webhook along with the other three events. It sends the trial reminder email. The test-mode endpoint already has it (2026-09-28).
+   - **Terms of Service URL** (`https://graspstudy.com/legal/terms`) in Public details.
 4. **OpenAI.** Done. Auto-reload is on, the monthly spend limit is US$120 with alerts at 80% and 100%, and the account reached Tier 2 on 2026-09-26 after a US$50 top-up. The US$120 limit is a hard stop that switches the AI off for everyone, so raise it as students grow.
 5. **Legal pass.** Done 2026-09-26: Queensland law, the Australian Consumer Law wording, fairer change and closure terms, and Cloudflare and overseas processing in the Privacy Policy. Still to add: the business name and ABN, once there is one.
 6. **Attach `www.graspstudy.com`.** Only the bare domain serves Grasp.
@@ -32,6 +36,28 @@ Prices were written on 2026-09-26 from memory, not read off each provider's site
 **Fixed cost at launch: about A$50–60/month.** That is Claude Pro, Railway Hobby and the domain.
 
 Decided against (2026-09-26): splitting staging and production onto separate databases. See `CLAUDE.md` §12.
+
+## Selling outside Australia
+
+Decided 2026-09-28: Grasp sells to everyone, since Instagram and TikTok reach everyone. What is done, and what cannot be done yet.
+
+**Done (2026-09-28):**
+- Checkout states the price, that it renews every week, how to cancel, and that the plan starts straight away (US auto-renewal laws, and the EU and UK 14-day cancellation rules).
+- An email when a plan or trial starts, with the price and how to cancel, and a reminder three days before a trial ends (`lib/billingMail.ts`). The reminder is also the best defence against chargebacks.
+- The Terms give EU and UK students their 14-day right to cancel, refunded less the days used. The Privacy Policy has a GDPR section: legal grounds, rights, complaints, transfers.
+- Both Stripe Prices are tax-inclusive, and Stripe Tax can be switched on with `STRIPE_TAX=on` on Railway. Tax then comes out of the price rather than being added on top, so what a student pays does not change.
+
+**Cannot be done yet, and when to do each:**
+- **Activate Stripe Tax** (dashboard, needs the business address, so after the ABN), then set `STRIPE_TAX=on` on both Railway services. Stripe charges a small fee per transaction for it; check the current rate. Its threshold monitoring then shows where Grasp is getting close to having to register.
+- **EU VAT.** A seller outside the EU owes VAT on digital services to EU consumers from the first sale, with no threshold. Register for the EU's non-Union OSS scheme (one registration, in one EU country, covers all of them), add it in Stripe Tax, and lodge one return a quarter. About 17–27% of each EU sale goes to VAT. Do it before ads target Europe, or once EU students start paying, whichever is first.
+- **UK VAT.** Same rule, a separate registration with HMRC. Same timing, for the UK.
+- **US sales tax.** Only owed in a state once Grasp passes that state's threshold, usually US$100,000 of sales, or 200 transactions in some states. Weekly billing makes 200 transactions only about 4 students paying for a year. Stripe Tax's monitoring says when a state is close; register there then.
+- **Other countries** (New Zealand, Canada, Singapore, Norway, Switzerland, Japan and others) have their own digital services taxes, mostly with a threshold. Stripe Tax's monitoring covers them.
+- **An EU and UK GDPR representative.** A business outside the EU that offers a service to people there may need a named representative in the EU (and another in the UK). There is an exemption for small, occasional, low-risk processing, which may cover Grasp at first. Check once Grasp is advertised in Europe; services that act as one cost roughly €100–500 a year.
+- **ABN and business name on the Terms**, once there is one.
+- **Trade mark.** Search IP Australia for "Grasp" before spending on ads. Registering a word mark in one class is roughly A$250–400 through IP Australia.
+
+**What students can still do, however well this is done:** a chargeback (always possible, and each one costs a fee), a complaint to a consumer or privacy regulator where they live, the EU and UK 14-day refund (less days used), refunds under the Australian Consumer Law for a major failure, and in the US a claim in their own state's courts. None of these is likely at small scale. Chargebacks are the one to expect from the start, and the reminder emails and statement descriptor are the defence.
 
 ## What one subscriber earns (per month)
 
@@ -98,10 +124,10 @@ Built 2026-09-26: it is offered **once per account**, at the end of onboarding. 
 
 Not tax advice; an hour with a small-business accountant (about A$150–300) before launch settles all of it. Written 2026-09-26.
 
-- **GST is not being charged today, and does not have to be yet.** Prices are A$7.99 / A$19.99 with nothing added and no Stripe Tax. Below A$75,000 of turnover in 12 months (gross sales, not profit) registration is optional. Hit it, or expect to hit it, and you have 21 days to register.
+- **GST is not being charged today, and does not have to be yet.** Prices are A$7.99 / A$19.99 with nothing added, and Stripe Tax is built in but off (`STRIPE_TAX`). Below A$75,000 of turnover in 12 months (gross sales, not profit) registration is optional. Hit it, or expect to hit it, and you have 21 days to register.
 - **Registering does not raise the price the student sees.** It comes out of the price: A$7.99 stays A$7.99 and about 73c of it goes to the ATO. Revenue drops about 9%. Raising the price to keep the same take-home is a separate choice, and the Terms promise 30 days' notice of a price change.
 - **When registered, the price has to be shown as GST-inclusive** (a line on the plan cards) and BAS is lodged, usually quarterly. Stripe Tax can add the tax line to invoices later. It is not set up.
-- **Overseas students paying in USD** are generally GST-free. US state sales tax and EU/UK VAT are a later problem, checked before ads go outside Australia.
+- **Overseas students paying in USD** are generally GST-free. US state sales tax and EU/UK VAT are covered under "Selling outside Australia" above.
 - **Records.** Stripe is the income record: the dashboard's payments and balance reports export to CSV, and each payout matches a bank deposit. Keep a spreadsheet or free tool (Wave, Xero's cheapest plan) of costs: OpenAI, Railway, Claude Pro, the domain, ads. Keep every invoice and receipt (Railway, OpenAI and Cloudflare email them). The ATO wants records for 5 years. Put aside roughly a third of profit for income tax until an accountant says otherwise.
 - **Company vs sole trader.** A sole trader needs only an ABN (free) and has no liability protection. A Pty Ltd (private company) has ASIC's registration fee of about A$580 (2025 figure, check current), then an annual review fee of about A$330, plus an accountant's yearly tax return for it, commonly A$1,000+. It separates personal assets from the business. A director must be 18 or older, so who owns it depends on the age question in "Before launch". Sole trader first is normal, moving into a company once there is real revenue or real risk.
 - **Business name and trade mark.** If trading as "Grasp" under a personal name, register the name with ASIC (about A$40 a year) and search IP Australia's trade mark database.

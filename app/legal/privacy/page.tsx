@@ -15,7 +15,7 @@ export default function Privacy() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="26 September 2026"
+      updated="28 September 2026"
       intro="This explains what Grasp collects when you use it, what happens to it, who else handles it, and how to get it deleted. Grasp is a study tool for students, so it collects only what it needs to run your notebooks, and nothing for advertising."
     >
       <LegalSection title="What Grasp stores">
@@ -139,9 +139,10 @@ export default function Privacy() {
             currency.
           </li>
           <li>
-            <b>Resend</b> sends the email that confirms your address and any password reset email you
-            ask for. It receives your email address, your name and the link, and nothing from your
-            study material.
+            <b>Resend</b> sends Grasp&apos;s emails: the one that confirms your address, any password
+            reset you ask for, and the emails about your plan (when it starts, and a reminder before a
+            free trial ends). It receives your email address, your name and what the email says, and
+            nothing from your study material.
           </li>
         </ul>
         <p>
@@ -201,6 +202,31 @@ export default function Privacy() {
           If you are not happy with how your information has been handled, email first and you
           will get a reply within 30 days. If that does not resolve it, you can complain to the
           Office of the Australian Information Commissioner at oaic.gov.au.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="If you are in the EU or the UK">
+        <p>
+          Grasp uses your information on these grounds under the GDPR and the UK GDPR: to provide
+          the service you signed up for (your account, study material, plan and billing), for
+          Grasp&apos;s legitimate interests in keeping the service secure and understanding how it
+          is used (sign-in limits and visit counts), and to meet legal duties such as keeping
+          payment records.
+        </p>
+        <p>
+          You have the right to see the information Grasp holds about you, to have it corrected or
+          deleted, to receive a copy in a form you can take elsewhere, and to object to or limit how
+          it is used. Email{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-brand-700 hover:underline">
+            {CONTACT_EMAIL}
+          </a>{" "}
+          to use any of these, and you will get a reply within 30 days. You can also complain to the
+          data protection authority where you live.
+        </p>
+        <p>
+          The services listed above process your information outside the EU and the UK, mainly in
+          the United States. Where they do, they rely on the safeguards the law recognises for this,
+          such as the European Commission&apos;s standard contractual clauses.
         </p>
       </LegalSection>
 

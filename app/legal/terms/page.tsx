@@ -14,7 +14,7 @@ export default function Terms() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="26 September 2026"
+      updated="28 September 2026"
       intro="These terms are the agreement between you and Grasp when you use the website. By creating an account or using Grasp, you agree to them. If you do not agree, do not use Grasp."
     >
       <LegalSection title="Who can use Grasp">
@@ -56,7 +56,8 @@ export default function Terms() {
           <li>
             <b>Free trial.</b> The free trial is not charged. It ends automatically into a paid
             Pro plan, charged to the card you gave when you started it, unless you cancel before
-            then.
+            then. You will be emailed when the trial starts and again a few days before it ends,
+            with the price and how to cancel.
           </li>
           <li>
             <b>Cancelling.</b> You can cancel at any time from the Plans page. Your plan keeps
@@ -69,6 +70,14 @@ export default function Terms() {
             once, and your weekly billing starts again from that day. Switching during a free trial
             ends the trial. There is no credit or refund for the time left on the plan you switched
             from.
+          </li>
+          <li>
+            <b>If you live in the EU or the UK.</b> You have the right to cancel within 14 days of
+            first subscribing, without giving a reason. By subscribing, you ask for your plan to
+            start straight away, inside those 14 days. If you then cancel within them, you are
+            refunded what you paid, less a fair amount for the days you had already used. A free
+            trial is not charged, so cancelling during it costs nothing. To use this right, email
+            us or cancel on the Plans page and tell us by email that you want the refund.
           </li>
           <li>
             <b>Your rights under the Australian Consumer Law.</b> Grasp&apos;s services come with

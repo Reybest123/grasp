@@ -20,6 +20,20 @@ import { PLAN_AVAILABLE, TRIAL_DAYS, isPlan, type Plan } from "@/lib/plan";
 import { claimOrOwnTrial } from "@/lib/trialClaims";
 import { track } from "@/lib/events";
 import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/currency";
+import { chargeLabel } from "@/lib/billingMail";
+import { SITE_URL } from "@/lib/site";
+
+/**
+ * Stripe Tax, switched on with STRIPE_TAX=on once it is activated in the
+ * Stripe dashboard (LAUNCH_PLAN.md). Off, nothing about checkout changes. On,
+ * Stripe works out tax from the billing address it collects and takes it out
+ * of the price rather than adding it on top, since both Prices are
+ * tax-inclusive (scripts/stripe-setup.mjs): a student still pays exactly the
+ * price on the plan card. It only collects tax where a registration has been
+ * added in the dashboard, so turning it on before any registration exists
+ * charges no tax at all.
+ */
+const AUTOMATIC_TAX = process.env.STRIPE_TAX === "on";
 
 // Built on first use, not at module load, for the same reason lib/db.ts's pool
 // is: this module is imported while Next collects page data at build time,
@@ -57,7 +71,7 @@ function priceId(plan: Plan): string {
   return id;
 }
 
-function planForPrice(id: string | null | undefined): Plan | null {
+export function planForPrice(id: string | null | undefined): Plan | null {
   if (!id) return null;
   for (const plan of ["pro", "max"] as Plan[]) {
     if (PRICE_ENV[plan] === id) return plan;
@@ -210,7 +224,7 @@ export async function createCheckoutSession({
 
   const billing = await readBillingRow(userId);
   if (!billing.ok) return { ok: false, error: billing.error };
-  const neverHadTrial = !billing.data?.trialEndsAt;
+  const trial = plan === "pro" && !billing.data?.trialEndsAt;
   const charged = billing.data?.currency ?? currency;
 
   try {
@@ -229,9 +243,23 @@ export async function createCheckoutSession({
       // own, with nothing further for the student to do.
       payment_method_collection: "always",
       subscription_data: {
-        trial_period_days: plan === "pro" && neverHadTrial ? TRIAL_DAYS : undefined,
+        trial_period_days: trial ? TRIAL_DAYS : undefined,
         metadata: { userId, plan },
       },
+      // Stated beside the pay button, where it is read: the price, that it
+      // renews every week, and how to stop it. Auto-renewal laws (the US
+      // ROSCA and state laws, the EU and UK consumer rules) want exactly this
+      // before the card is taken, and "start straight away" is the EU and UK
+      // consumer's request for the plan to begin inside the 14-day
+      // cancellation period (Terms, #refunds).
+      custom_text: { submit: { message: checkoutDisclosure(plan, charged, trial) } },
+      ...(AUTOMATIC_TAX
+        ? {
+            automatic_tax: { enabled: true },
+            billing_address_collection: "auto" as const,
+            customer_update: { address: "auto" as const, name: "auto" as const },
+          }
+        : {}),
       client_reference_id: userId,
       metadata: { userId, plan },
       success_url: successUrl,
@@ -243,6 +271,15 @@ export async function createCheckoutSession({
     console.error("[grasp] Stripe checkout session failed:", err);
     return { ok: false, error: "Grasp could not reach Stripe just now. Try again in a moment." };
   }
+}
+
+function checkoutDisclosure(plan: Plan, currency: Currency, trial: boolean): string {
+  const price = chargeLabel(plan, currency);
+  const terms = `${SITE_URL.replace(/^https:\/\//, "")}/legal/terms`;
+  const charge = trial
+    ? `Free for ${TRIAL_DAYS} days, then ${price} every week until you cancel. Cancel on Grasp's Plans page before the trial ends and you will not be charged.`
+    : `${price} now, then ${price} every week until you cancel. Cancel any time on Grasp's Plans page.`;
+  return `${charge} By subscribing you agree to Grasp's Terms of Service (${terms}) and ask for your plan to start straight away.`;
 }
 
 /**
@@ -380,12 +417,15 @@ export async function cancelImmediately(userId: string): Promise<boolean> {
  * account, has its trial ended immediately, which makes Stripe charge the card
  * for the current period straight away. The student still becomes a paying
  * subscriber — only the second free ride is refused, not the sale.
+ *
+ * Returns the subscription as it stands after that, which is the one the
+ * webhook describes in its confirmation email.
  */
-export async function syncSubscription(subscription: Stripe.Subscription): Promise<void> {
+export async function syncSubscription(subscription: Stripe.Subscription): Promise<Stripe.Subscription> {
   const userId = subscription.metadata?.userId;
   if (!userId) {
     console.error("[grasp] Stripe subscription has no userId metadata:", subscription.id);
-    return;
+    return subscription;
   }
 
   const plan = planForPrice(subscription.items.data[0]?.price?.id) ?? undefined;
@@ -403,7 +443,7 @@ export async function syncSubscription(subscription: Stripe.Subscription): Promi
           });
           await writeUser(userId, ended, plan);
           await recordSubscribed(userId, ended, plan);
-          return;
+          return ended;
         } catch (err) {
           console.error("[grasp] ending a reused-card trial early failed:", err);
         }
@@ -413,6 +453,7 @@ export async function syncSubscription(subscription: Stripe.Subscription): Promi
 
   await writeUser(userId, subscription, plan, periodEnd);
   await recordSubscribed(userId, subscription, plan);
+  return subscription;
 }
 
 /**

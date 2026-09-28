@@ -138,7 +138,9 @@ Billing needs three more: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO` and `STRIPE_PR
 `npm run billing:setup`, run once against the deployment — see below), and `STRIPE_WEBHOOK_SECRET` for
 an endpoint you add in the Stripe dashboard pointed at
 `https://<your domain>/api/webhooks/stripe`, subscribed to `checkout.session.completed`,
-`customer.subscription.updated` and `customer.subscription.deleted`. Start in Stripe's test mode
+`customer.subscription.updated`, `customer.subscription.deleted` and
+`customer.subscription.trial_will_end` (which sends the trial reminder email). Set `STRIPE_TAX=on` only once
+Stripe Tax is activated in the dashboard; until then leave it unset. Start in Stripe's test mode
 (`sk_test_...` keys) until you are ready to take real cards, then repeat the price setup and the
 webhook endpoint in live mode — test and live mode each need their own prices and their own webhook
 secret, since they are entirely separate Stripe environments.

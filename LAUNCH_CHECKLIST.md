@@ -22,11 +22,15 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 - [ ] Activate the Stripe account (live mode) and add the bank account for payouts
 - [ ] Run `npm run billing:setup` with the live secret key to create the live weekly Prices (each one in USD and AUD). It prints the env lines.
 - [ ] On Railway, on both services, set the four live values: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_MAX`
-- [ ] Create the live webhook endpoint at `https://graspstudy.com/api/webhooks/stripe` with exactly three events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`. Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
+- [ ] Create the live webhook endpoint at `https://graspstudy.com/api/webhooks/stripe` with exactly four events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end` (the last one sends the trial reminder email). Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
 - [ ] Buy Pro yourself with a real card. Check the plan shows on the Plans page and the trial end date is right.
 - [ ] Buy Max yourself. Then switch between the two once. Then cancel and resume.
 - [ ] Refund the test charges in the Stripe dashboard
-- [ ] Failed-payment emails: Stripe dashboard, Settings, Billing, Subscriptions and emails. Turn on "Send emails when card payments fail" and "Send emails about expiring cards". Set what happens when every retry fails to "cancel the subscription". (Menu names are from memory; use the dashboard search if they have moved.) Grasp does not tell a student their card failed, so these emails are the only warning they get.
+- [ ] Failed-payment emails: Stripe dashboard, Settings, Billing, Subscriptions and emails. Turn on "Send emails when card payments fail" and "Send emails about expiring cards". Set what happens when every retry fails to "cancel the subscription". (Menu names are from memory; use the dashboard search if they have moved.) Grasp locks the app and says the card was declined, but only when the student opens it; these emails reach them when they are not using Grasp.
+- [ ] Statement descriptor: Settings, Business, Public details. Set it to `GRASPSTUDY` so the weekly charge is recognised on a bank statement instead of disputed.
+- [ ] Terms of Service URL in the same Public details page: `https://graspstudy.com/legal/terms`
+- [ ] Once there is an ABN and a business address: activate Stripe Tax, then set `STRIPE_TAX=on` on both Railway services. The rest of selling abroad (EU and UK VAT, US sales tax, a GDPR representative) is in `LAUNCH_PLAN.md`'s "Selling outside Australia", with when to do each.
+- [ ] Search IP Australia's trade mark database for "Grasp" before spending on ads
 
 ## Launch day
 

@@ -12,7 +12,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
+import { planForPrice, retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
+import { sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
+
+const planOf = (subscription: Stripe.Subscription) =>
+  planForPrice(subscription.items.data[0]?.price?.id) ?? undefined;
 
 export const runtime = "nodejs";
 
@@ -43,7 +47,23 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         const subscriptionId =
           typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-        if (subscriptionId) await syncSubscription(await retrieveSubscription(subscriptionId));
+        if (!subscriptionId) break;
+        // The confirmation email goes from here and not from the Checkout
+        // return route, so it is sent once per Checkout rather than once per
+        // path. A failed send is logged, not answered with a 500: Stripe
+        // disables an endpoint that keeps failing, and a Resend outage must not
+        // be what stops every plan from syncing.
+        const synced = await syncSubscription(await retrieveSubscription(subscriptionId));
+        if (!(await sendSubscribedMail(synced, planOf(synced)))) {
+          console.error("[grasp] plan confirmation email not sent for", synced.id);
+        }
+        break;
+      }
+      case "customer.subscription.trial_will_end": {
+        const subscription = await retrieveSubscription((event.data.object as Stripe.Subscription).id);
+        if (!(await sendTrialEndingMail(subscription, planOf(subscription)))) {
+          console.error("[grasp] trial reminder email not sent for", subscription.id);
+        }
         break;
       }
       case "customer.subscription.updated":

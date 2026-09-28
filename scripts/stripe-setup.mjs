@@ -122,6 +122,21 @@ for (const { plan, label, amounts, lookupKey } of PLANS) {
   const found = existing.data[0];
 
   if (found && matches(found, amounts)) {
+    // Tax-inclusive, so that if Stripe Tax is ever switched on (STRIPE_TAX in
+    // lib/billing.ts) tax comes out of the price the student already sees
+    // rather than being added on top of it. A Price's tax behaviour can be
+    // set once, from unspecified, and never changed after, so an older Price
+    // is brought up to it here rather than rebuilt.
+    if (found.tax_behavior === "unspecified" || !found.tax_behavior) {
+      const options = {};
+      for (const [currency, option] of Object.entries(found.currency_options ?? {})) {
+        if (currency !== BASE_CURRENCY) options[currency] = { unit_amount: option.unit_amount, tax_behavior: "inclusive" };
+      }
+      await stripe.prices.update(found.id, { tax_behavior: "inclusive", currency_options: options });
+      console.log(`  ${label}: marked ${found.id} tax-inclusive`);
+    } else if (found.tax_behavior !== "inclusive") {
+      console.log(`  ${label}: ${found.id} is tax-exclusive, so Stripe Tax would add tax on top of the price shown`);
+    }
     console.log(`  ${label}: reusing ${found.id} (${written} a week)`);
     envLines.push([plan, found.id]);
     continue;
@@ -140,7 +155,7 @@ for (const { plan, label, amounts, lookupKey } of PLANS) {
   const currencyOptions = {};
   for (const [currency, amount] of Object.entries(amounts)) {
     if (currency === BASE_CURRENCY) continue;
-    currencyOptions[currency] = { unit_amount: cents(amount) };
+    currencyOptions[currency] = { unit_amount: cents(amount), tax_behavior: "inclusive" };
   }
 
   const price = await stripe.prices.create({
@@ -150,6 +165,7 @@ for (const { plan, label, amounts, lookupKey } of PLANS) {
     recurring: { interval: "week" },
     currency_options: currencyOptions,
     lookup_key: lookupKey,
+    tax_behavior: "inclusive",
   });
   console.log(`  ${label}: created ${price.id} (${written} a week)`);
   envLines.push([plan, price.id]);
