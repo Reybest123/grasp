@@ -1,15 +1,12 @@
 // Plan tiers, the free trial, and the caps that come with them (CLAUDE.md §6).
 //
-// There is no free plan. Every account chooses a plan at the end of onboarding,
-// a card is taken through Stripe Checkout (lib/billing.ts) whichever plan is
-// picked, and Pro's choice starts with a free trial that converts to a real
-// charge on its own when the trial ends — nothing further for the student to
-// do, and nothing for Grasp to chase.
+// Two paid plans, Pro and Max, both charged from the day they start through
+// Stripe Checkout (lib/billing.ts). Before either, a new account can take the
+// free trial: a week with smaller allowances and no card, after which the app
+// locks until Pro or Max is chosen.
 //
-// The prices and caps are still tuned by hand here; only the plumbing that
-// takes payment for them is real. Anything that depends on the tier reads it
-// from here rather than hard-coding a number. No server-only imports: the
-// client reads these figures too.
+// Anything that depends on the tier reads it from here rather than hard-coding
+// a number. No server-only imports: the client reads these figures too.
 
 import { formatMoney, type Currency } from "@/lib/currency";
 import {
@@ -21,11 +18,25 @@ import {
   tokenActionWorstUsd,
 } from "@/lib/costModel";
 
-export type Plan = "pro" | "max";
+/**
+ * What an account can be on. "free" is the one-week trial that needs no card
+ * (FREE_TRIAL_DAYS): it has allowances like the other two but no price and no
+ * Stripe subscription, and when it runs out the app locks until Pro or Max is
+ * chosen, the same way a plan that has ended does (lib/session.ts).
+ */
+export type Plan = "pro" | "max" | "free";
 
-export const PLANS: Plan[] = ["pro", "max"];
+/** The plans that are paid for through Stripe. */
+export type BilledPlan = "pro" | "max";
 
-export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max" };
+/** The paid plans, in order, as the plan cards list them. */
+export const PLANS: BilledPlan[] = ["pro", "max"];
+
+export function isBilledPlan(value: unknown): value is BilledPlan {
+  return value === "pro" || value === "max";
+}
+
+export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max", free: "Free trial" };
 
 /**
  * Weekly price in USD, and the anchor everything else is measured against.
@@ -36,7 +47,7 @@ export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max" };
  * actually pays. Every plan gives every student the same allowances, so there
  * is one budget, in one currency, and it is this one.
  */
-export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 5.99, max: 14.49 };
+export const PLAN_PRICE_USD: Record<BilledPlan, number> = { pro: 5.99, max: 10.49 };
 
 /**
  * What each plan costs in each currency a student can be charged in — the
@@ -48,45 +59,44 @@ export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 5.99, max: 14.49 };
  * same plan. They are chosen to sit near the anchor converted at the rate of
  * the day, and re-checked by hand when that drifts far enough to matter.
  *
- * At AUD 0.65 to the dollar the AUD prices come to about $5.84 and $13.00 —
- * under the anchor by roughly 3% on Pro and 10% on Max, so an Australian
- * student is the better deal. Worth knowing when the rate moves: the
- * allowances do not shrink with it, so a falling AUD eats margin rather than
- * service. At that rate a maxed-out Max paid in AUD costs about 54% of what it
- * sold for, just over AI_BUDGET_SHARE, which only the USD price is held to.
+ * At AUD 0.65 to the dollar the AUD prices come to about $5.84 and $9.74, so
+ * an Australian student is the slightly better deal. Worth knowing when the
+ * rate moves: the allowances do not shrink with it, so a falling AUD eats
+ * margin rather than service.
  */
-export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<Plan, number>> = {
+export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<BilledPlan, number>> = {
   usd: PLAN_PRICE_USD,
-  aud: { pro: 8.99, max: 19.99 },
+  aud: { pro: 8.99, max: 14.99 },
 };
 
 /** How often a plan is billed, as it reads after "/" and "a". */
 export const BILLING_PERIOD = "week";
 
 /** "A$11.50" / "$7.99" — what a plan costs, written for the student paying it. */
-export function planPrice(plan: Plan, currency: Currency): string {
+export function planPrice(plan: BilledPlan, currency: Currency): string {
   return formatMoney(PLAN_PRICE_BY_CURRENCY[currency][plan], currency);
 }
 
-/**
- * The most a plan's AI can cost Grasp in a week, as a share of its USD price,
- * with every allowance used to the full at its worst case (lib/costModel.ts).
- * A ceiling, checked below: a plan whose worst case goes over it fails the
- * build. The worst case is deliberately pessimistic, since every figure in
- * lib/costModel.ts prices output at its cap.
- */
-export const AI_BUDGET_SHARE = 0.5;
-
-export const PLAN_TAGLINE: Record<Plan, string> = {
+export const PLAN_TAGLINE: Record<BilledPlan, string> = {
   pro: "Everything you need to study from your own notes.",
   max: "For students who record every lesson.",
 };
 
 /** Whether a new account can pick the plan today. Both are real now that billing exists. */
-export const PLAN_AVAILABLE: Record<Plan, boolean> = { pro: true, max: true };
+export const PLAN_AVAILABLE: Record<BilledPlan, boolean> = { pro: true, max: true };
 
-/** How long the Pro free trial runs. */
+/**
+ * How long a Stripe trial ran. No plan is sold with one any more (Pro's was
+ * removed on 2026-09-28); this is only read by the trial emails and the
+ * one-trial-per-card check, which still handle a subscription that is trialing.
+ */
 export const TRIAL_DAYS = 7;
+
+/** How long the free trial runs before Pro or Max has to be chosen. No card is taken for it. */
+export const FREE_TRIAL_DAYS = 7;
+
+/** Subjects an account on the free trial may have. The paid plans have no limit. */
+export const FREE_SUBJECT_LIMIT = 7;
 
 /**
  * What a limit is read against before the account's own plan has loaded, and
@@ -96,7 +106,7 @@ export const TRIAL_DAYS = 7;
 export const DEFAULT_PLAN: Plan = "pro";
 
 export function isPlan(value: unknown): value is Plan {
-  return value === "pro" || value === "max";
+  return value === "pro" || value === "max" || value === "free";
 }
 
 /**
@@ -106,7 +116,7 @@ export function isPlan(value: unknown): value is Plan {
  * the cap is shown inside it. Cost stays bounded either way, since a document
  * is only ever read once (see lib/resources.ts).
  */
-export const RESOURCE_LIMIT: Record<Plan, number> = { pro: 5, max: 10 };
+export const RESOURCE_LIMIT: Record<Plan, number> = { pro: 10, max: 10, free: 5 };
 
 /**
  * Documents read into any Resource Bank in a rolling week, enforced by
@@ -114,17 +124,17 @@ export const RESOURCE_LIMIT: Record<Plan, number> = { pro: 5, max: 10 };
  * its own, since a document can be deleted and another added in its place;
  * this does. Each read is capped to cost under a cent (lib/resourceLimits.ts).
  */
-export const RESOURCE_READ_LIMIT: Record<Plan, number> = { pro: 10, max: 15 };
+export const RESOURCE_READ_LIMIT: Record<Plan, number> = { pro: 10, max: 15, free: 5 };
 
 /** Quizzes generated in a rolling week, enforced by `/api/quiz` through lib/usage.ts. */
-export const QUIZ_LIMIT: Record<Plan, number> = { pro: 10, max: 25 };
+export const QUIZ_LIMIT: Record<Plan, number> = { pro: 10, max: 25, free: 10 };
 
 /**
  * Seconds of lecture recording a rolling week, enforced by `/api/transcribe`
  * against the audio Whisper actually heard. A recording takes at least
  * LIMITS.recordingMinChargeSeconds.
  */
-export const RECORDING_SECONDS: Record<Plan, number> = { pro: 120 * 60, max: 300 * 60 };
+export const RECORDING_SECONDS: Record<Plan, number> = { pro: 120 * 60, max: 300 * 60, free: 30 * 60 };
 
 /**
  * How much audio goes to Whisper at a time. Short enough that the notes feel
@@ -162,7 +172,6 @@ export type WorstCase = {
   /** the AI tokens, plus the one action that can run past them */
   tokens: number;
   total: number;
-  budget: number;
 };
 
 /** Everything a plan allows in a week, used in full at its worst case, in USD. */
@@ -176,17 +185,18 @@ function fixedWorstUsd(plan: Plan) {
 
 /**
  * AI tokens a rolling week, enforced by lib/usage.ts on explain, refine,
- * enhance, generate and "Explain why I'm wrong". Set by hand, since students
- * were never close to the old allowances derived from what the budget had
- * left; the check after planWorstCase keeps them inside AI_BUDGET_SHARE.
+ * enhance, generate and "Explain why I'm wrong". Set by hand.
  */
-export const AI_TOKEN_LIMIT: Record<Plan, number> = { pro: 2_000, max: 5_000 };
+export const AI_TOKEN_LIMIT: Record<Plan, number> = { pro: 2_000, max: 5_000, free: 1_000 };
 
 export function aiTokenLimit(plan: Plan): number {
   return AI_TOKEN_LIMIT[plan];
 }
 
-/** A plan maxed out in every allowance: what it costs, against what it may cost. */
+/**
+ * A plan maxed out in every allowance: what it would cost Grasp in a week, in
+ * USD. For reference only; nothing holds a plan to a share of its price.
+ */
 export function planWorstCase(plan: Plan): WorstCase {
   const fixed = fixedWorstUsd(plan);
   const tokens = AI_TOKEN_LIMIT[plan] * TOKEN_USD + tokenActionWorstUsd();
@@ -194,20 +204,9 @@ export function planWorstCase(plan: Plan): WorstCase {
     ...fixed,
     tokens,
     total: fixed.quizzes + fixed.resourceReads + fixed.recordings + tokens,
-    budget: PLAN_PRICE_USD[plan] * AI_BUDGET_SHARE,
   };
 }
 
-for (const plan of PLANS) {
-  const worst = planWorstCase(plan);
-  if (worst.total > worst.budget) {
-    throw new Error(
-      `${PLAN_LABEL[plan]} can cost $${worst.total.toFixed(2)} a week at its worst, over its ` +
-        `$${worst.budget.toFixed(2)} budget (AI_BUDGET_SHARE of the USD price). ` +
-        `Raise the price or lower an allowance in lib/plan.ts.`
-    );
-  }
-}
 
 /** "17,000", without toLocaleString, whose separator differs between server and browser. */
 export function formatCount(n: number): string {
@@ -228,7 +227,7 @@ export function formatDuration(total: number, seconds = false): string {
 }
 
 /** What each plan card lists, built from the caps above so the two cannot disagree. */
-export const PLAN_PERKS: Record<Plan, string[]> = {
+export const PLAN_PERKS: Record<BilledPlan, string[]> = {
   pro: [
     "Unlimited subjects and notes",
     `${formatCount(AI_TOKEN_LIMIT.pro)} AI tokens a week to explain, refine, enhance and generate`,
@@ -245,7 +244,16 @@ export const PLAN_PERKS: Record<Plan, string[]> = {
   ],
 };
 
-/** "Pro trial" for an account on a running trial, otherwise the plan's own name.
+/** What the free trial offers, for onboarding's third choice. */
+export const FREE_PERKS: string[] = [
+  `${FREE_SUBJECT_LIMIT} subjects`,
+  `${formatCount(AI_TOKEN_LIMIT.free)} AI tokens`,
+  `${formatDuration(RECORDING_SECONDS.free)} of lecture recording`,
+  `${QUIZ_LIMIT.free} quizzes`,
+  `${RESOURCE_READ_LIMIT.free} Resource Bank documents`,
+];
+
+/** "Pro trial" for an account on a running Stripe trial, otherwise the plan's own name.
  *  The session only reports `trialEndsAt` while the trial runs. */
 export function planName(plan: Plan, trialEndsAt: string | null): string {
   return trialEndsAt ? `${PLAN_LABEL[plan]} trial` : PLAN_LABEL[plan];

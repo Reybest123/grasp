@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
 import { loadSubjects, replaceAllSubjects, saveOrder } from "@/lib/subjectsDb";
 import type { Subject } from "@/lib/subjects";
 
@@ -30,10 +31,14 @@ export async function PUT(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => ({}));
-  const subjects = Array.isArray(body.subjects) ? (body.subjects as Subject[]) : null;
-  if (!subjects) {
+  const list = Array.isArray(body.subjects) ? (body.subjects as Subject[]) : null;
+  if (!list) {
     return NextResponse.json({ error: "Expected a list of subjects." }, { status: 400 });
   }
+  // A timetable can list more subjects than the free trial holds: the first
+  // FREE_SUBJECT_LIMIT are kept, and the store takes the list back from here.
+  const subjects =
+    guard.user.plan === "free" && !guard.user.unlimited ? list.slice(0, FREE_SUBJECT_LIMIT) : list;
 
   const result = await query(async () => {
     await replaceAllSubjects(guard.user.id, subjects);

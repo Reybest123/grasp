@@ -183,8 +183,25 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
  * of the same subject arriving at once run one after the other rather than
  * interleaving their deletes and inserts.
  */
-export async function saveSubject(userId: string, subject: Subject): Promise<boolean> {
+/**
+ * Saves one subject. `maxSubjects` (the free trial's cap) refuses a new subject
+ * once the account has that many, returning "full"; it is counted under a
+ * per-account lock in this transaction, so saves sent together cannot all pass.
+ */
+export async function saveSubject(
+  userId: string,
+  subject: Subject,
+  maxSubjects?: number
+): Promise<boolean | "full"> {
   return transaction(async (sql) => {
+    if (maxSubjects !== undefined) {
+      await sql`select pg_advisory_xact_lock(hashtext(${`${userId}:subjects`}))`;
+      const rows = (await sql`
+        select count(*)::int as n, coalesce(bool_or(id = ${subject.id}), false) as present
+        from subjects where user_id = ${userId}
+      `) as { n: number; present: boolean }[];
+      if (!rows[0]?.present && (rows[0]?.n ?? 0) >= maxSubjects) return "full";
+    }
     await sql`
       insert into subjects (id, user_id, name, color_key, teacher, position, quiz_topics)
       values (

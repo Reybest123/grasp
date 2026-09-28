@@ -76,7 +76,24 @@ export function SubjectCard({
   );
 }
 
-export function AddSubjectCard({ onClick }: { onClick: () => void }) {
+export function AddSubjectCard({
+  onClick,
+  lockedAt,
+}: {
+  onClick: () => void;
+  /** the free trial's subject cap, once it is reached: the tile says so instead of adding */
+  lockedAt?: number;
+}) {
+  if (lockedAt !== undefined) {
+    return (
+      <div className="grid min-h-[220px] place-items-center rounded-2xl border-2 border-dashed border-slate-200 bg-white/40 p-6 text-center">
+        <div>
+          <p className="font-bold text-slate-600">{lockedAt} subjects on the free trial</p>
+          <p className="mt-1 text-xs text-slate-500">Choose Pro or Max on the Plans page for more.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <button
       onClick={onClick}

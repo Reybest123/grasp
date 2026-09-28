@@ -17,13 +17,13 @@
 
 import { cookies } from "next/headers";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { isPlan, type Plan } from "@/lib/plan";
+import { isBilledPlan, type BilledPlan } from "@/lib/plan";
 
 const ADMIN_COOKIE = "grasp_admin";
 
 export type AdminState = {
   /** null follows the account's own plan */
-  plan: Plan | null;
+  plan: BilledPlan | null;
   unlimited: boolean;
 };
 
@@ -68,7 +68,7 @@ export async function readAdmin(): Promise<AdminState | null> {
 
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return { plan: isPlan(data.plan) ? data.plan : null, unlimited: data.unlimited === true };
+    return { plan: isBilledPlan(data.plan) ? data.plan : null, unlimited: data.unlimited === true };
   } catch {
     return null;
   }

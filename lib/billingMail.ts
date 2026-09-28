@@ -13,7 +13,7 @@
 import type Stripe from "stripe";
 import { sql } from "@/lib/db";
 import { sendEmail, escapeHtml } from "@/lib/email";
-import { PLAN_LABEL, PLAN_PRICE_BY_CURRENCY, TRIAL_DAYS, type Plan } from "@/lib/plan";
+import { PLAN_LABEL, PLAN_PRICE_BY_CURRENCY, TRIAL_DAYS, type BilledPlan } from "@/lib/plan";
 import { isCurrency, type Currency } from "@/lib/currency";
 import { SITE_URL } from "@/lib/site";
 
@@ -25,7 +25,7 @@ const REFUNDS_URL = `${SITE_URL}/legal/terms#refunds`;
  * beside it saying which dollars, and a bare "$" reads as local dollars in
  * Canada, New Zealand and elsewhere.
  */
-export function chargeLabel(plan: Plan, currency: Currency): string {
+export function chargeLabel(plan: BilledPlan, currency: Currency): string {
   const amount = PLAN_PRICE_BY_CURRENCY[currency][plan].toFixed(2);
   return currency === "aud" ? `A$${amount}` : `US$${amount}`;
 }
@@ -78,7 +78,7 @@ function billedIn(subscription: Stripe.Subscription): Currency | null {
  * it costs each week, when the card is next charged, and how to cancel.
  * Returns false only when a send was attempted and failed, for the webhook to log.
  */
-export async function sendSubscribedMail(subscription: Stripe.Subscription, plan: Plan | undefined): Promise<boolean> {
+export async function sendSubscribedMail(subscription: Stripe.Subscription, plan: BilledPlan | undefined): Promise<boolean> {
   const userId = subscription.metadata?.userId;
   const currency = billedIn(subscription);
   if (!userId || !plan || !currency) return true;
@@ -106,7 +106,7 @@ export async function sendSubscribedMail(subscription: Stripe.Subscription, plan
  * three days before). Skipped for a trial already set to cancel, since no
  * charge is coming.
  */
-export async function sendTrialEndingMail(subscription: Stripe.Subscription, plan: Plan | undefined): Promise<boolean> {
+export async function sendTrialEndingMail(subscription: Stripe.Subscription, plan: BilledPlan | undefined): Promise<boolean> {
   const userId = subscription.metadata?.userId;
   const currency = billedIn(subscription);
   if (!userId || !plan || !currency) return true;

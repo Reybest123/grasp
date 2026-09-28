@@ -11,9 +11,12 @@
 //    is swapped directly, with no redirect and nothing for the student to
 //    retype.
 //
+//  - The free trial (onboarding only): no Stripe at all. The account is put on
+//    plan 'free' for FREE_TRIAL_DAYS, once, and nothing is handed back to
+//    redirect to, so the browser goes straight to /home.
+//
 // The one data route an account without a plan may call, since it is how such
-// an account gets one — it replaced the old /api/onboarding, which granted a
-// plan for free the moment the three questions were answered.
+// an account gets one.
 
 import { NextRequest, NextResponse } from "next/server";
 import { track } from "@/lib/events";
@@ -22,7 +25,7 @@ import { requireUser } from "@/lib/session";
 import { parseAnswers } from "@/lib/onboarding";
 import { isPastDue, needsRenewal, changePlan, cancelImmediately, createCheckoutSession, readBillingRow } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
-import { isPlan } from "@/lib/plan";
+import { isBilledPlan } from "@/lib/plan";
 import { resolveCurrency } from "@/lib/currencyServer";
 
 export async function POST(req: NextRequest) {
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
 
   const plan: unknown = body.plan;
-  if (!isPlan(plan)) {
+  if (!isBilledPlan(plan) && plan !== "free") {
     return NextResponse.json({ error: "Choose a plan." }, { status: 400 });
   }
 
@@ -50,6 +53,29 @@ export async function POST(req: NextRequest) {
     if (!saved.ok) return NextResponse.json({ error: saved.error }, { status: saved.status });
   } else if (!guard.user.plan) {
     return NextResponse.json({ error: "Answer the three questions first." }, { status: 400 });
+  }
+
+  if (plan === "free") {
+    // Only from onboarding: an account that has had a plan, or the trial, does
+    // not get it again. The `where` is the check, so two presses at once
+    // cannot both start it.
+    if (guard.user.plan) {
+      return NextResponse.json({ error: "The free trial is only for new accounts." }, { status: 409 });
+    }
+    const started = await query(
+      () => sql`
+        update users set plan = 'free', free_trial_started_at = now()
+        where id = ${guard.user.id} and plan is null and free_trial_started_at is null
+          and stripe_subscription_id is null
+        returning id
+      `
+    );
+    if (!started.ok) return NextResponse.json({ error: started.error }, { status: started.status });
+    if (!started.data.length) {
+      return NextResponse.json({ error: "The free trial is only for new accounts." }, { status: 409 });
+    }
+    await track("free_trial_started", { userId: guard.user.id });
+    return NextResponse.json({ ok: true });
   }
 
   const billing = await readBillingRow(guard.user.id);

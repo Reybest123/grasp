@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/LegalPage";
 import { LegalSection } from "@/components/LegalSection";
-import { TRIAL_DAYS } from "@/lib/plan";
+import { FREE_TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -39,10 +39,10 @@ export default function Terms() {
           the Plans page, and they may change over time.
         </p>
         <p>
-          A new account starts with a {TRIAL_DAYS}-day free trial of Pro. A card is taken when you
-          start the trial, through Stripe, and is charged automatically when the trial ends unless
-          you cancel before then. Choosing Max, or switching to it, is charged straight away. You
-          will not be moved onto a different plan or charged anything you have not agreed to.
+          A new account can start a {FREE_TRIAL_DAYS}-day free trial, with smaller limits. It needs
+          no card and is never charged. When it ends, Grasp cannot be used until you choose Pro or
+          Max. Pro and Max are charged when you choose them, through Stripe. You will not be moved
+          onto a different plan or charged anything you have not agreed to.
         </p>
       </LegalSection>
 
@@ -54,21 +54,19 @@ export default function Terms() {
             stores your full card number. They renew each week until you cancel.
           </li>
           <li>
-            <b>Free trial.</b> The free trial is not charged. It ends automatically into a paid
-            Pro plan, charged to the card you gave when you started it, unless you cancel before
-            then. You will be emailed when the trial starts and again a few days before it ends,
-            with the price and how to cancel.
+            <b>Free trial.</b> The free trial needs no card and is not charged. It does not turn
+            into a paid plan on its own: when it ends, you choose Pro or Max to keep using Grasp,
+            and nothing is charged until you do. Your notes and subjects are kept either way.
           </li>
           <li>
             <b>Cancelling.</b> You can cancel at any time from the Plans page. Your plan keeps
-            working until the end of the period you have already paid for, or until your free trial
-            ends, and is not renewed after that. You can resume it before then.
+            working until the end of the period you have already paid for, and is not renewed after
+            that. You can resume it before then.
           </li>
           <li>
             <b>Switching plans.</b> Switching between Pro and Max works like buying the new
             plan. It takes effect straight away, you are charged a full week of the new plan at
-            once, and your weekly billing starts again from that day. Switching during a free trial
-            ends the trial. There is no credit or refund for the time left on the plan you switched
+            once, and your weekly billing starts again from that day. There is no credit or refund for the time left on the plan you switched
             from.
           </li>
           <li>

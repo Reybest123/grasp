@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminConfigured, clearAdmin, readAdmin, writeAdmin } from "@/lib/admin";
-import { isPlan } from "@/lib/plan";
+import { isBilledPlan } from "@/lib/plan";
 
 const notFound = () => NextResponse.json({ error: "Not found." }, { status: 404 });
 
@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const state = {
-    plan: body.plan === null ? null : isPlan(body.plan) ? body.plan : current.plan,
+    plan: body.plan === null ? null : isBilledPlan(body.plan) ? body.plan : current.plan,
     unlimited: typeof body.unlimited === "boolean" ? body.unlimited : current.unlimited,
   };
   await writeAdmin(state);

@@ -7,7 +7,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PLAN_LABEL, PLANS, type Plan } from "@/lib/plan";
+import { PLAN_LABEL, PLANS, type BilledPlan } from "@/lib/plan";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
@@ -15,7 +15,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { ErrorNote } from "@/components/ErrorNote";
 import { LockIcon } from "@/components/icons";
 
-type AdminState = { plan: Plan | null; unlimited: boolean };
+type AdminState = { plan: BilledPlan | null; unlimited: boolean };
 
 export function AdminPanel({
   initial,

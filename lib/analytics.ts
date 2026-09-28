@@ -16,10 +16,12 @@ import { LIMITS as COST_LIMITS } from "@/lib/costModel";
 import {
   PLAN_PRICE_BY_CURRENCY,
   aiTokenLimit,
+  isBilledPlan,
   isPlan,
   quizLimit,
   recordingSeconds,
   resourceReadLimit,
+  type BilledPlan,
   type Plan,
 } from "@/lib/plan";
 import { isCurrency, type Currency } from "@/lib/currency";
@@ -105,6 +107,7 @@ function stageOf(row: Record<string, any>): string {
   if (status === "active") return row.plan_cancelled_at ? "Paying, cancelling" : "Paying";
   if (status === "past_due" || status === "unpaid") return "Payment failing";
   if (status === "canceled") return "Plan ended";
+  if (row.plan === "free") return "Free trial";
   if (row.plan) return "Plan without billing";
   if (row.checkout_started) return "Left at checkout";
   if (row.onboarding) return "Left at plan step";
@@ -237,7 +240,7 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
   const f = funnelRows[0] ?? {};
   const t = trialRows[0] ?? {};
 
-  const byPlan = new Map<Plan, { plan: Plan; trialing: number; active: number; pastDue: number }>();
+  const byPlan = new Map<BilledPlan, { plan: BilledPlan; trialing: number; active: number; pastDue: number }>();
   const revenue = new Map<Currency, number>();
   let ended = 0;
   for (const row of planRows) {
@@ -245,7 +248,7 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       ended += num(row.n);
       continue;
     }
-    if (!isPlan(row.plan)) continue;
+    if (!isBilledPlan(row.plan)) continue;
     const entry = byPlan.get(row.plan) ?? { plan: row.plan, trialing: 0, active: 0, pastDue: 0 };
     if (row.status === "trialing") entry.trialing += num(row.n);
     else if (row.status === "active") entry.active += num(row.n);

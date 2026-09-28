@@ -103,6 +103,12 @@ alter table users add column if not exists current_period_end timestamptz;
 -- session lookup, so a database without it signs everyone out.
 alter table users add column if not exists currency text;
 
+-- When the account started the free trial (lib/plan.ts, FREE_TRIAL_DAYS), the
+-- week with no card. Set once, alongside plan = 'free', and never cleared, so
+-- the trial cannot be taken twice on one account. Read by the session lookup,
+-- so a database without it signs everyone out.
+alter table users add column if not exists free_trial_started_at timestamptz;
+
 -- A customer or subscription id is looked up by its Stripe id in the webhook
 -- and the checkout-complete redirect, both of which run before they know which
 -- user they are for. Partial: most rows have neither yet.

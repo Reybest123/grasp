@@ -25,7 +25,7 @@ export default function Privacy() {
             stored as a one-way scrypt hash, never as the password itself.
           </li>
           <li>
-            <b>Your plan and setup answers:</b> which plan you are on, when your free trial ends,
+            <b>Your plan and setup answers:</b> which plan you are on, when you started the free trial,
             when you cancelled your plan if you have, your answers to the three questions asked
             when you set up your account (your year level, how you plan to use Grasp, and what you
             most want help with), and whether you have used the one-time timetable read.

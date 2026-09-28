@@ -17,7 +17,7 @@ import { createHash, createHmac } from "node:crypto";
 import { sql } from "@/lib/db";
 import { addressOf } from "@/lib/rateLimit";
 
-export type EventName = "pageview" | "signup" | "email_confirmed" | "checkout_started" | "subscribed";
+export type EventName = "pageview" | "signup" | "email_confirmed" | "checkout_started" | "free_trial_started" | "subscribed";
 
 const BOT =
   /bot|crawl|spider|slurp|headless|lighthouse|preview|monitor|curl|wget|python|axios|node-fetch|go-http/i;

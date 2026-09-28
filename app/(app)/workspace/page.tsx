@@ -13,6 +13,8 @@ import { NewSubjectDialog } from "@/components/NewSubjectDialog";
 import { autoColorKey } from "@/lib/subjectColors";
 import { Skeleton } from "@/components/Skeleton";
 import { LoadFailed } from "@/components/app/LoadFailed";
+import { useProfile } from "@/lib/profileStore";
+import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
 
 export default function WorkspacePage() {
   const router = useRouter();
@@ -21,6 +23,9 @@ export default function WorkspacePage() {
   const { guard } = useRecording();
   const now = useNow();
   const [adding, setAdding] = useState(false);
+  const { profile } = useProfile();
+  const atFreeCap =
+    profile.plan === "free" && !profile.unlimited && subjects.length >= FREE_SUBJECT_LIMIT;
 
   return (
     <section className="px-6 py-10 sm:px-8">
@@ -61,7 +66,10 @@ export default function WorkspacePage() {
                 onEdit={() => editSubject(s.id)}
               />
             ))}
-            <AddSubjectCard onClick={() => setAdding(true)} />
+            <AddSubjectCard
+              onClick={() => setAdding(true)}
+              lockedAt={atFreeCap ? FREE_SUBJECT_LIMIT : undefined}
+            />
           </>
         )}
       </div>

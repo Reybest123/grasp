@@ -19,8 +19,10 @@ export type Profile = {
   email: string;
   /** null only before onboarding, which the app layout does not let into the shell */
   plan: Plan | null;
-  /** ISO; null for an account not on a free trial */
+  /** ISO; null for an account not on a Stripe trial */
   trialEndsAt: string | null;
+  /** ISO, when the free trial runs out; null for an account not on it */
+  freeTrialEndsAt: string | null;
   /** the admin's unlimited mode (/admin): no caps to show or stop at */
   unlimited: boolean;
 };
@@ -38,7 +40,7 @@ type Store = {
 
 const ProfileContext = createContext<Store | null>(null);
 
-const EMPTY: Profile = { name: "", email: "", plan: null, trialEndsAt: null, unlimited: false };
+const EMPTY: Profile = { name: "", email: "", plan: null, trialEndsAt: null, freeTrialEndsAt: null, unlimited: false };
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile>(EMPTY);
@@ -58,6 +60,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
             email: data.user.email ?? "",
             plan: isPlan(data.user.plan) ? data.user.plan : null,
             trialEndsAt: typeof data.user.trialEndsAt === "string" ? data.user.trialEndsAt : null,
+            freeTrialEndsAt: typeof data.user.freeTrialEndsAt === "string" ? data.user.freeTrialEndsAt : null,
             unlimited: data.user.unlimited === true,
           });
           setSignedIn(true);

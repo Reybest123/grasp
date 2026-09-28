@@ -45,10 +45,12 @@ export function useChrome(): Chrome {
 export function AppShell({
   expired,
   paymentFailed,
+  freeTrialEnded,
   children,
 }: {
   expired: boolean;
   paymentFailed: boolean;
+  freeTrialEnded: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -125,7 +127,7 @@ export function AppShell({
               go to Settings, but every other page asks them to choose a plan. */}
           <PageTransition>
             {expired && !pathname.startsWith("/settings") ? (
-              <RenewPlans paymentFailed={paymentFailed} />
+              <RenewPlans paymentFailed={paymentFailed} freeTrialEnded={freeTrialEnded} />
             ) : (
               children
             )}

@@ -143,11 +143,12 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ subject }),
           });
-          // A 400 or 404 will never succeed however often it is sent (a
-          // malformed subject, or an id that is not this account's), so only
-          // a server-side failure is worth trying again. It used to be treated
-          // as saved, which silently lost the edit.
-          if (!res.ok && res.status !== 400 && res.status !== 404) {
+          // A 400, 403 or 404 will never succeed however often it is sent (a
+          // malformed subject, one past the free trial's subject cap, or an id
+          // that is not this account's), so only a server-side failure is
+          // worth trying again. It used to be treated as saved, which silently
+          // lost the edit.
+          if (!res.ok && res.status !== 400 && res.status !== 403 && res.status !== 404) {
             dirty.current.add(id);
             failed = true;
           }

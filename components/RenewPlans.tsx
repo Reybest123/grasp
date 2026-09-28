@@ -1,21 +1,27 @@
 "use client";
 
-// What every page in the shell but Settings shows once a plan has ended, or
-// its card was declined (AppShell). The header and rail stay, so logging out and deleting the account
+// What every page in the shell but Settings shows once a plan has ended, its
+// card was declined, or the free trial has run out (AppShell). The header and rail stay, so logging out and deleting the account
 // from Settings work as normal. Choosing a plan always opens a fresh Stripe
 // Checkout Session, since Stripe needs a card again for a subscription that no
-// longer exists, and no trial is offered: the account has already had its one.
+// longer exists (or, after the free trial, never did).
 
 import { useEffect, useState } from "react";
 import { PlanCard } from "@/components/PlanCard";
 import { ErrorNote } from "@/components/ErrorNote";
 import { ArrowRightIcon } from "@/components/icons";
 import { useCurrency } from "@/lib/currencyStore";
-import { PLANS, PLAN_LABEL, type Plan } from "@/lib/plan";
+import { PLANS, PLAN_LABEL, type BilledPlan } from "@/lib/plan";
 
-export function RenewPlans({ paymentFailed }: { paymentFailed: boolean }) {
+export function RenewPlans({
+  paymentFailed,
+  freeTrialEnded,
+}: {
+  paymentFailed: boolean;
+  freeTrialEnded: boolean;
+}) {
   const currency = useCurrency();
-  const [busy, setBusy] = useState<Plan | null>(null);
+  const [busy, setBusy] = useState<BilledPlan | null>(null);
   const [error, setError] = useState("");
 
   // Back from Stripe can restore this page from the back/forward cache
@@ -28,7 +34,7 @@ export function RenewPlans({ paymentFailed }: { paymentFailed: boolean }) {
     return () => window.removeEventListener("pageshow", onShow);
   }, []);
 
-  async function choose(plan: Plan) {
+  async function choose(plan: BilledPlan) {
     setBusy(plan);
     setError("");
     try {
@@ -53,7 +59,11 @@ export function RenewPlans({ paymentFailed }: { paymentFailed: boolean }) {
     <section className="px-6 py-10 sm:px-8">
       <div className="text-center">
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">
-          {paymentFailed ? "Your card was declined" : "Your plan has ended"}
+          {paymentFailed
+            ? "Your card was declined"
+            : freeTrialEnded
+              ? "Your free trial has ended"
+              : "Your plan has ended"}
         </h1>
         <p className="mx-auto mt-2 max-w-md text-slate-600">
           {paymentFailed
@@ -66,7 +76,7 @@ export function RenewPlans({ paymentFailed }: { paymentFailed: boolean }) {
 
       <div className="mx-auto mt-7 grid max-w-4xl grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-2">
         {PLANS.map((plan) => (
-          <PlanCard key={plan} plan={plan} currency={currency} compact trialBadge={false}>
+          <PlanCard key={plan} plan={plan} currency={currency} compact>
             <button
               type="button"
               onClick={() => choose(plan)}

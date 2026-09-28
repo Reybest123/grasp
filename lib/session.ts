@@ -16,7 +16,7 @@ import { redirect } from "next/navigation";
 import { createHash, randomBytes } from "node:crypto";
 import { sql } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/sessionCookie";
-import { isPlan, type Plan } from "@/lib/plan";
+import { FREE_TRIAL_DAYS, isPlan, type Plan } from "@/lib/plan";
 import { isCurrency, type Currency } from "@/lib/currency";
 import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 import { readAdmin } from "@/lib/admin";
@@ -47,8 +47,10 @@ export type SessionUser = {
   verified: boolean;
   /** null until onboarding is finished */
   plan: Plan | null;
-  /** ISO; null for an account not on a free trial */
+  /** ISO; null for an account not on a Stripe trial */
   trialEndsAt: string | null;
+  /** ISO, when the free trial runs out; null for an account not on it */
+  freeTrialEndsAt: string | null;
   /** admin override (lib/admin.ts): no weekly allowances or Resource Bank cap */
   unlimited: boolean;
   /** what the account is billed in; null until it first reaches Stripe Checkout */
@@ -57,6 +59,8 @@ export type SessionUser = {
   expired: boolean;
   /** `expired` is specifically a failed/retrying card, not a plan that ran out or was cancelled: only changes the wording asking to renew */
   paymentFailed: boolean;
+  /** `expired` is specifically the free trial running out: only changes the wording */
+  freeTrialEnded: boolean;
 };
 
 /** The cookie holds the token; the database holds this. Email links too. */
@@ -151,7 +155,8 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
   try {
     const rows = (await sql`
       select u.id, u.email, u.name, u.email_verified_at, u.plan, u.trial_ends_at,
-             u.currency, u.subscription_status, s.expires_at, s.last_seen_at
+             u.free_trial_started_at, u.currency, u.subscription_status,
+             s.expires_at, s.last_seen_at
       from sessions s
       join users u on u.id = s.user_id
       where s.token_hash = ${hash}
@@ -162,6 +167,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       email_verified_at: string | null;
       plan: string | null;
       trial_ends_at: string | Date | null;
+      free_trial_started_at: string | Date | null;
       currency: string | null;
       subscription_status: string | null;
       expires_at: string | Date;
@@ -188,6 +194,16 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
     const admin = plan ? await readAdmin() : null;
     const forced = admin?.plan ?? null;
 
+    // The free trial has no subscription behind it, so it ends by the clock.
+    // Started with no date would be a broken row; it counts as ended rather
+    // than as a trial that never runs out.
+    const freeTrialEnds =
+      plan === "free" && row.free_trial_started_at
+        ? new Date(row.free_trial_started_at).getTime() + FREE_TRIAL_DAYS * 86_400_000
+        : null;
+    const freeTrialEnded = !forced && plan === "free" && (freeTrialEnds === null || freeTrialEnds <= now);
+    const billed = plan === "pro" || plan === "max";
+
     return {
       id: row.id,
       email: row.email,
@@ -202,10 +218,12 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
         forced || !row.trial_ends_at || new Date(row.trial_ends_at).getTime() <= Date.now()
           ? null
           : new Date(row.trial_ends_at).toISOString(),
+      freeTrialEndsAt: !forced && freeTrialEnds !== null ? new Date(freeTrialEnds).toISOString() : null,
       unlimited: admin?.unlimited === true,
       currency: isCurrency(row.currency) ? row.currency : null,
-      expired: !forced && plan !== null && needsRenewal(row.subscription_status),
-      paymentFailed: !forced && plan !== null && isPastDue(row.subscription_status),
+      expired: freeTrialEnded || (!forced && billed && needsRenewal(row.subscription_status)),
+      paymentFailed: !forced && billed && isPastDue(row.subscription_status),
+      freeTrialEnded,
     };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);

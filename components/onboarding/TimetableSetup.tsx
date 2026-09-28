@@ -33,6 +33,8 @@ import {
   UploadIcon,
 } from "@/components/icons";
 import { WaitingState } from "@/components/WaitingState";
+import { useProfile } from "@/lib/profileStore";
+import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
 
 const MAX_BYTES = MAX_UPLOAD_BYTES;
 
@@ -68,6 +70,8 @@ export function TimetableSetup({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [subjects, setSubjects] = useState<ExtractedSubject[]>([]);
+  const { profile } = useProfile();
+  const capped = profile.plan === "free" && !profile.unlimited;
   const [editing, setEditing] = useState<number | null>(null);
   const [skipping, setSkipping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -84,7 +88,10 @@ export function TimetableSetup({
     };
   }, []);
 
-  function keep(next: ExtractedSubject[]): Promise<unknown> {
+  function keep(all: ExtractedSubject[]): Promise<unknown> {
+    // The free trial holds FREE_SUBJECT_LIMIT subjects and the server keeps
+    // only the first ones, so the list shows only what will actually be kept.
+    const next = capped ? all.slice(0, FREE_SUBJECT_LIMIT) : all;
     setSubjects(next);
     if (save) {
       saving.current = saving.current.catch(() => undefined).then(() => save(next));

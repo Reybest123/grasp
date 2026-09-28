@@ -38,7 +38,8 @@ export async function DELETE(req: NextRequest) {
   // button while it is in that state — so it does not block deletion, and
   // cancelImmediately below cleans up whatever Stripe still has open.
   const row = found.data;
-  if (row?.plan && !row.plan_cancelled_at && !needsRenewal(row.subscription_status)) {
+  // The free trial has nothing to cancel.
+  if (row?.plan && row.plan !== "free" && !row.plan_cancelled_at && !needsRenewal(row.subscription_status)) {
     return NextResponse.json(
       { error: "Cancel your plan on the Plans page before deleting your account.", planActive: true },
       { status: 409 }

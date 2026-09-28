@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
 import { deleteSubject, saveSubject } from "@/lib/subjectsDb";
 import type { Subject } from "@/lib/subjects";
 
@@ -27,8 +28,17 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ subjectId: 
   // would be answering a question nobody asked.
   const toSave: Subject = { ...subject, id: subjectId };
 
-  const result = await query(() => saveSubject(guard.user.id, toSave));
+  // The free trial holds FREE_SUBJECT_LIMIT subjects; one already saved can
+  // always be edited.
+  const cap = guard.user.plan === "free" && !guard.user.unlimited ? FREE_SUBJECT_LIMIT : undefined;
+  const result = await query(() => saveSubject(guard.user.id, toSave, cap));
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (result.data === "full") {
+    return NextResponse.json(
+      { error: `The free trial holds ${FREE_SUBJECT_LIMIT} subjects. Choose Pro or Max for more.` },
+      { status: 403 }
+    );
+  }
 
   // 404 rather than 403 when the subject belongs to someone else: a 403 would
   // confirm the id exists, which is the same reason the login route refuses to

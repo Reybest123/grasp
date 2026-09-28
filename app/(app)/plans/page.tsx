@@ -12,7 +12,7 @@ import { useSearchParams } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useNow } from "@/lib/subjectsStore";
 import { usePlanStatus } from "@/lib/usePlanStatus";
-import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, planName, planPrice, trialDaysLeft, type Plan } from "@/lib/plan";
+import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, planName, planPrice, trialDaysLeft, type BilledPlan } from "@/lib/plan";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -174,6 +174,29 @@ function CurrentPlan({
     );
   }
 
+  if (plan === "free") {
+    const freeEnds = profile.freeTrialEndsAt
+      ? new Date(profile.freeTrialEndsAt).toLocaleDateString(undefined, LONG_DATE)
+      : null;
+    return (
+      <>
+        <h2
+          id={CANCEL_ANCHOR}
+          className={`${heading} text-sm font-bold uppercase tracking-wide text-slate-500`}
+        >
+          Your plan
+        </h2>
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-lg font-bold text-ink">Free trial</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {freeEnds ? `Your free trial ends on ${freeEnds}.` : "Your free trial is running."} Choose
+            Pro or Max above to keep using Grasp after that. Nothing is charged until you do.
+          </p>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <h2
@@ -250,24 +273,26 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   const { profile } = useProfile();
   const currency = useCurrency();
   const current = profile.plan ?? DEFAULT_PLAN;
-  const [busyPlan, setBusyPlan] = useState<Plan | null>(null);
+  const [busyPlan, setBusyPlan] = useState<BilledPlan | null>(null);
   const [error, setError] = useState("");
   // A switch on a live subscription takes effect and charges the moment it is
   // pressed, ending a trial if one is running, so it is
   // confirmed first. Choosing a plan after one has ended goes to Checkout,
   // which is its own confirmation.
-  const [confirmPlan, setConfirmPlan] = useState<Plan | null>(null);
+  const [confirmPlan, setConfirmPlan] = useState<BilledPlan | null>(null);
   const onTrial = profile.trialEndsAt !== null;
+  // The free trial has no subscription to switch, so its buttons go to Checkout.
+  const onFree = current === "free";
 
   // A switch is bought like a new plan (changePlan in lib/billing.ts): a full
   // week of the new plan now, and the week starts again from today.
-  function switchNotice(plan: Plan): string {
+  function switchNotice(plan: BilledPlan): string {
     const price = planPrice(plan, currency);
     const ending = onTrial ? `your free ${PLAN_LABEL[current]} trial` : `your ${PLAN_LABEL[current]} plan`;
     return `Switching ends ${ending} today and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} now for a ${BILLING_PERIOD} of ${PLAN_LABEL[plan]}, then ${price} every ${BILLING_PERIOD} from today.`;
   }
 
-  async function choose(plan: Plan) {
+  async function choose(plan: BilledPlan) {
     setConfirmPlan(null);
     setBusyPlan(plan);
     setError("");
@@ -305,18 +330,14 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
       <div className="grid max-w-4xl gap-6 sm:grid-cols-2 mx-auto">
         {PLANS.map((plan) => {
           const isCurrent = plan === current && !status.expired;
-          const switching = !status.expired;
+          const switching = !status.expired && !onFree;
           const label = isCurrent
             ? "Your current plan"
             : switching
               ? `Switch to ${PLAN_LABEL[plan]}`
               : `Choose ${PLAN_LABEL[plan]}`;
           return (
-            // No trial badge here, ever. Every account that can reach this page
-            // has already been offered the trial at the end of onboarding and
-            // taken or declined it, and a trial is once per student — so
-            // advertising it back to them is an offer Grasp would not honour.
-            <PlanCard key={plan} plan={plan} currency={currency} compact trialBadge={false}>
+            <PlanCard key={plan} plan={plan} currency={currency} compact>
               <button
                 onClick={() => (switching ? setConfirmPlan(plan) : choose(plan))}
                 disabled={isCurrent || busyPlan !== null}

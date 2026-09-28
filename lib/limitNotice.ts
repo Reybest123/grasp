@@ -97,7 +97,8 @@ export function limitMessage(kind: LimitKind): string {
   return `${SPECS[kind].title}.`;
 }
 
-const rank = (plan: Plan): number => PLANS.indexOf(plan);
+/** The free trial sits below both paid plans. */
+const rank = (plan: Plan): number => (plan === "free" ? -1 : PLANS.indexOf(plan));
 
 /**
  * What the dialog says. `upgrade` is null on the top plan — there is no better

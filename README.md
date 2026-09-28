@@ -17,7 +17,7 @@ conventions and a detailed changelog of how everything is built live in [`CLAUDE
 | Feature | Where |
 | --- | --- |
 | Accounts (sign up with the password typed twice, email confirmation, log in, change password, delete account) | `/signup`, `/login`, `/settings` |
-| Onboarding: three quick questions, then the plans, starting a free trial of Pro | `/onboarding` |
+| Onboarding: three quick questions, then the plans: Pro, Max, or a one-week free trial with no card | `/onboarding` |
 | Timetable screenshot or PDF read by GPT-4o into subject notebooks, in a popup over the dashboard, each one editable before you go on | `/home?setup=timetable` |
 | Dashboard: understanding score, weekly activity, quiz allowance, upcoming assessments | `/home` |
 | Notebooks grid with next class and exam countdowns | `/workspace` |
@@ -26,7 +26,7 @@ conventions and a detailed changelog of how everything is built live in [`CLAUDE
 | Lecture recording with Whisper transcription and notes drafted live | subject > Record |
 | Quizzes from your notes: multiple choice, short and long answer, AI marking with half marks, "explain why I'm wrong" | subject > Quizzes |
 | Resource Bank: rubrics, criteria and term planners read once and cited wherever the AI uses them | subject > Resource Bank |
-| Pro and Max plans, billed weekly through Stripe (a card is taken to start Pro's free trial or to choose Max), with weekly quiz and recording limits enforced server-side | `lib/plan.ts`, `lib/billing.ts`, `lib/usage.ts` |
+| Pro and Max plans, billed weekly through Stripe (a card is taken when either plan starts; the free trial needs none), with weekly quiz and recording limits enforced server-side | `lib/plan.ts`, `lib/billing.ts`, `lib/usage.ts` |
 | Flag an AI answer as wrong | under AI output |
 | Terms of Service and Privacy Policy | `/legal/terms`, `/legal/privacy` |
 
@@ -52,7 +52,7 @@ is kept.
 ## Run it locally
 
 You need Node 20+, a Postgres database, an OpenAI API key, and a Stripe account (a free test-mode
-account is enough to run everything locally, including a real trial-to-paid conversion, without
+account is enough to run everything locally, including a real checkout, without
 charging a real card).
 
 1. Install dependencies:

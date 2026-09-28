@@ -7,9 +7,8 @@ import {
   PLAN_LABEL,
   PLAN_PERKS,
   PLAN_TAGLINE,
-  TRIAL_DAYS,
   planPrice,
-  type Plan,
+  type BilledPlan,
 } from "@/lib/plan";
 import { type Currency } from "@/lib/currency";
 import { CheckIcon } from "@/components/icons";
@@ -18,10 +17,9 @@ export function PlanCard({
   plan,
   currency,
   compact = false,
-  trialBadge = true,
   children,
 }: {
-  plan: Plan;
+  plan: BilledPlan;
   /**
    * What the student is charged in (lib/currency.ts). Passed in rather than
    * read from context so this stays usable from the landing page, which is a
@@ -30,19 +28,10 @@ export function PlanCard({
   currency: Currency;
   /** tighter spacing, for onboarding's plan step, which has to fit the screen */
   compact?: boolean;
-  /**
-   * Whether Pro may advertise its free trial. False on /plans for an account
-   * that has already had one: a trial is once per student (and, once billing is
-   * in place, once per card — lib/trialClaims.ts), so offering it again to
-   * somebody who has spent theirs is an offer Grasp would not honour.
-   */
-  trialBadge?: boolean;
   children?: React.ReactNode;
 }) {
-  // Pro is the plan with the trial, so it is the one a new student can start
-  // today, and the one picked out.
+  // Pro is the plan most students need, so it is the one picked out.
   const featured = plan === "pro";
-  const showTrial = featured && trialBadge;
   const price = planPrice(plan, currency);
   // A bare "$" reads as local dollars in Canada, New Zealand, Singapore and the
   // rest, so a USD price says which dollars it is.
@@ -56,15 +45,6 @@ export function PlanCard({
         compact ? "p-6" : "p-8"
       } ${featured ? "border-brand-300 shadow-lift" : "border-slate-200 shadow-ring"}`}
     >
-      {showTrial && (
-        <span
-          className={`absolute -top-3 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white ${
-            compact ? "left-6" : "left-8"
-          }`}
-        >
-          {TRIAL_DAYS}-day free trial
-        </span>
-      )}
       {compact ? (
         // The price beside the name rather than under it, which is most of
         // what lets onboarding's plan step fit a laptop screen.

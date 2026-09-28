@@ -61,17 +61,18 @@ Decided 2026-09-28: Grasp sells to everyone, since Instagram and TikTok reach ev
 
 ## What one subscriber earns (per month)
 
-| | Pro (A$8.99/week) | Max (A$19.99/week) |
+| | Pro (A$8.99/week) | Max (A$14.99/week) |
 |---|---|---|
-| Revenue | A$38.93 | A$86.60 |
-| Stripe fees (1.7% + A$0.30 + 0.7% Billing, per charge) | −A$2.23 | −A$3.38 |
+| Revenue | A$38.93 | A$64.91 |
+| Stripe fees (1.7% + A$0.30 + 0.7% Billing, per charge) | −A$2.23 | −A$2.86 |
 | AI, typical student (estimate) | −A$1–3 | −A$5–10 |
-| AI, worst case (every allowance used up) | −A$18.84 | −A$47 |
-| **Net, typical** | **~A$35** | **~A$75** |
+| AI, worst case (every allowance used up) | −A$18.84 | −A$46.28 |
+| **Net, typical** | **~A$35** | **~A$55** |
 
 - **Pro moved from A$7.99 to A$8.99 on 2026-09-28** when its recording allowance went from 1h 40m to 2h a week — the extra recording time pushed the worst case over the 0.5 budget ceiling at the old price (CLAUDE.md §6), so the price rose to cover it rather than cutting another allowance.
+- **Max moved from A$19.99 to A$14.99 (US$14.49 to US$10.49) on 2026-09-28**, at the user's request, with its allowances unchanged. A maxed-out Max now costs about 66% of its USD price, and there is no longer a ceiling in the code holding any plan to a share of its price.
 - **Two paying Pro students cover the fixed costs.**
-- A free trial earns nothing but costs AI. The card-required trial caps each one at about A$4, worst case.
+- **The free trial earns nothing and needs no card** (2026-09-28). One maxed out costs at most about US$1.57 (A$2.42): US$1.33 of allowances plus up to US$0.24 of timetable reads. With no card there is nothing to stop one person taking it again under a new email, apart from email confirmation and the signup rate limit (40 an hour per address). Watch signups against conversions in `/admin/analytics`; if trial accounts pile up without paying, that is the sign it is being farmed.
 - Stripe's A$0.30 is charged on every payment, and weekly billing means about 4.3 payments a month. So fees take about 6% of Pro's price, against about 3.5% on monthly billing. That is worth remembering if weekly billing is ever reconsidered.
 
 ## When to pay for more
@@ -105,7 +106,7 @@ No fixed budget. Post the 9:16 video free on Instagram and TikTok first, then te
 - **Break-even.** Pro is A$8.99 a week. A subscriber who stays a month pays about A$39 against at most about A$19 of AI cost, so a fairly high cost per paying customer is affordable if students stay past the trial.
 - **Watch the drop-off between signup and choosing a plan.** A big gap means the ad is attracting people who expected it to be free.
 - **Meta targets 18 and over by interest;** under-18s only get age and location targeting, so expect broader reach for high schoolers.
-- **Ad copy: no price, and never "free" or "no card needed".** The Terms say a card is taken at trial start. "Sign up today" and the QR code are fine; "7-day trial" is also accurate if wanted. Silence is fine, implying it costs nothing is not (Australian Consumer Law, and Meta and TikTok policy).
+- **Ad copy: "free for a week, no card needed" is now true** (2026-09-28) and can be used. What must not be implied is that Grasp stays free: after the week it locks until Pro or Max is bought. "Try it free for 7 days" is accurate; "free AI notes" on its own is not (Australian Consumer Law, and Meta and TikTok policy).
 - **Later:** paid student creators and school or uni clubs cost more up front but convert better than cold ads.
 
 ## OpenAI and auto-refill
@@ -125,7 +126,7 @@ Built 2026-09-26: it is offered **once per account**, at the end of onboarding. 
 
 Not tax advice; an hour with a small-business accountant (about A$150–300) before launch settles all of it. Written 2026-09-26.
 
-- **GST is not being charged today, and does not have to be yet.** Prices are A$8.99 / A$19.99 with nothing added, and Stripe Tax is built in but off (`STRIPE_TAX`). Below A$75,000 of turnover in 12 months (gross sales, not profit) registration is optional. Hit it, or expect to hit it, and you have 21 days to register.
+- **GST is not being charged today, and does not have to be yet.** Prices are A$8.99 / A$14.99 with nothing added, and Stripe Tax is built in but off (`STRIPE_TAX`). Below A$75,000 of turnover in 12 months (gross sales, not profit) registration is optional. Hit it, or expect to hit it, and you have 21 days to register.
 - **Registering does not raise the price the student sees.** It comes out of the price: A$8.99 stays A$8.99 and about 82c of it goes to the ATO. Revenue drops about 9%. Raising the price to keep the same take-home is a separate choice, and the Terms promise 30 days' notice of a price change.
 - **When registered, the price has to be shown as GST-inclusive** (a line on the plan cards) and BAS is lodged, usually quarterly. Stripe Tax can add the tax line to invoices later. It is not set up.
 - **Overseas students paying in USD** are generally GST-free. US state sales tax and EU/UK VAT are covered under "Selling outside Australia" above.

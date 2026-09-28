@@ -1,5 +1,5 @@
 // Real billing, server-side only (§6). One Stripe subscription per account,
-// covering both the Pro free trial and paid periods for either plan.
+// for either paid plan. The free trial never touches Stripe (lib/plan.ts).
 //
 // The card is taken by a Stripe-hosted Checkout Session — the student never
 // types a card number into a Grasp page, so Grasp never touches raw card data
@@ -16,7 +16,7 @@
 
 import Stripe from "stripe";
 import { query, sql } from "@/lib/db";
-import { PLAN_AVAILABLE, TRIAL_DAYS, isPlan, type Plan } from "@/lib/plan";
+import { PLAN_AVAILABLE, isBilledPlan, type BilledPlan } from "@/lib/plan";
 import { claimOrOwnTrial } from "@/lib/trialClaims";
 import { track } from "@/lib/events";
 import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/currency";
@@ -60,27 +60,27 @@ export function hasBilling(): boolean {
  * by `npm run billing:setup` (scripts/stripe-setup.mjs) and read from the env
  * rather than looked up by name on every request.
  */
-const PRICE_ENV: Record<Plan, string | undefined> = {
+const PRICE_ENV: Record<BilledPlan, string | undefined> = {
   pro: process.env.STRIPE_PRICE_PRO,
   max: process.env.STRIPE_PRICE_MAX,
 };
 
-function priceId(plan: Plan): string {
+function priceId(plan: BilledPlan): string {
   const id = PRICE_ENV[plan];
   if (!id) throw new Error(`STRIPE_PRICE_${plan.toUpperCase()} is not set`);
   return id;
 }
 
-export function planForPrice(id: string | null | undefined): Plan | null {
+export function planForPrice(id: string | null | undefined): BilledPlan | null {
   if (!id) return null;
-  for (const plan of ["pro", "max"] as Plan[]) {
+  for (const plan of ["pro", "max"] as BilledPlan[]) {
     if (PRICE_ENV[plan] === id) return plan;
   }
   return null;
 }
 
 export type BillingRow = {
-  plan: Plan | null;
+  plan: BilledPlan | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   subscriptionStatus: string | null;
@@ -110,7 +110,7 @@ async function readBillingRow(userId: string) {
     const row = rows[0];
     if (!row) return null;
     const out: BillingRow = {
-      plan: isPlan(row.plan) ? row.plan : null,
+      plan: isBilledPlan(row.plan) ? row.plan : null,
       stripeCustomerId: row.stripe_customer_id,
       stripeSubscriptionId: row.stripe_subscription_id,
       subscriptionStatus: row.subscription_status,
@@ -190,11 +190,9 @@ async function ensureCustomer(
  * fully ended. Switching between Pro and Max on an *active* subscription goes
  * through `changePlan` below instead — no need to collect the card again.
  *
- * The trial is only ever offered once per account (never re-offered to a
- * lapsed subscriber) and only for Pro, matching what the onboarding screen
- * itself already says. The one-trial-per-*card* rule can't be checked yet —
- * there is no card until Checkout collects one — so it is enforced afterwards,
- * in `syncSubscription`, once the webhook reveals which card was used.
+ * Neither plan has a Stripe trial: both are charged when Checkout completes.
+ * The free trial is a separate, cardless state (lib/plan.ts) that never
+ * reaches Stripe.
  */
 export async function createCheckoutSession({
   userId,
@@ -208,7 +206,7 @@ export async function createCheckoutSession({
   userId: string;
   email: string;
   name: string;
-  plan: Plan;
+  plan: BilledPlan;
   /**
    * What to charge in (lib/currency.ts). Only a suggestion for an account that
    * has never checked out: one that already has a Stripe customer keeps the
@@ -224,7 +222,6 @@ export async function createCheckoutSession({
 
   const billing = await readBillingRow(userId);
   if (!billing.ok) return { ok: false, error: billing.error };
-  const trial = plan === "pro" && !billing.data?.trialEndsAt;
   const charged = billing.data?.currency ?? currency;
 
   try {
@@ -238,12 +235,8 @@ export async function createCheckoutSession({
       // all, since the subscription already has one.
       currency: charged,
       line_items: [{ price: priceId(plan), quantity: 1 }],
-      // A card is always collected, trial or not — the whole point of asking
-      // for one up front is that the trial converts to a real charge on its
-      // own, with nothing further for the student to do.
       payment_method_collection: "always",
       subscription_data: {
-        trial_period_days: trial ? TRIAL_DAYS : undefined,
         metadata: { userId, plan },
       },
       // Stated beside the pay button, where it is read: the price, that it
@@ -252,7 +245,7 @@ export async function createCheckoutSession({
       // before the card is taken, and "start straight away" is the EU and UK
       // consumer's request for the plan to begin inside the 14-day
       // cancellation period (Terms, #refunds).
-      custom_text: { submit: { message: checkoutDisclosure(plan, charged, trial) } },
+      custom_text: { submit: { message: checkoutDisclosure(plan, charged) } },
       ...(AUTOMATIC_TAX
         ? {
             automatic_tax: { enabled: true },
@@ -273,12 +266,10 @@ export async function createCheckoutSession({
   }
 }
 
-function checkoutDisclosure(plan: Plan, currency: Currency, trial: boolean): string {
+function checkoutDisclosure(plan: BilledPlan, currency: Currency): string {
   const price = chargeLabel(plan, currency);
   const terms = `${SITE_URL.replace(/^https:\/\//, "")}/legal/terms`;
-  const charge = trial
-    ? `Free for ${TRIAL_DAYS} days, then ${price} every week until you cancel. Cancel on Grasp's Plans page before the trial ends and you will not be charged.`
-    : `${price} now, then ${price} every week until you cancel. Cancel any time on Grasp's Plans page.`;
+  const charge = `${price} now, then ${price} every week until you cancel. Cancel any time on Grasp's Plans page.`;
   return `${charge} By subscribing you agree to Grasp's Terms of Service (${terms}) and ask for your plan to start straight away.`;
 }
 
@@ -290,7 +281,7 @@ function checkoutDisclosure(plan: Plan, currency: Currency, trial: boolean): str
  */
 export async function changePlan(
   userId: string,
-  plan: Plan
+  plan: BilledPlan
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!hasBilling()) return { ok: false, error: "Billing is not set up yet." };
   if (!PLAN_AVAILABLE[plan]) return { ok: false, error: "That plan is not available yet." };
@@ -309,8 +300,8 @@ export async function changePlan(
     // A switch is bought like a new plan: a full week of the new plan is charged
     // now and the week starts again from today, with no credit and no partial
     // charge for the old one (Terms, #refunds). Ending a trial restarts the
-    // cycle by itself; otherwise the billing anchor is moved to now. Only Pro
-    // has a trial, so a trialing subscription is always moving to Max.
+    // cycle by itself; otherwise the billing anchor is moved to now. No plan is
+    // sold with a trial now, but a subscription started before that still can be.
     //
     // pending_if_incomplete applies the switch only once that charge succeeds:
     // a declined card leaves the student on the plan they had, rather than on
@@ -461,7 +452,7 @@ export async function syncSubscription(subscription: Stripe.Subscription): Promi
  * per account, so later syncs of the same or a later subscription are dropped
  * by the database. `detail` says whether it began as a trial.
  */
-async function recordSubscribed(userId: string, subscription: Stripe.Subscription, plan: Plan | undefined) {
+async function recordSubscribed(userId: string, subscription: Stripe.Subscription, plan: BilledPlan | undefined) {
   if (subscription.status !== "trialing" && subscription.status !== "active") return;
   await track("subscribed", { userId, detail: `${plan ?? "unknown"}:${subscription.status}` });
 }
@@ -469,7 +460,7 @@ async function recordSubscribed(userId: string, subscription: Stripe.Subscriptio
 async function writeUser(
   userId: string,
   subscription: Stripe.Subscription,
-  plan: Plan | undefined,
+  plan: BilledPlan | undefined,
   periodEndOverride?: number
 ) {
   const periodEnd = periodEndOverride ?? subscription.items.data[0]?.current_period_end;

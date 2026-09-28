@@ -2,8 +2,8 @@
 
 // §2 Onboarding — three quick questions, then the plans.
 //
-// It runs once, straight after the email is confirmed. Starting the Pro trial
-// finishes it, and the student lands on /home, where the timetable upload
+// It runs once, straight after the email is confirmed. Choosing Pro or Max (at
+// Stripe) or the free trial finishes it, and the student lands on /home, where the timetable upload
 // opens as a popup over the dashboard (components/onboarding/TimetableDialog).
 // The timetable used to be the whole of this page, full screen, which hid the
 // app it was building.
@@ -18,7 +18,7 @@ import { SetupAccountMenu } from "@/components/auth/SetupAccountMenu";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
-import { BILLING_PERIOD, PLANS, PLAN_LABEL, TRIAL_DAYS, planPrice, type Plan } from "@/lib/plan";
+import { FREE_PERKS, FREE_TRIAL_DAYS, PLANS, PLAN_LABEL, type Plan } from "@/lib/plan";
 import { ArrowRightIcon, BackIcon, CheckIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
 
@@ -50,13 +50,13 @@ export function OnboardingFlow({
     uses: saved?.uses ?? [],
     focus: saved?.focus ? [saved.focus] : [],
   });
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<Plan | null>(null);
   // Back from Stripe's Checkout can restore this page from the browser's
-  // back/forward cache exactly as it was left: mid-redirect, with both plan
-  // buttons disabled. A restored page starts over as pressable.
+  // back/forward cache exactly as it was left: mid-redirect, with every plan
+  // button disabled. A restored page starts over as pressable.
   useEffect(() => {
     const onShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setBusy(false);
+      if (e.persisted) setBusy(null);
     };
     window.addEventListener("pageshow", onShow);
     return () => window.removeEventListener("pageshow", onShow);
@@ -102,12 +102,12 @@ export function OnboardingFlow({
   }
 
   async function start(plan: Plan) {
-    setBusy(true);
+    setBusy(plan);
     setError("");
     const problem = await onFinish(answers(), plan);
     if (problem) {
       setError(problem);
-      setBusy(false);
+      setBusy(null);
     }
     // Otherwise `busy` stays set through the navigation, so the button cannot
     // be pressed a second time on the way out.
@@ -204,8 +204,7 @@ export function OnboardingFlow({
             <div className="text-center">
               <h1 className="text-3xl font-extrabold tracking-tight text-ink">Choose your plan</h1>
               <p className="mx-auto mt-2 max-w-md text-slate-600">
-                Start with {TRIAL_DAYS} days of Pro, free, then {planPrice("pro", currency)} a {BILLING_PERIOD} unless
-                you cancel. A card is needed to start, but nothing is charged during the trial.
+                Try Grasp free for {FREE_TRIAL_DAYS} days with no card, or start Pro or Max now.
               </p>
             </div>
 
@@ -217,23 +216,53 @@ export function OnboardingFlow({
                   <button
                     type="button"
                     onClick={() => start(plan)}
-                    disabled={busy}
+                    disabled={busy !== null}
                     className={`${PRIMARY} w-full`}
                   >
-                    {busy ? (
+                    {busy === plan ? (
                       <>
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                         Taking you to checkout…
                       </>
                     ) : (
                       <>
-                        {plan === "pro" ? "Start free trial" : `Choose ${PLAN_LABEL[plan]}`}
+                        Choose {PLAN_LABEL[plan]}
                         <ArrowRightIcon className="h-5 w-5" />
                       </>
                     )}
                   </button>
                 </PlanCard>
               ))}
+            </div>
+
+            <div className="mx-auto mt-5 flex max-w-4xl flex-col gap-4 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="font-display text-lg font-bold text-ink">
+                  Free trial, {FREE_TRIAL_DAYS} days
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  No card needed. {FREE_PERKS.join(", ")}. Choose Pro or Max when it ends to keep
+                  going.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => start("free")}
+                disabled={busy !== null}
+                className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy === "free" ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-ink" />
+                    Setting up…
+                  </>
+                ) : (
+                  <>
+                    Start free trial
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </>
+                )}
+              </button>
             </div>
 
             <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-x-4 gap-y-1">
@@ -244,7 +273,7 @@ export function OnboardingFlow({
               >
                 <BackIcon className="h-4 w-4" /> Back to the questions
               </button>
-              <p className="text-xs text-slate-500">You can cancel any time before you are charged.</p>
+              <p className="text-xs text-slate-500">Pro and Max are charged when they start. Cancel any time.</p>
             </div>
           </section>
         )}

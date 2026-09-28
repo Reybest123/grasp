@@ -21,7 +21,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <CurrencyProvider currency={currency}>
       <RouteFade>
-        <AppProviders expired={user?.expired ?? false} paymentFailed={user?.paymentFailed ?? false}>
+        <AppProviders
+          expired={user?.expired ?? false}
+          paymentFailed={user?.paymentFailed ?? false}
+          freeTrialEnded={user?.freeTrialEnded ?? false}
+        >
           {children}
         </AppProviders>
       </RouteFade>
