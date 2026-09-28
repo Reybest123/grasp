@@ -36,7 +36,7 @@ export const PLAN_LABEL: Record<Plan, string> = { pro: "Pro", max: "Max" };
  * actually pays. Every plan gives every student the same allowances, so there
  * is one budget, in one currency, and it is this one.
  */
-export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 5.49, max: 14.49 };
+export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 5.99, max: 14.49 };
 
 /**
  * What each plan costs in each currency a student can be charged in — the
@@ -48,8 +48,8 @@ export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 5.49, max: 14.49 };
  * same plan. They are chosen to sit near the anchor converted at the rate of
  * the day, and re-checked by hand when that drifts far enough to matter.
  *
- * At AUD 0.65 to the dollar the AUD prices come to about $5.19 and $13.00 —
- * under the anchor by roughly 5% on Pro and 10% on Max, so an Australian
+ * At AUD 0.65 to the dollar the AUD prices come to about $5.84 and $13.00 —
+ * under the anchor by roughly 3% on Pro and 10% on Max, so an Australian
  * student is the better deal. Worth knowing when the rate moves: the
  * allowances do not shrink with it, so a falling AUD eats margin rather than
  * service. At that rate a maxed-out Max paid in AUD costs about 54% of what it
@@ -57,7 +57,7 @@ export const PLAN_PRICE_USD: Record<Plan, number> = { pro: 5.49, max: 14.49 };
  */
 export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<Plan, number>> = {
   usd: PLAN_PRICE_USD,
-  aud: { pro: 7.99, max: 19.99 },
+  aud: { pro: 8.99, max: 19.99 },
 };
 
 /** How often a plan is billed, as it reads after "/" and "a". */
@@ -124,7 +124,7 @@ export const QUIZ_LIMIT: Record<Plan, number> = { pro: 10, max: 25 };
  * against the audio Whisper actually heard. A recording takes at least
  * LIMITS.recordingMinChargeSeconds.
  */
-export const RECORDING_SECONDS: Record<Plan, number> = { pro: 100 * 60, max: 300 * 60 };
+export const RECORDING_SECONDS: Record<Plan, number> = { pro: 120 * 60, max: 300 * 60 };
 
 /**
  * How much audio goes to Whisper at a time. Short enough that the notes feel
