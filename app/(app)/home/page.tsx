@@ -121,7 +121,9 @@ export default function HomePage() {
             the name in a frame later. */}
         {profileReady ? (
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">
-            {name ? `Welcome back, ${name}` : "Welcome back"}
+            {/* An account under 30 minutes old has never been away, so it is
+                greeted "Hello" rather than welcomed back. */}
+            {`${isNewAccount(profile.createdAt) ? "Hello" : "Welcome back"}${name ? `, ${name}` : ""}`}
           </h1>
         ) : (
           <Skeleton className="h-9 w-72 max-w-full" />
@@ -897,4 +899,11 @@ function Assessments({
       </div>
     </aside>
   );
+}
+
+const NEW_ACCOUNT_MS = 30 * 60 * 1000;
+
+function isNewAccount(createdAt: string): boolean {
+  const made = Date.parse(createdAt);
+  return Number.isFinite(made) && Date.now() - made < NEW_ACCOUNT_MS;
 }

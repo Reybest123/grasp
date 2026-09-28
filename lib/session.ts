@@ -61,6 +61,8 @@ export type SessionUser = {
   paymentFailed: boolean;
   /** `expired` is specifically the free trial running out: only changes the wording */
   freeTrialEnded: boolean;
+  /** ISO, when the account was made: a new account is greeted "Hello" rather than "Welcome back" */
+  createdAt: string;
 };
 
 /** The cookie holds the token; the database holds this. Email links too. */
@@ -155,7 +157,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
   try {
     const rows = (await sql`
       select u.id, u.email, u.name, u.email_verified_at, u.plan, u.trial_ends_at,
-             u.free_trial_started_at, u.currency, u.subscription_status,
+             u.free_trial_started_at, u.created_at, u.currency, u.subscription_status,
              s.expires_at, s.last_seen_at
       from sessions s
       join users u on u.id = s.user_id
@@ -169,6 +171,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       trial_ends_at: string | Date | null;
       free_trial_started_at: string | Date | null;
       currency: string | null;
+      created_at: string | Date;
       subscription_status: string | null;
       expires_at: string | Date;
       last_seen_at: string | Date;
@@ -221,6 +224,7 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
       freeTrialEndsAt: !forced && freeTrialEnds !== null ? new Date(freeTrialEnds).toISOString() : null,
       unlimited: admin?.unlimited === true,
       currency: isCurrency(row.currency) ? row.currency : null,
+      createdAt: new Date(row.created_at).toISOString(),
       expired: freeTrialEnded || (!forced && billed && needsRenewal(row.subscription_status)),
       paymentFailed: !forced && billed && isPastDue(row.subscription_status),
       freeTrialEnded,
