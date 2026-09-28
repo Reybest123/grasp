@@ -84,6 +84,7 @@ export function QuizRunner({
     // A rubric is the difference between "that reads fine" and the mark a
     // teacher would actually put on it, so marking gets the bank too.
     const { marks, cited, error: markError } = await markQuiz({
+      quizId: quiz.id,
       written: written.map((q) => ({
         id: q.id,
         question: q.question,

@@ -129,7 +129,7 @@ export function QuizCard({
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4">
-          {quiz.submitted ? (
+          {quiz.submitted && !quiz.retaken ? (
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={onOpen}
@@ -150,7 +150,7 @@ export function QuizCard({
               onClick={onOpen}
               className="rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
             >
-              {answered ? "Keep going" : "Start quiz"}
+              {quiz.submitted ? "Review answers" : answered ? "Keep going" : "Start quiz"}
             </button>
           )}
         </div>

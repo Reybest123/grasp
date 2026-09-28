@@ -261,6 +261,10 @@ create index if not exists quizzes_subject_idx on quizzes (subject_id, created_a
 -- rather than declared in the table body, which is a no-op on an existing table.
 alter table quizzes add column if not exists color_key text;
 
+-- A quiz can be retaken once. The server-side limit is the per-quiz marking
+-- count in `usage` (kind 'markq'); this is what hides the Retake button.
+alter table quizzes add column if not exists retaken boolean not null default false;
+
 -- Weekly plan allowances (§6), counted here rather than from `quizzes` or
 -- `notes`: a student can delete a quiz, and a deleted quiz must not hand its
 -- allowance back. One row per quiz generated and one per recording, whose

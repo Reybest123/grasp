@@ -158,6 +158,7 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
       builtWith: (q.built_with ?? undefined) as Quiz["builtWith"],
       markedWith: (q.marked_with ?? undefined) as Quiz["markedWith"],
       colorKey: q.color_key ? String(q.color_key) : undefined,
+      retaken: q.retaken ? true : undefined,
     })),
   }));
 }
@@ -285,21 +286,21 @@ export async function saveSubject(
         id: q.id, title: q.title, topics: q.topics ?? [], instructions: q.instructions ?? "",
         note_ids: q.noteIds ?? [], questions: q.questions ?? [], answers: q.answers ?? {},
         submitted: q.submitted, score: q.score ?? null, built_with: q.builtWith ?? null,
-        marked_with: q.markedWith ?? null, color_key: q.colorKey ?? null, created_at: noteStamp(q.created),
+        marked_with: q.markedWith ?? null, color_key: q.colorKey ?? null, retaken: Boolean(q.retaken), created_at: noteStamp(q.created),
       }));
       await sql`
         insert into quizzes (
           id, subject_id, title, topics, instructions, note_ids, questions, answers,
-          submitted, score, built_with, marked_with, color_key, created_at
+          submitted, score, built_with, marked_with, color_key, retaken, created_at
         )
         select
           r.id, ${subject.id}, r.title, r.topics, r.instructions, r.note_ids, r.questions, r.answers,
-          r.submitted, r.score, r.built_with, r.marked_with, r.color_key, r.created_at
+          r.submitted, r.score, r.built_with, r.marked_with, r.color_key, r.retaken, r.created_at
         from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb)
           as r(
             id text, title text, topics jsonb, instructions text, note_ids jsonb, questions jsonb,
             answers jsonb, submitted boolean, score jsonb, built_with jsonb, marked_with jsonb,
-            color_key text, created_at timestamptz
+            color_key text, retaken boolean, created_at timestamptz
           )
       `;
     }

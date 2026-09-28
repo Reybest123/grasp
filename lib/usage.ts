@@ -354,17 +354,53 @@ export async function claimLiveDraft(
 }
 
 /**
- * Reserves one quiz marking. A quiz can be marked, retaken and marked again,
- * so the weekly marking allowance is a multiple of the quiz allowance.
+ * Reserves one marking of one quiz. A quiz is marked once and may be retaken
+ * once, so each quiz can be marked at most CAPS.markingsPerQuiz times (a
+ * `markq` row per quiz, never pruned). Quiz ids are minted by the client, so a
+ * made-up id gets past that count; the weekly marking allowance, a multiple of
+ * the quiz allowance, is what bounds spending either way.
  */
 export async function claimMarking(
-  account: Account
+  account: Account,
+  quizId: string
 ): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
+  const noop = async () => {};
+  if (account.unlimited) return { ok: true, release: noop };
+
+  // One statement: the conflicting row is locked while it is updated, so two
+  // markings of one quiz fired together cannot both read a count of one.
+  const perQuiz = await query(
+    () => sql`
+      insert into usage (user_id, kind, ref)
+      values (${account.id}, 'markq', ${quizId})
+      on conflict (user_id, kind, ref) do update set units = usage.units + 1
+        where usage.units < ${CAPS.markingsPerQuiz}
+      returning id
+    `
+  );
+  if (!perQuiz.ok) return failed(perQuiz.error, perQuiz.status);
+  if ((perQuiz.data as unknown[]).length === 0) {
+    return capped("This quiz has already been retaken once, so it cannot be marked again.");
+  }
+  const releaseQuiz = async () => {
+    await query(
+      () => sql`
+        update usage set units = units - 1
+        where user_id = ${account.id} and kind = 'markq' and ref = ${quizId} and units > 0
+      `
+    );
+  };
+
   const ref = randomUUID();
   const claimed = await claim(account, "mark", ref);
-  if (!claimed.ok) return claimed;
-
-  if (!claimed.data) return refused("mark", await resetOf(account, "mark"));
+  if (!claimed.ok) {
+    await releaseQuiz();
+    return claimed;
+  }
+  if (!claimed.data) {
+    await releaseQuiz();
+    return refused("mark", await resetOf(account, "mark"));
+  }
 
   return {
     ok: true,
@@ -372,6 +408,7 @@ export async function claimMarking(
       await query(
         () => sql`delete from usage where user_id = ${account.id} and kind = 'mark' and ref = ${ref}`
       );
+      await releaseQuiz();
     },
   };
 }

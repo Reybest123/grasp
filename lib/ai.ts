@@ -379,6 +379,7 @@ export type QuizMark = { id: string; verdict: QuizVerdict; feedback: string };
  * choice never comes through here — it is marked client-side by index.
  */
 export async function markQuiz(params: {
+  quizId: string;
   written: { id: string; question: string; modelAnswer: string; answer: string }[];
   notes: NoteContext[];
   context: string;

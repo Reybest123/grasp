@@ -216,19 +216,8 @@ export function AuthForm({
       <BrandPanel signup={signup} />
 
       <div className="flex min-h-0 flex-col">
-        <header className="flex shrink-0 items-center justify-between px-6 py-3 lg:justify-end">
-          <span className="lg:hidden">
-            <Logo />
-          </span>
-          <p className="text-sm text-slate-500">
-            {signup ? "Already have an account? " : "New to Grasp? "}
-            <Link
-              href={signup ? "/login" : "/signup"}
-              className="font-semibold text-brand-700 underline-offset-4 hover:underline"
-            >
-              {signup ? "Log in" : "Create one"}
-            </Link>
-          </p>
+        <header className="flex shrink-0 items-center px-6 py-3 lg:hidden">
+          <Logo />
         </header>
 
         <section className="min-h-0 flex-1 overflow-y-auto px-6">
@@ -262,7 +251,7 @@ export function AuthForm({
               </p>
             )}
 
-            <form onSubmit={submit} noValidate className="mt-5">
+            <form onSubmit={submit} noValidate className="mt-7">
               {formError && <ErrorNote message={formError} className="mb-4" />}
 
               {signup && (
@@ -297,7 +286,7 @@ export function AuthForm({
                   !signup && (
                     <Link
                       href="/forgot-password"
-                      className="text-sm font-semibold text-brand-700 underline-offset-4 hover:underline"
+                      className="text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-ink"
                     >
                       Forgot password?
                     </Link>
@@ -318,7 +307,7 @@ export function AuthForm({
               <button
                 type="submit"
                 disabled={busy}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-2.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl border-b-4 border-brand-800 bg-brand-600 px-6 py-3.5 text-base font-semibold text-white transition hover:bg-brand-700 active:translate-y-0.5 active:border-b-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? (
                   <>
@@ -333,8 +322,18 @@ export function AuthForm({
               </button>
             </form>
 
+            <p className="mt-6 text-center text-sm text-slate-500">
+              {signup ? "Already have an account? " : "Don't have an account? "}
+              <Link
+                href={signup ? "/login" : "/signup"}
+                className="font-semibold text-ink underline underline-offset-2 transition hover:text-brand-700"
+              >
+                {signup ? "Log in" : "Sign up"}
+              </Link>
+            </p>
+
             {signup && (
-              <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">
+              <p className="mt-4 text-center text-xs leading-relaxed text-slate-500">
                 By creating an account you confirm you are 13 or older and agree to our{" "}
                 <Link href="/legal/terms" className="underline underline-offset-2 hover:text-slate-600">
                   Terms
@@ -440,15 +439,15 @@ export function Field({
 }) {
   const invalid = error !== undefined;
   const messageId = error ? `${id}-error` : undefined;
-  const className = `w-full rounded-xl border bg-white px-4 py-2 text-base text-ink outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+  const className = `w-full rounded-2xl border bg-white px-4 py-3 text-base text-ink outline-none transition placeholder:text-slate-400 focus:ring-4 ${
     invalid
       ? "border-red-400 focus:border-red-500 focus:ring-red-100"
       : "border-slate-300 focus:border-brand-500 focus:ring-brand-100"
   }`;
 
   return (
-    <div className="mt-2.5 first:mt-0">
-      <label htmlFor={id} className="mb-1 flex items-baseline justify-between text-sm font-semibold text-ink">
+    <div className="mt-5 first:mt-0">
+      <label htmlFor={id} className="mb-2 flex items-baseline justify-between text-[15px] font-medium text-ink">
         {label}
         {optional && <span className="text-xs font-normal text-slate-500">optional</span>}
         {aside}

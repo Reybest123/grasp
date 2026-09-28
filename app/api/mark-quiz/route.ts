@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const { written, notes, context, resources } = await req.json().catch(() => ({}));
+  const { quizId, written, notes, context, resources } = await req.json().catch(() => ({}));
 
   if (!Array.isArray(written) || written.length === 0) {
     return NextResponse.json({ marks: [] });
@@ -47,8 +47,13 @@ export async function POST(req: NextRequest) {
     })
     .join("\n\n");
 
-  // Retakes can be marked again, so marking has an allowance of its own.
-  const spend = await claimMarking(guard.user);
+  if (typeof quizId !== "string" || !quizId || quizId.length > 64) {
+    return NextResponse.json({ error: "Grasp could not tell which quiz this is." }, { status: 400 });
+  }
+
+  // A quiz is marked once and may be retaken once, so at most twice
+  // (LIMITS.markingsPerQuiz), and the week has its own marking allowance too.
+  const spend = await claimMarking(guard.user, quizId);
   if (!spend.ok) return spend.response;
 
   const result = await chatCompletion({

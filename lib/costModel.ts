@@ -50,7 +50,7 @@ export const LIMITS = {
   markModelAnswerChars: 1_500,
   markAnswerChars: 2_000,
   markOutputTokens: 6_000,
-  /** markings allowed per quiz generated, so a retake can be marked */
+  /** markings allowed per quiz: the first attempt and its one retake (enforced per quiz in claimMarking) */
   markingsPerQuiz: 2,
 
   quizExplainAnswerChars: 2_000,

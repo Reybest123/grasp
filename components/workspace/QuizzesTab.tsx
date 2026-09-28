@@ -117,7 +117,8 @@ export function QuizzesTab({
 
   /** Same questions, blank slate. The old answers and marks do not survive. */
   function retake(quiz: Quiz) {
-    updateQuiz(quiz.id, { answers: {}, submitted: false, score: undefined, markedWith: undefined });
+    if (quiz.retaken) return;
+    updateQuiz(quiz.id, { answers: {}, submitted: false, score: undefined, markedWith: undefined, retaken: true });
     setOpenId(quiz.id);
     // The card retaken from may be well down the grid; question 1 should not
     // open half off-screen.
@@ -214,7 +215,7 @@ export function QuizzesTab({
           pendingRetake?.score
             ? ` and the ${formatScore(pendingRetake.score.got)} out of ${pendingRetake.score.total} you scored`
             : ""
-        } will be cleared. The questions stay the same.`}
+        } will be cleared. The questions stay the same, and a quiz can only be retaken once.`}
         confirmLabel="Retake"
         onConfirm={() => {
           if (pendingRetake) retake(pendingRetake);

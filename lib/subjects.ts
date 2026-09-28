@@ -94,6 +94,8 @@ export type Quiz = {
   markedWith?: Citation[];
   /** key into SUBJECT_COLORS — optional, falls back to subject colour if not set */
   colorKey?: string;
+  /** a quiz can be retaken once; set when it has been */
+  retaken?: boolean;
 };
 
 export type Subject = {
