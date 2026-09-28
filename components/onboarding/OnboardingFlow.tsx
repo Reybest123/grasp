@@ -18,7 +18,7 @@ import { SetupAccountMenu } from "@/components/auth/SetupAccountMenu";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
 import { QUESTIONS, type OnboardingAnswers, type Question } from "@/lib/onboarding";
-import { FREE_PERKS, FREE_TRIAL_DAYS, PLANS, PLAN_LABEL, type Plan } from "@/lib/plan";
+import { FREE_TRIAL_DAYS, PLANS, PLAN_LABEL, type Plan } from "@/lib/plan";
 import { ArrowRightIcon, BackIcon, CheckIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
 
@@ -200,7 +200,7 @@ export function OnboardingFlow({
             </div>
           </section>
         ) : (
-          <section key="plans" className="rise mx-auto max-w-4xl px-6 py-6">
+          <section key="plans" className="rise mx-auto max-w-6xl px-6 py-6">
             <div className="text-center">
               <h1 className="text-3xl font-extrabold tracking-tight text-ink">Choose your plan</h1>
               <p className="mx-auto mt-2 max-w-md text-slate-600">
@@ -208,10 +208,10 @@ export function OnboardingFlow({
               </p>
             </div>
 
-            {error && <ErrorNote message={error} className="mx-auto mt-5 max-w-4xl" />}
+            {error && <ErrorNote message={error} className="mx-auto mt-5 max-w-6xl" />}
 
-            <div className="mx-auto mt-7 grid max-w-4xl gap-5 sm:grid-cols-2">
-              {PLANS.map((plan) => (
+            <div className="mx-auto mt-7 grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-3">
+              {(["free", ...PLANS] as Plan[]).map((plan) => (
                 <PlanCard key={plan} plan={plan} currency={currency} compact>
                   <button
                     type="button"
@@ -222,11 +222,11 @@ export function OnboardingFlow({
                     {busy === plan ? (
                       <>
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                        Taking you to checkout…
+                        {plan === "free" ? "Setting up…" : "Taking you to checkout…"}
                       </>
                     ) : (
                       <>
-                        Choose {PLAN_LABEL[plan]}
+                        {plan === "free" ? "Start free trial" : `Choose ${PLAN_LABEL[plan]}`}
                         <ArrowRightIcon className="h-5 w-5" />
                       </>
                     )}
@@ -235,37 +235,7 @@ export function OnboardingFlow({
               ))}
             </div>
 
-            <div className="mx-auto mt-5 flex max-w-4xl flex-col gap-4 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <h3 className="font-display text-lg font-bold text-ink">
-                  Free trial, {FREE_TRIAL_DAYS} days
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  No card needed. {FREE_PERKS.join(", ")}. Choose Pro or Max when it ends to keep
-                  going.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => start("free")}
-                disabled={busy !== null}
-                className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {busy === "free" ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-ink" />
-                    Setting up…
-                  </>
-                ) : (
-                  <>
-                    Start free trial
-                    <ArrowRightIcon className="h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <div className="mx-auto mt-4 flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1">
               <button
                 type="button"
                 onClick={() => goTo(PLANS_STEP - 1)}
