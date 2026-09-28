@@ -8,7 +8,7 @@ Grasp is an AI-powered note-taking website for students. The core differentiator
 
 Platform: **Website** (not a native app) — no app store fees, no OCR SDK needed, deploys on Railway.
 
-**Naming note:** Originally named "Notable," but two existing AI note-taking competitors (notableai.app and notableai.ca) already operate under that name in the same space — renamed to **Grasp** to avoid trademark/brand confusion risk.
+**Naming note:** Originally named "Notable," but two existing AI note-taking competitors (notableai.app and notableai.ca) already operate under that name in the same space — renamed to **Grasp** to avoid trademark/brand confusion risk. A trade mark search for "Grasp" on 2026-09-28 found no study tools under the name.
 
 ---
 

@@ -34,7 +34,7 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 - [ ] Statement descriptor: Settings, Business, Public details. Set it to `GRASPSTUDY` so the weekly charge is recognised on a bank statement instead of disputed.
 - [ ] Terms of Service URL in the same Public details page: `https://graspstudy.com/legal/terms`
 - [ ] Once there is an ABN and a business address: activate Stripe Tax, then set `STRIPE_TAX=on` on both Railway services. The rest of selling abroad (EU and UK VAT, US sales tax, a GDPR representative) is in `LAUNCH_PLAN.md`'s "Selling outside Australia", with when to do each.
-- [ ] Search IP Australia's trade mark database for "Grasp" before spending on ads
+- [x] Search for "Grasp" as a trade mark before spending on ads (2026-09-28: no study tools found under the name)
 
 ## Launch day
 
