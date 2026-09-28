@@ -1,6 +1,6 @@
 # Grasp launch checklist
 
-Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more; this is only what has to be done. Last updated 2026-09-26.
+Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more; this is only what has to be done. Last updated 2026-09-28.
 
 ## Already done
 
@@ -10,6 +10,9 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 - [x] Timetable read is once per account
 - [x] `www.graspstudy.com` redirects to `graspstudy.com` (Cloudflare Page Rule, forwarding URL `https://graspstudy.com/$1`), tested working 2026-09-26
 - [x] One shared database kept on purpose (CLAUDE.md section 12)
+- [x] Resend sending domain verified and `EMAIL_FROM` set (2026-09-23)
+- [x] A declined card locks the app and asks for a different card (2026-09-28)
+- [x] Checkout states the weekly price, renewal and how to cancel; plan-started and trial-reminder emails; EU and UK cancellation terms and a GDPR section; prices tax-inclusive with Stripe Tax ready to switch on (2026-09-28)
 
 ## Before Stripe live mode
 
@@ -21,7 +24,8 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 
 - [ ] Activate the Stripe account (live mode) and add the bank account for payouts
 - [ ] Run `npm run billing:setup` with the live secret key to create the live weekly Prices (each one in USD and AUD). It prints the env lines.
-- [ ] On Railway, on both services, set the four live values: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_MAX`
+- [ ] On Railway, set the four live values on the `grasp` service: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_MAX`. Staging reads these from production, so it will then take real cards too; to keep staging on test cards, give it its own test-mode values instead of the references.
+- [ ] Delete your test accounts (or reset the database) after switching: they hold test-mode Stripe customer ids, which live Stripe refuses
 - [ ] Create the live webhook endpoint at `https://graspstudy.com/api/webhooks/stripe` with exactly four events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end` (the last one sends the trial reminder email). Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
 - [ ] Buy Pro yourself with a real card. Check the plan shows on the Plans page and the trial end date is right.
 - [ ] Buy Max yourself. Then switch between the two once. Then cancel and resume.
