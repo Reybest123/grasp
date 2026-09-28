@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { destroySession, requireUser } from "@/lib/session";
-import { cancelImmediately, isExpired } from "@/lib/billing";
+import { cancelImmediately, needsRenewal } from "@/lib/billing";
 
 export async function DELETE(req: NextRequest) {
   // A confirmed account that has not chosen a plan can delete itself from the
@@ -32,11 +32,13 @@ export async function DELETE(req: NextRequest) {
   });
   if (!found.ok) return NextResponse.json({ error: found.error }, { status: found.status });
 
-  // Checked here as well as in Settings. A subscription Stripe has already
-  // ended outright never had a cancel date written, and there is nothing left
-  // to cancel on the Plans page, so it does not block deletion.
+  // Checked here as well as in Settings. A subscription that needs renewing
+  // (ended outright, or a failed card) never had a cancel date written, and
+  // Grasp shows the renew screen in place of the Plans page's actual Cancel
+  // button while it is in that state — so it does not block deletion, and
+  // cancelImmediately below cleans up whatever Stripe still has open.
   const row = found.data;
-  if (row?.plan && !row.plan_cancelled_at && !isExpired(row.subscription_status)) {
+  if (row?.plan && !row.plan_cancelled_at && !needsRenewal(row.subscription_status)) {
     return NextResponse.json(
       { error: "Cancel your plan on the Plans page before deleting your account.", planActive: true },
       { status: 409 }

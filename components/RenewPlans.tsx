@@ -1,7 +1,7 @@
 "use client";
 
-// What every page in the shell but Settings shows once a plan has ended
-// (AppShell). The header and rail stay, so logging out and deleting the account
+// What every page in the shell but Settings shows once a plan has ended, or
+// its card was declined (AppShell). The header and rail stay, so logging out and deleting the account
 // from Settings work as normal. Choosing a plan always opens a fresh Stripe
 // Checkout Session, since Stripe needs a card again for a subscription that no
 // longer exists, and no trial is offered: the account has already had its one.
@@ -13,7 +13,7 @@ import { ArrowRightIcon } from "@/components/icons";
 import { useCurrency } from "@/lib/currencyStore";
 import { PLANS, PLAN_LABEL, type Plan } from "@/lib/plan";
 
-export function RenewPlans() {
+export function RenewPlans({ paymentFailed }: { paymentFailed: boolean }) {
   const currency = useCurrency();
   const [busy, setBusy] = useState<Plan | null>(null);
   const [error, setError] = useState("");
@@ -52,9 +52,13 @@ export function RenewPlans() {
   return (
     <section className="px-6 py-10 sm:px-8">
       <div className="text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink">Your plan has ended</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink">
+          {paymentFailed ? "Your card was declined" : "Your plan has ended"}
+        </h1>
         <p className="mx-auto mt-2 max-w-md text-slate-600">
-          Choose a plan to keep using Grasp. Your subjects, notes and quizzes are all still here.
+          {paymentFailed
+            ? "Please contact your bank, or choose a plan below and pay with a different card. Your subjects, notes and quizzes are all still here."
+            : "Choose a plan to keep using Grasp. Your subjects, notes and quizzes are all still here."}
         </p>
       </div>
 

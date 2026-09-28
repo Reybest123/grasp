@@ -20,7 +20,7 @@ import { isPlan, type Plan } from "@/lib/plan";
 import { isCurrency, type Currency } from "@/lib/currency";
 import { SIGNED_OUT_MESSAGE } from "@/lib/accounts";
 import { readAdmin } from "@/lib/admin";
-import { isExpired } from "@/lib/billing";
+import { needsRenewal, isPastDue } from "@/lib/billing";
 
 export { SESSION_COOKIE };
 
@@ -53,8 +53,10 @@ export type SessionUser = {
   unlimited: boolean;
   /** what the account is billed in; null until it first reaches Stripe Checkout */
   currency: Currency | null;
-  /** the account had a plan and its subscription has ended; every page but Settings asks it to renew */
+  /** the account had a plan and its subscription needs renewing (ended, or a failed card); every page but Settings asks it to renew */
   expired: boolean;
+  /** `expired` is specifically a failed/retrying card, not a plan that ran out or was cancelled: only changes the wording asking to renew */
+  paymentFailed: boolean;
 };
 
 /** The cookie holds the token; the database holds this. Email links too. */
@@ -202,7 +204,8 @@ async function lookupSession(): Promise<SessionUser | "none" | "error"> {
           : new Date(row.trial_ends_at).toISOString(),
       unlimited: admin?.unlimited === true,
       currency: isCurrency(row.currency) ? row.currency : null,
-      expired: !forced && plan !== null && isExpired(row.subscription_status),
+      expired: !forced && plan !== null && needsRenewal(row.subscription_status),
+      paymentFailed: !forced && plan !== null && isPastDue(row.subscription_status),
     };
   } catch (err) {
     console.error("[grasp] session lookup failed:", err);

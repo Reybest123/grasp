@@ -20,7 +20,7 @@ import { track } from "@/lib/events";
 import { query, sql } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { parseAnswers } from "@/lib/onboarding";
-import { isExpired, changePlan, createCheckoutSession, readBillingRow } from "@/lib/billing";
+import { isPastDue, needsRenewal, changePlan, cancelImmediately, createCheckoutSession, readBillingRow } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
 import { isPlan } from "@/lib/plan";
 import { resolveCurrency } from "@/lib/currencyServer";
@@ -55,13 +55,25 @@ export async function POST(req: NextRequest) {
   const billing = await readBillingRow(guard.user.id);
   if (!billing.ok) return NextResponse.json({ error: billing.error }, { status: billing.status });
 
-  const hasActiveSubscription =
-    billing.data?.stripeSubscriptionId && !isExpired(billing.data.subscriptionStatus);
+  const subscriptionId = billing.data?.stripeSubscriptionId ?? null;
+  const status = billing.data?.subscriptionStatus ?? null;
+  const hasActiveSubscription = subscriptionId && !needsRenewal(status);
 
   if (hasActiveSubscription) {
     const switched = await changePlan(guard.user.id, plan);
     if (!switched.ok) return NextResponse.json({ error: switched.error }, { status: 502 });
     return NextResponse.json({ ok: true });
+  }
+
+  // A subscription that still exists in Stripe but needs renewing (the card
+  // failed, so it is past_due or unpaid rather than cancelled outright) is
+  // ended here before a fresh one starts, so choosing a plan while locked out
+  // does not leave two subscriptions running on the same customer.
+  if (subscriptionId && isPastDue(status) && !(await cancelImmediately(guard.user.id))) {
+    return NextResponse.json(
+      { error: "Grasp could not reach Stripe just now. Try again in a moment." },
+      { status: 502 }
+    );
   }
 
   const returnTo =

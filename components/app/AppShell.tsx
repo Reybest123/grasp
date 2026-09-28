@@ -42,7 +42,15 @@ export function useChrome(): Chrome {
   return ctx;
 }
 
-export function AppShell({ expired, children }: { expired: boolean; children: React.ReactNode }) {
+export function AppShell({
+  expired,
+  paymentFailed,
+  children,
+}: {
+  expired: boolean;
+  paymentFailed: boolean;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { subjects, updateSubject, removeSubject, saveFailed } = useSubjects();
@@ -116,7 +124,11 @@ export function AppShell({ expired, children }: { expired: boolean; children: Re
           {/* An ended plan keeps the shell, so the student can still log out or
               go to Settings, but every other page asks them to choose a plan. */}
           <PageTransition>
-            {expired && !pathname.startsWith("/settings") ? <RenewPlans /> : children}
+            {expired && !pathname.startsWith("/settings") ? (
+              <RenewPlans paymentFailed={paymentFailed} />
+            ) : (
+              children
+            )}
           </PageTransition>
         </main>
       </div>

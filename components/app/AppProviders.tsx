@@ -19,10 +19,13 @@ import { LimitDialog } from "@/components/app/LimitDialog";
 
 export function AppProviders({
   expired,
+  paymentFailed,
   children,
 }: {
-  /** the plan has ended: every page but Settings shows the plans instead */
+  /** the plan needs renewing (ended, or a failed card): every page but Settings shows the plans instead */
   expired: boolean;
+  /** narrows `expired` to "the card failed", for the wording on that screen */
+  paymentFailed: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -33,7 +36,7 @@ export function AppProviders({
           {/* Inside the recording provider so its link to /plans can go through
               the recording guard like every other way off the Record tab. */}
           <LimitDialog />
-          <AppShell expired={expired}>{children}</AppShell>
+          <AppShell expired={expired} paymentFailed={paymentFailed}>{children}</AppShell>
         </RecordingProvider>
       </SubjectsProvider>
     </ProfileProvider>

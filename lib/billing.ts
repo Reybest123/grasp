@@ -117,6 +117,24 @@ export function isExpired(status: string | null): boolean {
 }
 
 /**
+ * A subscription that still exists in Stripe but cannot be trusted to keep
+ * paying: the card failed and Stripe is retrying (`past_due`), or the
+ * retries ran out without Stripe cancelling it outright (`unpaid`). Access is
+ * locked the same as a plan that has fully ended (lib/session.ts) — the risk
+ * to Grasp is the same, a plan running for free — but unlike a cancelled
+ * subscription this one is not gone, so /api/checkout cancels it outright
+ * before a fresh one can start, rather than leaving two on the same customer.
+ */
+export function isPastDue(status: string | null): boolean {
+  return status === "past_due" || status === "unpaid";
+}
+
+/** Locks the account out (lib/session.ts's `expired`) until this is put right. */
+export function needsRenewal(status: string | null): boolean {
+  return isExpired(status) || isPastDue(status);
+}
+
+/**
  * Finds or creates the Stripe Customer behind an account, and stores the id
  * the first time. A student who abandons Checkout and comes back still gets
  * the same customer rather than a fresh one each time.
@@ -327,18 +345,25 @@ export async function cancelAtPeriodEnd(
   }
 }
 
-/** Cancels immediately, called only when the account itself is being deleted. */
-export async function cancelImmediately(userId: string): Promise<void> {
+/**
+ * Cancels immediately: when the account is being deleted, or a declined
+ * subscription is being replaced. Returns false when Stripe could not be
+ * reached, so a caller about to start a new subscription can stop first.
+ */
+export async function cancelImmediately(userId: string): Promise<boolean> {
   const billing = await readBillingRow(userId);
-  const subscriptionId = billing.ok ? billing.data?.stripeSubscriptionId : null;
-  if (!subscriptionId || !hasBilling()) return;
+  if (!billing.ok) return false;
+  const subscriptionId = billing.data?.stripeSubscriptionId;
+  if (!subscriptionId || !hasBilling()) return true;
   try {
     await stripe().subscriptions.cancel(subscriptionId);
+    return true;
   } catch (err) {
     // Best effort: the account row is about to be deleted either way, and a
     // subscription Stripe could not cancel here still shows up in the Stripe
     // dashboard for manual cleanup rather than silently disappearing.
-    console.error("[grasp] Stripe subscription cancel on account delete failed:", err);
+    console.error("[grasp] Stripe subscription cancel failed:", err);
+    return false;
   }
 }
 
@@ -410,9 +435,9 @@ async function writeUser(
   const trialEndsAt = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
   const currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
 
-  // An ended subscription never overwrites a different one: a late or retried
-  // event for the old subscription of a student who has since paid again would
-  // otherwise mark the new one ended and lock them out.
+  // An ended or declined subscription never overwrites a different one: a late
+  // or retried event for the old subscription of a student who has since paid
+  // again would otherwise mark the new one ended and lock them out.
   //
   // Two statements rather than one with a SQL `case`, so "keep the existing
   // cancel date" can be expressed with `coalesce(plan_cancelled_at, now())` —
@@ -428,7 +453,7 @@ async function writeUser(
           plan_cancelled_at = coalesce(plan_cancelled_at, now()),
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
-        and (${subscription.status} <> 'canceled'
+        and (${subscription.status} not in ('canceled', 'past_due', 'unpaid')
              or stripe_subscription_id is null
              or stripe_subscription_id = ${subscription.id})
     `;
@@ -442,7 +467,7 @@ async function writeUser(
           plan_cancelled_at = null,
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
-        and (${subscription.status} <> 'canceled'
+        and (${subscription.status} not in ('canceled', 'past_due', 'unpaid')
              or stripe_subscription_id is null
              or stripe_subscription_id = ${subscription.id})
     `;

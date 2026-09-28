@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
-import { cancelAtPeriodEnd, isExpired, readBillingRow } from "@/lib/billing";
+import { cancelAtPeriodEnd, needsRenewal, readBillingRow } from "@/lib/billing";
 
 async function status(userId: string) {
   const found = await readBillingRow(userId);
@@ -19,7 +19,7 @@ async function status(userId: string) {
     cancelledAt: found.data?.cancelledAt ?? null,
     subscriptionStatus: found.data?.subscriptionStatus ?? null,
     currentPeriodEnd: found.data?.currentPeriodEnd ?? null,
-    expired: isExpired(found.data?.subscriptionStatus ?? null),
+    expired: needsRenewal(found.data?.subscriptionStatus ?? null),
   };
 }
 
