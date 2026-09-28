@@ -194,7 +194,9 @@ export default function Terms() {
         <p>
           As far as the law allows, Grasp is not responsible for indirect losses, or for losses
           that come from relying on AI-generated content, such as a result in a test or exam.
-          Nothing in these terms excludes, restricts or changes any right or remedy you have under
+          Otherwise, and again as far as the law allows, Grasp&apos;s total liability to you for
+          anything arising from Grasp or these terms is limited to the amount you paid Grasp in
+          the 12 months before the claim arose. Nothing in these terms excludes, restricts or changes any right or remedy you have under
           the Australian Consumer Law or any other law that cannot legally be excluded.
         </p>
       </LegalSection>
