@@ -191,7 +191,7 @@ export function QuizSetup({
         {shown && <ErrorNote message={shown} className="mt-4" />}
         <p className="mt-1 text-sm text-slate-500">
           {hasNotes
-            ? "Built from your own notes — not a generic question bank."
+            ? "Built from your own notes."
             : "You have not written any notes for this subject yet. Say what the quiz should cover under Anything else, and once you have notes, quizzes come straight from them."}
         </p>
 
@@ -360,8 +360,6 @@ export function QuizSetup({
           </p>
         </section>
 
-        {/* Beside the button that was pressed, not at the top of a long form. */}
-        {shown && <ErrorNote message={shown} className="mt-7" />}
 
         <button
           onClick={generate}

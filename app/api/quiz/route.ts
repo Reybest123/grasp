@@ -75,8 +75,15 @@ export async function POST(req: NextRequest) {
   // alone is not enough — that is a quiz on nothing in particular. Every new
   // subject starts with one blank note, so "a note was picked" is not the test;
   // whether any note has a body is.
+  // A body counts only once it holds a real word (four letters or more) or a
+  // few words, so a stray "jj" is not taken as material and the model is not
+  // left to fall back on the subject's name.
   const hasNoteText = Array.isArray(notes)
-    && (notes as { body?: unknown }[]).some((n) => String(n?.body ?? "").trim().length > 0);
+    && (notes as { body?: unknown }[]).some((n) => {
+      const text = String(n?.body ?? "").replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi, " ");
+      const words = text.match(/[\p{L}\p{N}]+/gu) ?? [];
+      return words.length >= 3 || words.some((w) => w.length >= 4);
+    });
   const insufficient = NextResponse.json(
     {
       insufficient: true,
@@ -117,7 +124,7 @@ export async function POST(req: NextRequest) {
         content:
           'You are Grasp, generating a personalized quiz for a student. ' +
           'First decide whether you have something to quiz on. That is any of: notes with real teachable content in them; the Resource Bank documents, if any are given; or a topic the student names, in their focus instructions, in the topics list, or as the title of a note (for example "biology", "photosynthesis", "the causes of World War One"). ' +
-          'The subject name alone is not something to quiz on. Instructions that name no topic are not either: gibberish, a single stray word that is not a topic, or requests about the quiz rather than its content such as "make it hard" or "a good quiz". A note titled "Untitled note" with nothing under it is empty. ' +
+          'The subject name alone is not something to quiz on. Instructions that name no topic are not either: gibberish, a single stray word that is not a topic, or requests about the quiz rather than its content such as "make it hard" or "a good quiz". A note titled "Untitled note" with nothing under it is empty, and so is a note holding only a few random letters or keyboard mashing such as "jj" or "asdf". Never fall back on the subject name to write a generic quiz. ' +
           'Thin but real notes are enough: do not refuse because the notes are short. ' +
           'If there is nothing to quiz on, respond ONLY with {"insufficient":true} and write no questions. ' +
           'Otherwise: when the notes have real content, every question must be answerable from them, unless the student asks in their instructions to go wider. When there are no usable notes, write the questions on the topic the student named, or on the Resource Bank documents, at a normal school level, and keep them general rather than pretending to know what the class has covered. ' +
