@@ -3,7 +3,7 @@
 // The "what should this quiz be?" form. Full-area rather than a modal — it is
 // the whole job while you're on it, and a dialog would only shrink it.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Note, Subject } from "@/lib/subjects";
 import type { QuizCounts } from "@/lib/ai";
 import type { ResourceBrief } from "@/lib/resources";
@@ -12,6 +12,9 @@ import { DEFAULT_PLAN, PLAN_LABEL, quizLimit } from "@/lib/plan";
 import { BankIcon, MinusIcon, PlusIcon, SparkleIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
 import { WaitingState } from "@/components/WaitingState";
+
+const NO_NOTES_MESSAGE =
+  "You haven't selected any notes, so Grasp doesn't know what to quiz you on. Please select notes or type something in the Anything else box.";
 
 const MAX_PER_KIND = 10;
 const MAX_TOTAL = 20;
@@ -121,7 +124,34 @@ export function QuizSetup({
 
   const total = counts.mcq + counts.short + counts.long;
   const overCap = total > MAX_TOTAL;
-  const noNotesPicked = hasNotes && noteIds.length === 0;
+  // Typing what to cover is enough to go on without any notes.
+  const noNotesPicked = hasNotes && noteIds.length === 0 && !instructions.trim();
+  // Set when Generate is pressed with a problem the form can see for itself,
+  // so the button stays pressable and says why instead of sitting greyed out.
+  const [formError, setFormError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
+  const shown = formError || error;
+
+  function generate() {
+    const problem = noNotesPicked
+      ? NO_NOTES_MESSAGE
+      : overCap
+        ? `You are trying to create a ${total} question quiz. Please keep it to ${MAX_TOTAL} or fewer.`
+        : total === 0
+          ? "Add at least one question to the quiz."
+          : "";
+    setFormError(problem);
+    if (problem) {
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    onGenerate({ name, topics, instructions, noteIds, counts, resourceIds });
+  }
+
+  // A fixed problem clears its message.
+  useEffect(() => {
+    if (formError && !noNotesPicked && !overCap && total > 0) setFormError("");
+  }, [formError, noNotesPicked, overCap, total]);
 
   function toggleTopic(t: string) {
     setTopics((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
@@ -153,8 +183,12 @@ export function QuizSetup({
 
   return (
     <div>
-      <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <div
+        ref={topRef}
+        className="mx-auto max-w-2xl scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+      >
         <h2 className="text-xl font-bold tracking-tight text-ink">New quiz</h2>
+        {shown && <ErrorNote message={shown} className="mt-4" />}
         <p className="mt-1 text-sm text-slate-500">
           {hasNotes
             ? "Built from your own notes — not a generic question bank."
@@ -224,9 +258,9 @@ export function QuizSetup({
                 );
               })}
             </div>
-            {noNotesPicked && (
+            {noNotesPicked && !formError && (
               <p className="mt-2 text-xs font-medium text-amber-700">
-                Pick at least one note, or the quiz has nothing to draw on.
+                {NO_NOTES_MESSAGE}
               </p>
             )}
           </section>
@@ -256,9 +290,9 @@ export function QuizSetup({
               onChange={(n) => setCounts((c) => ({ ...c, long: n }))}
             />
           </div>
-          {overCap && (
+          {overCap && !formError && (
             <p className="mt-2 text-xs font-medium text-amber-700">
-              That is {total} questions. Keep it to {MAX_TOTAL} or fewer.
+              You are trying to create a {total} question quiz. Please keep it to {MAX_TOTAL} or fewer.
             </p>
           )}
         </section>
@@ -327,11 +361,10 @@ export function QuizSetup({
         </section>
 
         {/* Beside the button that was pressed, not at the top of a long form. */}
-        {error && <ErrorNote message={error} className="mt-7" />}
+        {shown && <ErrorNote message={shown} className="mt-7" />}
 
         <button
-          onClick={() => onGenerate({ name, topics, instructions, noteIds, counts, resourceIds })}
-          disabled={total === 0 || overCap || noNotesPicked}
+          onClick={generate}
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60 disabled:hover:bg-brand-600"
         >
           <SparkleIcon className="h-4 w-4" />

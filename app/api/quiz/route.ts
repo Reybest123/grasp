@@ -80,9 +80,8 @@ export async function POST(req: NextRequest) {
   const insufficient = NextResponse.json(
     {
       insufficient: true,
-      error: hasNoteText
-        ? "There isn't enough in the notes you picked to write a quiz. Add more to them, or say what the quiz should cover under Anything else."
-        : 'Grasp needs something to write a quiz on. Pick notes with something in them, or say what the quiz should cover under Anything else, for example "photosynthesis".',
+      error:
+        "Grasp could not create a quiz with what it was given. Please add more detail to your notes, or say what the quiz should cover in the Anything else box.",
     },
     { status: 422 }
   );
