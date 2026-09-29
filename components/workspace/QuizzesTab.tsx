@@ -169,7 +169,7 @@ export function QuizzesTab({
           onClick={openSetup}
         >
           {notes.length
-            ? "Questions written from your own notes for this subject — pick the topics, choose how many of each type, and Grasp marks it when you're done."
+            ? "Questions are written from your own notes of this subject. Pick the topics, choose how many of each type, and Grasp marks it when you're done."
             : "Choose your question mix and Grasp writes the quiz. Once you have notes for this subject, quizzes come straight from what you've actually written."}
         </EmptyTab>
       ) : (

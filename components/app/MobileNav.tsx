@@ -93,7 +93,7 @@ export function MobileNav({ expired, onLogOut }: { expired: boolean; onLogOut: (
     guard(() => router.push(href));
   };
 
-  const letter = monogram(profile.name);
+  const letter = monogram(profile.name, profile.email);
 
   return (
     <>

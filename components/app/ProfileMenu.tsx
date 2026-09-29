@@ -34,7 +34,7 @@ export function ProfileMenu({ onLogOut }: { onLogOut: () => void }) {
     };
   }, [open]);
 
-  const letter = monogram(profile.name);
+  const letter = monogram(profile.name, profile.email);
   const avatar = (size: string) => (
     <span
       className={`grid ${size} shrink-0 place-items-center rounded-full bg-ink text-sm font-bold text-white`}

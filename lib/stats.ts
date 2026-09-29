@@ -10,6 +10,7 @@
 // claim; `weekActivity` documents the one place that matters.
 
 import type { Subject } from "@/lib/subjects";
+import { isEmptyHtml } from "@/lib/richText";
 
 /**
  * The 0.8 / 0.5 bands the quiz score chip and question borders already use.
@@ -152,6 +153,8 @@ export function weekActivity(subjects: Subject[], now: Date, days = 7): Activity
 
   for (const subject of subjects) {
     for (const note of subject.notes) {
+      // A blank note is the one every new notebook starts with, not study.
+      if (isEmptyHtml(note.body)) continue;
       const bucket = bucketFor(note.updated);
       if (!bucket) continue;
       bucket.notes += 1;
@@ -178,6 +181,30 @@ export function activeDays(week: ActivityDay[]): number {
  * does not break it — the day is not over yet — so the count starts from
  * yesterday instead.
  */
+/**
+ * Days in a row, ending today or yesterday, with a note written or a quiz
+ * made. Unlike currentStreak it is not capped at the week, so it can read 369.
+ */
+export function studyStreak(subjects: Subject[], now: Date): number {
+  const days = new Set<string>();
+  const add = (iso: string) => {
+    const ms = new Date(iso).getTime();
+    if (Number.isFinite(ms)) days.add(dayKey(new Date(ms)));
+  };
+  for (const subject of subjects) {
+    for (const note of subject.notes) if (!isEmptyHtml(note.body)) add(note.updated);
+    for (const quiz of subject.quizzes) add(quiz.created);
+  }
+  const base = startOfDay(now);
+  let i = days.has(dayKey(base)) ? 0 : 1;
+  let n = 0;
+  while (days.has(dayKey(new Date(base.getFullYear(), base.getMonth(), base.getDate() - i)))) {
+    n += 1;
+    i += 1;
+  }
+  return n;
+}
+
 export function currentStreak(week: ActivityDay[]): number {
   let i = week.length - 1;
   if (i >= 0 && week[i].today && week[i].total === 0) i -= 1;
@@ -222,7 +249,7 @@ export function subjectCoverage(subjects: Subject[], now: Date, days = 7): Cover
   let touched = 0;
   for (const subject of subjects) {
     const active =
-      subject.notes.some((n) => inWindow(n.updated)) ||
+      subject.notes.some((n) => !isEmptyHtml(n.body) && inWindow(n.updated)) ||
       subject.quizzes.some((q) => inWindow(q.created));
     if (active) touched += 1;
     else quiet.push(subject);

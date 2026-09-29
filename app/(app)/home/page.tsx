@@ -19,12 +19,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSubjects, useNow, type NewSubject } from "@/lib/subjectsStore";
 import { TimetableDialog } from "@/components/onboarding/TimetableDialog";
 import { useRecording } from "@/lib/recordingStore";
-import { useProfile, firstName } from "@/lib/profileStore";
+import { useProfile } from "@/lib/profileStore";
 import { examStatusesAcross, DAY_SHORT, type Exam } from "@/lib/schedule";
 import {
-  activeDays,
   bandOf,
-  currentStreak,
+  studyStreak,
   subjectCoverage,
   subjectUnderstanding,
   understanding,
@@ -37,7 +36,7 @@ import {
   type Coverage,
   type Understanding,
 } from "@/lib/stats";
-import { DEFAULT_PLAN, formatCount, formatDuration, planName } from "@/lib/plan";
+import { formatCount, formatDuration } from "@/lib/plan";
 import { fetchUsage, timetableAvailable, type Allowance, type Usage } from "@/lib/ai";
 import { AddAssessmentDialog } from "@/components/app/AddAssessmentDialog";
 import { AssessmentMenu } from "@/components/app/AssessmentMenu";
@@ -68,7 +67,6 @@ const marksLabel = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1
 export default function HomePage() {
   const router = useRouter();
   const { subjects, ready, loadError, updateSubject, replaceSubjects } = useSubjects();
-  const { profile, ready: profileReady } = useProfile();
   const { guard } = useRecording();
   const now = useNow();
   // null while closed; `editing` is null when adding a new assessment.
@@ -76,7 +74,6 @@ export default function HomePage() {
     null
   );
 
-  const name = firstName(profile.name);
   const hasSubjects = subjects.length > 0;
 
   // Everything dated is gated on the client-only clock, so none of it renders
@@ -115,21 +112,7 @@ export default function HomePage() {
   const open = (id: string) => guard(() => router.push(`/workspace/${id}`));
 
   return (
-    <section className="flex flex-col px-6 py-6 sm:px-8 lg:h-[calc(100dvh-69px)] lg:overflow-hidden">
-      <div className="shrink-0 border-b border-slate-200 pb-5">
-        {/* Wait for the account rather than greeting nobody and then swapping
-            the name in a frame later. */}
-        {profileReady ? (
-          <h1 className="text-3xl font-extrabold tracking-tight text-ink">
-            {/* An account under 30 minutes old has never been away, so it is
-                greeted "Hello" rather than welcomed back. */}
-            {`${isNewAccount(profile.createdAt) ? "Hello" : "Welcome back"}${name ? `, ${name}` : ""}`}
-          </h1>
-        ) : (
-          <Skeleton className="h-9 w-72 max-w-full" />
-        )}
-      </div>
-
+    <section className="flex flex-col px-6 pb-6 pt-1 sm:px-8 lg:h-[calc(100dvh-69px)] lg:overflow-hidden">
       {!ready ? (
         <HomeSkeleton />
       ) : loadError ? (
@@ -138,7 +121,9 @@ export default function HomePage() {
         <NoSubjects />
       ) : (
         <>
-          {week && coverage && <StatRow subjects={subjects} week={week} coverage={coverage} />}
+          {week && coverage && now && (
+            <StatRow subjects={subjects} week={week} coverage={coverage} streak={studyStreak(subjects, now)} />
+          )}
 
           {/* One implicit row sized to the space left, so the meters can fill it
               and the assessments card can scroll within it. */}
@@ -302,13 +287,14 @@ function StatRow({
   subjects,
   week,
   coverage,
+  streak,
 }: {
   subjects: Subject[];
   week: ActivityDay[];
   coverage: Coverage;
+  streak: number;
 }) {
   const marks = understanding(subjects);
-  const days = activeDays(week);
 
   return (
     <div className="mt-5 grid shrink-0 gap-4 sm:grid-cols-3">
@@ -337,16 +323,20 @@ function StatRow({
       />
 
       <StatTile
-        value={days / WEEK}
-        tone={days ? "text-brand-500" : "text-slate-200"}
+        value={Math.min(streak, WEEK) / WEEK}
+        tone={streak ? "text-brand-500" : "text-slate-200"}
         center={(t) => (
-          <span className={`text-lg font-bold tabular-nums ${days ? "text-ink" : "text-slate-300"}`}>
-            {Math.round(days * t)}
+          <span
+            className={`font-bold tabular-nums ${streak >= 1000 ? "text-xs" : streak >= 100 ? "text-sm" : "text-lg"} ${
+              streak ? "text-ink" : "text-slate-300"
+            }`}
+          >
+            {Math.round(streak * t)}
           </span>
         )}
-        label="Study this week"
-        sub={days ? `of the last ${WEEK} days had work on them` : "Nothing touched in the last week"}
-        detail={<StudyDetail week={week} />}
+        label="Study streak"
+        sub={streak ? `day${streak === 1 ? "" : "s"} in a row with work on them` : "Write a note or make a quiz to start one"}
+        detail={<StudyDetail week={week} streak={streak} />}
       />
 
       {/* Not a second copy of the quiz allowance — that is a meter now, and a
@@ -489,8 +479,7 @@ function UnderstandingDetail({
 }
 
 /** Which of the seven days had work on them, and the run leading up to today. */
-function StudyDetail({ week }: { week: ActivityDay[] }) {
-  const streak = currentStreak(week);
+function StudyDetail({ week, streak }: { week: ActivityDay[]; streak: number }) {
   return (
     <>
       <div className="flex justify-between gap-1">
@@ -583,7 +572,6 @@ type MeterRow = {
  */
 function WeekAllowances() {
   const { profile } = useProfile();
-  const planLabel = planName(profile.plan ?? DEFAULT_PLAN, profile.trialEndsAt);
 
   const [usage, setUsage] = useState<Usage | null>(null);
   const [failed, setFailed] = useState(false);
@@ -641,13 +629,6 @@ function WeekAllowances() {
     <>
       <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">This week</h2>
-        <Link
-          href="/plans"
-          className="rounded text-xs text-slate-500 underline-offset-2 transition hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
-        >
-          {profile.unlimited ? "Unlimited mode" : `Your allowances on ${planLabel}`} · a rolling{" "}
-          {WEEK} days
-        </Link>
       </div>
 
       <div
@@ -827,7 +808,7 @@ function Assessments({
         {listed.length === 0 ? (
           <div className="my-auto px-3 py-6 text-center">
             <p className="text-sm font-semibold text-ink">No assessments added</p>
-            <p className="mt-1 text-xs text-slate-500">Add one and Grasp counts down to it.</p>
+            <p className="mt-1 text-xs text-slate-500">Create a new assessment to track your study progress.</p>
             <button
               onClick={onAdd}
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700"
@@ -899,11 +880,4 @@ function Assessments({
       </div>
     </aside>
   );
-}
-
-const NEW_ACCOUNT_MS = 30 * 60 * 1000;
-
-function isNewAccount(createdAt: string): boolean {
-  const made = Date.parse(createdAt);
-  return Number.isFinite(made) && Date.now() - made < NEW_ACCOUNT_MS;
 }

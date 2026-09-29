@@ -137,6 +137,8 @@ export function firstName(name: string): string {
 }
 
 /** The header avatar's letter. Empty until a name is set, so the caller decides. */
-export function monogram(name: string): string {
-  return name.trim().charAt(0).toUpperCase();
+/** The name's first letter, else the email's; a digit gives none (the neutral dot). */
+export function monogram(name: string, email = ""): string {
+  const first = name.trim().charAt(0) || email.trim().charAt(0);
+  return /[0-9]/.test(first) ? "" : first.toUpperCase();
 }

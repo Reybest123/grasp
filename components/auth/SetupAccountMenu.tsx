@@ -48,7 +48,7 @@ export function SetupAccountMenu({ name, email }: { name: string; email: string 
     router.replace("/");
   }
 
-  const letter = monogram(name);
+  const letter = monogram(name, email);
   const avatar = (size: string) => (
     <span
       className={`grid ${size} shrink-0 place-items-center rounded-full bg-ink text-sm font-bold text-white`}
