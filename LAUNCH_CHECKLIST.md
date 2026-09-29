@@ -16,9 +16,9 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 
 ## Before Stripe live mode
 
-- [ ] Post the TFN application
-- [ ] Get an ABN (free). Then tell Claude, so the business name and ABN go on the Terms.
-- [ ] Talk to your dad about being the business representative on the Stripe account. As understood (not confirmed): you open the account with your own email and invite him in during setup as the representative, so he does not need his own Stripe account. If Stripe blocks you on age during signup, ask their support. Whoever is the representative is who Stripe's identity checks are about.
+- [x] TFN
+- [x] ABN 25 427 279 360 (2026-09-29), on the Terms and Privacy Policy
+- [x] Talk to your dad about being the business representative on the Stripe account. As understood (not confirmed): you open the account with your own email and invite him in during setup as the representative, so he does not need his own Stripe account. If Stripe blocks you on age during signup, ask their support. Whoever is the representative is who Stripe's identity checks are about.
 
 ## Stripe live mode (this is the launch blocker)
 

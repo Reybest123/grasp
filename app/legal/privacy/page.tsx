@@ -15,7 +15,7 @@ export default function Privacy() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="28 September 2026"
+      updated="29 September 2026"
       intro="This explains what Grasp collects when you use it, what happens to it, who else handles it, and how to get it deleted. Grasp is a study tool for students, so it collects only what it needs to run your notebooks, and nothing for advertising."
     >
       <LegalSection title="What Grasp stores">
@@ -190,6 +190,7 @@ export default function Privacy() {
       </LegalSection>
 
       <LegalSection title="Getting a copy of your information">
+        <p>Grasp is operated by Reyansh Ahuja, ABN 25 427 279 360.</p>
         <p>
           Grasp does not have a download or export feature yet. To ask for a copy of your
           information, to correct something, or to ask anything else about your privacy, email{" "}

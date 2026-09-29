@@ -14,7 +14,7 @@ export default function Terms() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="28 September 2026"
+      updated="29 September 2026"
       intro="These terms are the agreement between you and Grasp when you use the website. By creating an account or using Grasp, you agree to them. If you do not agree, do not use Grasp."
     >
       <LegalSection title="Who can use Grasp">
@@ -221,6 +221,12 @@ export default function Terms() {
           first so it can be sorted out directly. If it cannot, it can be taken to the courts of
           Queensland. This does not stop you using a consumer protection agency, or the courts
           where you live if the law there gives you that right.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="About Grasp">
+        <p>
+          Grasp is operated by Reyansh Ahuja, ABN 25 427 279 360.
         </p>
       </LegalSection>
     </LegalPage>
