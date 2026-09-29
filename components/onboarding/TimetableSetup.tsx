@@ -39,7 +39,8 @@ import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
 const MAX_BYTES = MAX_UPLOAD_BYTES;
 
 /** "final": no read is left on the account, so the only way is on. */
-type Stage = "upload" | "reading" | "done" | "final";
+/** "choose": the free trial holds fewer subjects than the read found. */
+type Stage = "upload" | "reading" | "choose" | "done" | "final";
 
 function readDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -73,6 +74,11 @@ export function TimetableSetup({
   const { profile } = useProfile();
   const capped = profile.plan === "free" && !profile.unlimited;
   const [editing, setEditing] = useState<number | null>(null);
+  // Everything the read found, when that is more than the free trial holds,
+  // and which of it the student is keeping.
+  const [found, setFound] = useState<ExtractedSubject[]>([]);
+  const [chosen, setChosen] = useState<number[]>([]);
+  const [confirming, setConfirming] = useState(false);
   const [skipping, setSkipping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // Saves queue behind one another, so two quick edits cannot land out of order
@@ -139,6 +145,14 @@ export function TimetableSetup({
     // Written the moment the read succeeds, so "created a notebook for each"
     // below is a statement of fact.
     await keep(result.subjects);
+    if (capped && result.subjects.length > FREE_SUBJECT_LIMIT) {
+      // The first ones are already saved, so a refresh here still leaves
+      // notebooks behind; the student's pick replaces them.
+      setFound(result.subjects);
+      setChosen(result.subjects.slice(0, FREE_SUBJECT_LIMIT).map((_, i) => i));
+      setStage("choose");
+      return;
+    }
     setStage("done");
   }
 
@@ -156,6 +170,21 @@ export function TimetableSetup({
       return;
     }
     onSkip();
+  }
+
+  function toggleChosen(i: number) {
+    setChosen((cur) =>
+      cur.includes(i) ? cur.filter((x) => x !== i) : cur.length < FREE_SUBJECT_LIMIT ? [...cur, i] : cur
+    );
+  }
+
+  async function confirmChosen() {
+    if (confirming) return;
+    setConfirming(true);
+    await keep(found.filter((_, i) => chosen.includes(i)));
+    if (!mounted.current) return;
+    setConfirming(false);
+    setStage("done");
   }
 
   function update(index: number, next: ExtractedSubject) {
@@ -289,6 +318,78 @@ export function TimetableSetup({
             "Setting up a notebook for each subject",
           ]}
         />
+      )}
+
+      {stage === "choose" && (
+        <div className="flex min-h-0 flex-auto flex-col">
+          <div className="shrink-0 rounded-2xl border border-brand-200 bg-brand-50 px-5 py-3.5 text-center">
+            <p className="font-semibold text-ink">
+              Grasp found {found.length} subjects. Your current plan only allows {FREE_SUBJECT_LIMIT} notebooks.
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Please choose the notebooks you would like to continue with.
+            </p>
+          </div>
+
+          <p className="mt-4 shrink-0 text-right text-sm font-semibold tabular-nums text-slate-500">
+            {chosen.length} of {FREE_SUBJECT_LIMIT} chosen
+          </p>
+          <div className="mt-2 flex min-h-[7.5rem] flex-auto flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <ul className="min-h-0 flex-auto divide-y divide-slate-200 overflow-y-auto">
+              {found.map((s, i) => {
+                const on = chosen.includes(i);
+                const full = !on && chosen.length >= FREE_SUBJECT_LIMIT;
+                return (
+                  <li key={i}>
+                    <label
+                      className={`flex items-center gap-4 px-4 py-3.5 transition ${
+                        full ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        disabled={full}
+                        onChange={() => toggleChosen(i)}
+                        className="h-4 w-4 shrink-0 accent-brand-600"
+                      />
+                      <span
+                        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${
+                          getColor(autoColorKey(i)).gradient
+                        } text-base font-bold text-white`}
+                      >
+                        {s.name.charAt(0)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-bold text-ink">{s.name}</span>
+                        <span className="block truncate text-sm text-slate-500">
+                          {[s.teacher, weeklyLabel(s.classes)].filter(Boolean).join(" · ") ||
+                            "No class times on the timetable"}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <button
+            type="button"
+            onClick={confirmChosen}
+            disabled={chosen.length === 0 || confirming}
+            className="mt-6 flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700 disabled:opacity-60 disabled:hover:bg-brand-600"
+          >
+            {confirming ? (
+              "Saving your notebooks..."
+            ) : (
+              <>
+                Continue with {chosen.length} {chosen.length === 1 ? "notebook" : "notebooks"}{" "}
+                <ArrowRightIcon className="h-5 w-5" />
+              </>
+            )}
+          </button>
+        </div>
       )}
 
       {stage === "done" && (
