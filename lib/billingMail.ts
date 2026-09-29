@@ -14,7 +14,7 @@ import type Stripe from "stripe";
 import { sql } from "@/lib/db";
 import { sendEmail, escapeHtml } from "@/lib/email";
 import { PLAN_LABEL, PLAN_PRICE_BY_CURRENCY, TRIAL_DAYS, type BilledPlan } from "@/lib/plan";
-import { isCurrency, type Currency } from "@/lib/currency";
+import { formatMoney, isCurrency, type Currency } from "@/lib/currency";
 import { SITE_URL } from "@/lib/site";
 
 const PLANS_URL = `${SITE_URL}/plans`;
@@ -26,8 +26,8 @@ const REFUNDS_URL = `${SITE_URL}/legal/terms#refunds`;
  * Canada, New Zealand and elsewhere.
  */
 export function chargeLabel(plan: BilledPlan, currency: Currency): string {
-  const amount = PLAN_PRICE_BY_CURRENCY[currency][plan].toFixed(2);
-  return currency === "aud" ? `A$${amount}` : `US$${amount}`;
+  const amount = PLAN_PRICE_BY_CURRENCY[currency][plan];
+  return currency === "usd" ? `US$${amount.toFixed(2)}` : formatMoney(amount, currency);
 }
 
 type Recipient = { email: string; name: string };

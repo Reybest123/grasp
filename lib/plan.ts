@@ -59,6 +59,10 @@ export const PLAN_PRICE_USD: Record<BilledPlan, number> = { pro: 5.99, max: 10.4
  * same plan. They are chosen to sit near the anchor converted at the rate of
  * the day, and re-checked by hand when that drifts far enough to matter.
  *
+ * The AUD prices are the anchor the others were converted from by hand on
+ * 2026-09-29 (A$1 = US$0.65, €0.60, £0.51, NZ$1.10, CA$0.90), each landing
+ * near US$5.90 / US$9.70 so every currency covers the USD cost model.
+ *
  * At AUD 0.65 to the dollar the AUD prices come to about $5.84 and $9.74, so
  * an Australian student is the slightly better deal. Worth knowing when the
  * rate moves: the allowances do not shrink with it, so a falling AUD eats
@@ -67,6 +71,10 @@ export const PLAN_PRICE_USD: Record<BilledPlan, number> = { pro: 5.99, max: 10.4
 export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<BilledPlan, number>> = {
   usd: PLAN_PRICE_USD,
   aud: { pro: 8.99, max: 14.99 },
+  eur: { pro: 5.49, max: 8.99 },
+  gbp: { pro: 4.69, max: 7.99 },
+  nzd: { pro: 9.99, max: 16.99 },
+  cad: { pro: 7.99, max: 13.99 },
 };
 
 /** How often a plan is billed, as it reads after "/" and "a". */

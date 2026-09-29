@@ -77,13 +77,13 @@ const PLANS = [
     plan: "pro",
     label: "Grasp Pro",
     lookupKey: "grasp_pro_weekly",
-    amounts: { usd: 5.99, aud: 8.99 },
+    amounts: { usd: 5.99, aud: 8.99, eur: 5.49, gbp: 4.69, nzd: 9.99, cad: 7.99 },
   },
   {
     plan: "max",
     label: "Grasp Max",
     lookupKey: "grasp_max_weekly",
-    amounts: { usd: 10.49, aud: 14.99 },
+    amounts: { usd: 10.49, aud: 14.99, eur: 8.99, gbp: 7.99, nzd: 16.99, cad: 13.99 },
   },
 ];
 

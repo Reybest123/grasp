@@ -14,7 +14,9 @@
 // No server-only imports and no dependency on lib/plan.ts: the client reads
 // these too, and plan.ts imports `Currency` from here.
 
-export type Currency = "usd" | "aud";
+export type Currency = "usd" | "aud" | "eur" | "gbp" | "nzd" | "cad";
+
+export const CURRENCIES: readonly Currency[] = ["usd", "aud", "eur", "gbp", "nzd", "cad"];
 
 /**
  * What anyone Grasp cannot place is charged in. USD rather than AUD because it
@@ -24,16 +26,21 @@ export type Currency = "usd" | "aud";
 export const DEFAULT_CURRENCY: Currency = "usd";
 
 export function isCurrency(value: unknown): value is Currency {
-  return value === "usd" || value === "aud";
+  return typeof value === "string" && (CURRENCIES as readonly string[]).includes(value);
 }
 
-/**
- * Which countries are billed in something other than the default. Only
- * Australia for now — the operator is Australian and so are most students, and
- * a currency nobody is actually in is a Stripe Price nobody ever uses.
- */
+const EUROZONE = [
+  "AT", "BE", "HR", "CY", "EE", "FI", "FR", "DE", "GR", "IE", "IT",
+  "LV", "LT", "LU", "MT", "NL", "PT", "SK", "SI", "ES",
+];
+
+/** Which countries are billed in something other than the default. */
 const COUNTRY_CURRENCY: Record<string, Currency> = {
   AU: "aud",
+  GB: "gbp",
+  NZ: "nzd",
+  CA: "cad",
+  ...Object.fromEntries(EUROZONE.map((code) => [code, "eur" as const])),
 };
 
 export function currencyForCountry(code: string | null | undefined): Currency {
@@ -90,7 +97,14 @@ export function currencyFromHeaders(headers: Headers): Currency {
  * student who is *not* being charged in it cannot mistake the two, which is
  * the whole risk of showing two currencies with one symbol.
  */
-const CURRENCY_PREFIX: Record<Currency, string> = { usd: "$", aud: "A$" };
+const CURRENCY_PREFIX: Record<Currency, string> = {
+  usd: "$",
+  aud: "A$",
+  eur: "€",
+  gbp: "£",
+  nzd: "NZ$",
+  cad: "CA$",
+};
 
 export function formatMoney(amount: number, currency: Currency): string {
   return `${CURRENCY_PREFIX[currency]}${amount.toFixed(2)}`;
