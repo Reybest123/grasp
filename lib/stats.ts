@@ -171,19 +171,9 @@ export function weekActivity(subjects: Subject[], now: Date, days = 7): Activity
   return out;
 }
 
-/** How many of the last seven days had any work on them at all. */
-export function activeDays(week: ActivityDay[]): number {
-  return week.filter((d) => d.total > 0).length;
-}
-
-/**
- * Consecutive days with work on them, counting back from today. An empty today
- * does not break it — the day is not over yet — so the count starts from
- * yesterday instead.
- */
 /**
  * Days in a row, ending today or yesterday, with a note written or a quiz
- * made. Unlike currentStreak it is not capped at the week, so it can read 369.
+ * made. It is not capped at the week, so it can read 369.
  */
 export function studyStreak(subjects: Subject[], now: Date): number {
   const days = new Set<string>();
@@ -202,14 +192,6 @@ export function studyStreak(subjects: Subject[], now: Date): number {
     n += 1;
     i += 1;
   }
-  return n;
-}
-
-export function currentStreak(week: ActivityDay[]): number {
-  let i = week.length - 1;
-  if (i >= 0 && week[i].today && week[i].total === 0) i -= 1;
-  let n = 0;
-  for (; i >= 0 && week[i].total > 0; i--) n += 1;
   return n;
 }
 

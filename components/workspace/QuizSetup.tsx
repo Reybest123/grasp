@@ -3,7 +3,7 @@
 // The "what should this quiz be?" form. Full-area rather than a modal — it is
 // the whole job while you're on it, and a dialog would only shrink it.
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Note, Subject } from "@/lib/subjects";
 import type { QuizCounts } from "@/lib/ai";
 import type { ResourceBrief } from "@/lib/resources";
@@ -128,30 +128,28 @@ export function QuizSetup({
   const noNotesPicked = hasNotes && noteIds.length === 0 && !instructions.trim();
   // Set when Generate is pressed with a problem the form can see for itself,
   // so the button stays pressable and says why instead of sitting greyed out.
-  const [formError, setFormError] = useState("");
+  // What would stop Generate right now. It is only shown once Generate has
+  // been pressed, and clears itself the moment the problem is fixed.
+  const problem = noNotesPicked
+    ? NO_NOTES_MESSAGE
+    : overCap
+      ? `You are trying to create a ${total} question quiz. Please keep it to ${MAX_TOTAL} or fewer.`
+      : total === 0
+        ? "Add at least one question to the quiz."
+        : "";
+  const [tried, setTried] = useState(false);
+  const formError = tried ? problem : "";
   const topRef = useRef<HTMLDivElement>(null);
   const shown = formError || error;
 
   function generate() {
-    const problem = noNotesPicked
-      ? NO_NOTES_MESSAGE
-      : overCap
-        ? `You are trying to create a ${total} question quiz. Please keep it to ${MAX_TOTAL} or fewer.`
-        : total === 0
-          ? "Add at least one question to the quiz."
-          : "";
-    setFormError(problem);
+    setTried(true);
     if (problem) {
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     onGenerate({ name, topics, instructions, noteIds, counts, resourceIds });
   }
-
-  // A fixed problem clears its message.
-  useEffect(() => {
-    if (formError && !noNotesPicked && !overCap && total > 0) setFormError("");
-  }, [formError, noNotesPicked, overCap, total]);
 
   function toggleTopic(t: string) {
     setTopics((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
