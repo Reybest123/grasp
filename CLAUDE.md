@@ -648,6 +648,8 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - `components/blog/BlogShell.tsx` is the shared header and footer (the landing page's, with its two section links pointing at `/#how-it-works` and `/#features`), wrapped in `RouteFade`.
 - **Heading and icon fixes for search and screen readers (2026-09-30).** Each landing feature title is an `<h2>` (they were `<h3>`s with no `<h2>` over them since the Features heading was removed, so they read as sub-points of How it works). The mock note's "Photosynthesis" title in `ExplainScene` is a `<p>`, not a heading. Every icon in `components/icons.tsx` is `aria-hidden` through `base()`; there is no `<img>` anywhere, so there is no alt text to write.
 
+- **SEO status (2026-09-30).** graspstudy.com is verified in Google Search Console as a Domain property and `sitemap.xml` is submitted (done by the user; Google re-fetches it, so it is never resubmitted). The blog above is the first content beyond the landing page. **Still open:** a Lighthouse / Core Web Vitals check of the landing page (not run yet), backlinks (deferred at the user's request), a share image per post, and choosing the next posts from Search Console's real queries. A `.com` does not raise ranking by itself, and nothing here promises a ranking.
+
 **Still mocked / not yet built:**
 - Nothing on the limits front: quizzes, recordings, weekly Resource Bank reads and the per-subject Resource Bank document count are all enforced server-side (see above).
 - Nothing: explain, refine, enhance, generate and quiz explanations are on AI tokens (see Weekly allowances), and the timetable read is once per account.
