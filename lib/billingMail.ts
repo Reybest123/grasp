@@ -46,7 +46,7 @@ function layout(greeting: string, paragraphs: string[], button: { label: string;
   <p style="font-size:20px;font-weight:800;margin:0 0 24px">Grasp</p>
   <p style="font-size:16px;line-height:1.6;margin:0 0 16px">${escapeHtml(greeting)}</p>
   ${body}
-  <a href="${escapeHtml(button.href)}" style="display:inline-block;background:#dc4a20;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:12px 24px;border-radius:12px;margin:8px 0 0">${escapeHtml(button.label)}</a>
+  <a href="${escapeHtml(button.href)}" style="display:inline-block;background:#d0431b;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:12px 24px;border-radius:12px;margin:8px 0 0">${escapeHtml(button.label)}</a>
   <p style="font-size:14px;line-height:1.6;color:#716a61;margin:24px 0 0">Refunds and cancelling are explained in the Terms: ${escapeHtml(REFUNDS_URL)}</p>
 </div>`;
 }

@@ -50,7 +50,7 @@ export function ExplainScene() {
         <span className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 shadow-ring">
           Ask a follow-up
         </span>
-        <span className="text-xs text-slate-400">or switch to Refine to edit the note</span>
+        <span className="text-xs text-slate-500">or switch to Refine to edit the note</span>
       </div>
     </div>
   );
