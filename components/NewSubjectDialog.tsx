@@ -141,7 +141,6 @@ export function NewSubjectDialog({
 
           <div>
             <p className="text-sm font-semibold text-ink">Colour</p>
-            <p className="mt-0.5 text-xs text-slate-500">Picked for you automatically — change it if you like.</p>
             <ColorSwatches value={colorKey} onChange={setColorKey} />
           </div>
 

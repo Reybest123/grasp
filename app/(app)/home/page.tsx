@@ -601,7 +601,7 @@ function WeekAllowances() {
   const rows: MeterRow[] = [
     {
       label: "AI tokens",
-      hint: "Explain, Refine, AI enhance, AI generate, and explaining a quiz answer. Each costs by how much work it takes.",
+      hint: "Any Explain, Refine, AI enhance, AI generate or quiz answer explanation counts towards tokens. Some tasks use more tokens than others, depending on how much work they take.",
       allowance: usage?.tokens,
       format: (n) => formatCount(n),
     },
@@ -619,7 +619,7 @@ function WeekAllowances() {
     },
     {
       label: "Resource Bank",
-      hint: "Each document read into a subject. A document is only read once, however often it is used after that.",
+      hint: "Each document in your Resource Bank. A document is only read once, however often it is used after that.",
       allowance: usage?.resources,
       format: (n) => formatCount(n),
     },

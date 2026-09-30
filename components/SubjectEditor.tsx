@@ -156,9 +156,6 @@ export function SubjectEditor({
           {/* Colour */}
           <section>
             <Legend>Colour</Legend>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Picked for you automatically — change it if you like.
-            </p>
             <ColorSwatches value={colorKey} onChange={setColorKey} />
           </section>
 
@@ -171,9 +168,6 @@ export function SubjectEditor({
               </Legend>
               <span className="text-xs text-slate-400">optional</span>
             </div>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Your notebook shows the next one, and Grasp knows your week.
-            </p>
 
             <div className="mt-3 space-y-2">
               {classes.map((c) => (
@@ -231,10 +225,6 @@ export function SubjectEditor({
               </Legend>
               <span className="text-xs text-slate-400">optional</span>
             </div>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Add as many as you like. Grasp counts down to the soonest and factors them into
-              quizzes.
-            </p>
 
             <div className="mt-3 space-y-4">
               {exams.map((e) => (
