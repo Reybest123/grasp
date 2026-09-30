@@ -14,7 +14,7 @@
 // The card is a column: the heading stays put and only the body below it
 // scrolls, so the scrollbar sits inside the card rather than along its edge.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TimetableSetup } from "@/components/onboarding/TimetableSetup";
 import type { ExtractedSubject } from "@/lib/ai";
 
@@ -31,6 +31,9 @@ export function TimetableDialog({
   onSubjects?: (subjects: ExtractedSubject[]) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  // The heading and its instructions are about uploading; once a read is under
+  // way they only take room, which a phone does not have.
+  const [intro, setIntro] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -44,20 +47,21 @@ export function TimetableDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
+    <div className="kb-aware fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
       {/* Light enough that the app stays legible behind it. */}
-      <div aria-hidden="true" className="absolute inset-0 bg-ink/35" />
+      <div aria-hidden="true" className="fixed inset-0 bg-ink/35" />
 
       <div
         ref={cardRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="timetable-dialog-title"
-        className="relative flex max-h-[calc(100dvh-2rem-var(--kb,0px))] sm:max-h-[calc(100dvh-4rem-var(--kb,0px))] w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none"
+        aria-label="Set up your workspace"
+        className="relative flex max-h-full w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none"
       >
+        {intro && (
         <div className="shrink-0 px-6 pt-6 sm:px-8 sm:pt-8">
-          <h2 id="timetable-dialog-title" className="text-2xl font-extrabold tracking-tight text-ink">
+          <h2 className="text-2xl font-extrabold tracking-tight text-ink">
             Set up your workspace
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -66,13 +70,15 @@ export function TimetableDialog({
             up.
           </p>
         </div>
+        )}
 
-        <div className="flex min-h-0 flex-auto flex-col overflow-y-auto px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
+        <div className="flex min-h-0 flex-auto flex-col overflow-y-auto overflow-x-hidden px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
           <TimetableSetup
             save={save}
             onSubjects={onSubjects}
             onFinish={onDone}
             onSkip={onDone}
+            onIntro={setIntro}
           />
         </div>
       </div>

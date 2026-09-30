@@ -87,11 +87,11 @@ export function AddAssessmentDialog({
                 <h2 className="font-bold text-ink">
                   {editing ? "Edit assessment" : "Add an assessment"}
                 </h2>
-                <p className="text-sm text-slate-500">
-                  {editing
-                    ? "Change its date, its name or the subject it belongs to."
-                    : "Grasp counts down to it and factors it into quizzes."}
-                </p>
+                {editing && (
+                  <p className="text-sm text-slate-500">
+                    Change its date, its name or the subject it belongs to.
+                  </p>
+                )}
               </div>
             </div>
             <button

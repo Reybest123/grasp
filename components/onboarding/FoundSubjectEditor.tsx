@@ -1,16 +1,16 @@
 "use client";
 
-// Putting right one subject the timetable reader got wrong, in place in the
-// popup's list. Only what the reader produces is here — name, teacher and class
+// Putting right one subject the timetable reader got wrong. It takes over the
+// whole popup, sliding in from the side, with Back returning to the list. Only what the reader produces is here — name, teacher and class
 // times. Colour and exams live in the full subject editor once the notebook is
 // open.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ExtractedSubject } from "@/lib/ai";
 import { makeSlot } from "@/lib/subjects";
 import type { ClassSlot } from "@/lib/schedule";
 import { DaySelect, TimeSelect } from "@/components/ClassTimeSelects";
-import { PlusIcon, TrashIcon } from "@/components/icons";
+import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@/components/icons";
 
 const INPUT =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
@@ -33,6 +33,13 @@ export function FoundSubjectEditor({
   const [teacher, setTeacher] = useState(subject.teacher ?? "");
   const [classes, setClasses] = useState<ClassSlot[]>(subject.classes);
 
+  // Only where there is a real keyboard: on a phone this would raise the
+  // on-screen one over the pane while it is still sliding in.
+  const nameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (window.matchMedia("(pointer: fine)").matches) nameRef.current?.focus();
+  }, []);
+
   function patch(id: string, p: Partial<ClassSlot>) {
     setClasses((cur) => cur.map((c) => (c.id === id ? { ...c, ...p } : c)));
   }
@@ -50,7 +57,7 @@ export function FoundSubjectEditor({
 
   return (
     <div
-      className="bg-slate-50 px-4 py-4"
+      className="pane-in-right flex min-h-0 flex-auto flex-col"
       // Stopped here, or it reaches the popup's own Escape and closes the lot.
       onKeyDown={(e) => {
         if (e.key === "Escape") {
@@ -59,13 +66,21 @@ export function FoundSubjectEditor({
         }
       }}
     >
-      <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="-ml-2 inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-ink"
+      >
+        <ArrowLeftIcon className="h-4 w-4" /> Back
+      </button>
+
+      <div className="mt-3 flex shrink-0 items-center gap-3">
         <span
           className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${gradient} text-base font-bold text-white`}
         >
           {(name.trim() || "?").charAt(0)}
         </span>
-        <p className="text-sm font-bold text-ink">Edit subject</p>
+        <h2 className="text-lg font-bold text-ink">Edit subject</h2>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -75,7 +90,7 @@ export function FoundSubjectEditor({
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && save()}
-            autoFocus
+            ref={nameRef}
             className={`${INPUT} w-full`}
           />
         </label>
@@ -135,7 +150,7 @@ export function FoundSubjectEditor({
         <PlusIcon className="h-4 w-4" /> Add class time
       </button>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4">
         <button
           type="button"
           onClick={onRemove}
@@ -144,13 +159,6 @@ export function FoundSubjectEditor({
           <TrashIcon className="h-4 w-4" /> Remove subject
         </button>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
-          >
-            Cancel
-          </button>
           <button
             type="button"
             onClick={save}

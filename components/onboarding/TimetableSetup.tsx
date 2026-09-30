@@ -57,7 +57,10 @@ export function TimetableSetup({
   onSubjects,
   onFinish,
   onSkip,
+  onIntro,
 }: {
+  /** whether the popup's heading still belongs above this (uploading only) */
+  onIntro?: (show: boolean) => void;
   /** writes what was read to the account */
   save?: (subjects: ExtractedSubject[]) => Promise<unknown>;
   /** the list after a read, and again after every edit to it */
@@ -75,6 +78,11 @@ export function TimetableSetup({
   const { profile } = useProfile();
   const capped = profile.plan === "free" && !profile.unlimited;
   const [editing, setEditing] = useState<number | null>(null);
+  // Set once an edit has been left, so the list slides back in from its side.
+  const [returned, setReturned] = useState(false);
+  useEffect(() => {
+    onIntro?.(stage === "upload" || stage === "final");
+  }, [stage, onIntro]);
   // Everything the read found, when that is more than the free trial holds,
   // and which of it the student is keeping.
   const [found, setFound] = useState<ExtractedSubject[]>([]);
@@ -203,13 +211,18 @@ export function TimetableSetup({
     setStage("done");
   }
 
-  function update(index: number, next: ExtractedSubject) {
+  function closeEditor() {
     setEditing(null);
+    setReturned(true);
+  }
+
+  function update(index: number, next: ExtractedSubject) {
+    closeEditor();
     void keep(subjects.map((s, i) => (i === index ? next : s)));
   }
 
   function remove(index: number) {
-    setEditing(null);
+    closeEditor();
     void keep(subjects.filter((_, i) => i !== index));
   }
 
@@ -408,8 +421,21 @@ export function TimetableSetup({
         </div>
       )}
 
-      {stage === "done" && (
-        <div className="flex min-h-0 flex-auto flex-col">
+      {/* Editing one subject takes over the whole popup, sliding in from the
+          side, and Back returns to the list. */}
+      {stage === "done" && editing !== null && subjects[editing] && (
+        <FoundSubjectEditor
+          key={editing}
+          subject={subjects[editing]}
+          gradient={getColor(autoColorKey(editing)).gradient}
+          onSave={(next) => update(editing, next)}
+          onCancel={closeEditor}
+          onRemove={() => remove(editing)}
+        />
+      )}
+
+      {stage === "done" && (editing === null || !subjects[editing]) && (
+        <div className={`flex min-h-0 flex-auto flex-col ${returned ? "pane-in-left" : ""}`}>
           <div className="flex shrink-0 items-center justify-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-center">
             <CheckIcon className="h-5 w-5 shrink-0 text-emerald-700" />
             <p className="font-semibold text-emerald-800">
@@ -430,46 +456,33 @@ export function TimetableSetup({
               </p>
             ) : (
               <ul className="min-h-0 flex-auto divide-y divide-slate-200 overflow-y-auto">
-                {subjects.map((s, i) => {
-                  const gradient = getColor(autoColorKey(i)).gradient;
-                  return (
-                    <li key={i}>
-                      {editing === i ? (
-                        <FoundSubjectEditor
-                          subject={s}
-                          gradient={gradient}
-                          onSave={(next) => update(i, next)}
-                          onCancel={() => setEditing(null)}
-                          onRemove={() => remove(i)}
-                        />
-                      ) : (
-                        <div className="flex items-center gap-4 px-4 py-3.5">
-                          <span
-                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${gradient} text-base font-bold text-white`}
-                          >
-                            {s.name.charAt(0)}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-bold text-ink">{s.name}</p>
-                            <p className="truncate text-sm text-slate-500">
-                              {[s.teacher, weeklyLabel(s.classes)].filter(Boolean).join(" · ") ||
-                                "No class times on the timetable"}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setEditing(i)}
-                            aria-label={`Edit ${s.name}`}
-                            title="Edit"
-                            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"
-                          >
-                            <EditIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
+                {subjects.map((s, i) => (
+                  <li key={i} className="flex items-center gap-4 px-4 py-3.5">
+                    <span
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${
+                        getColor(autoColorKey(i)).gradient
+                      } text-base font-bold text-white`}
+                    >
+                      {s.name.charAt(0)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-bold text-ink">{s.name}</p>
+                      <p className="truncate text-sm text-slate-500">
+                        {[s.teacher, weeklyLabel(s.classes)].filter(Boolean).join(" · ") ||
+                          "No class times on the timetable"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(i)}
+                      aria-label={`Edit ${s.name}`}
+                      title="Edit"
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"
+                    >
+                      <EditIcon className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
           </div>

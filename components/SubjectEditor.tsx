@@ -109,7 +109,7 @@ export function SubjectEditor({
         aria-modal="true"
         aria-label="Edit subject"
         inert={!open}
-        className={`fixed right-0 top-0 z-50 flex h-[calc(100dvh-var(--kb,0px))] w-full max-w-[460px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-[calc(100dvh-var(--kb,0px))] w-full max-w-[460px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-[transform,height] duration-300 ease-out ${
           visible ? "translate-x-0" : "translate-x-full"
         }`}
       >

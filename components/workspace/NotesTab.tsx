@@ -262,12 +262,26 @@ export function NotesTab({
     else if (caret.top < frame.top + margin) box.scrollTop -= frame.top + margin - caret.top;
   }, [writingMode, visible?.height, visible?.top]);
 
+  // While writing, the card is the whole screen under the header, edge to
+  // edge, and the page behind it cannot be scrolled.
   const HEADER = 69;
-  const writingTop = visible ? Math.max(HEADER, visible.top) + 8 : HEADER + 8;
+  const writingTop = visible ? Math.max(HEADER, visible.top) : HEADER;
   const writingStyle: React.CSSProperties | undefined =
     writingMode && visible
-      ? { top: writingTop, height: Math.max(160, visible.top + visible.height - writingTop - 8) }
+      ? { top: writingTop, height: Math.max(160, visible.top + visible.height - writingTop) }
       : undefined;
+
+  // Locked on <html>, not <body>: the drawer and the note sheet lock the body
+  // and restore it themselves, and the two must not undo each other.
+  const lifted = writingStyle !== undefined;
+  useEffect(() => {
+    if (!lifted) return;
+    const root = document.documentElement;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = "";
+    };
+  }, [lifted]);
 
   // Undo/redo. The stack lives in a ref (it is not render state); `canStep`
   // mirrors just enough of it to grey the toolbar buttons out.
@@ -1727,8 +1741,10 @@ export function NotesTab({
         inert={panelOpen}
         onFocus={onCardFocus}
         onBlur={onCardBlur}
-        className={`flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${
-          writingStyle ? "fixed inset-x-2 z-30 shadow-xl" : "absolute inset-0"
+        className={`flex flex-col overflow-hidden bg-white ${
+          writingStyle
+            ? "fixed inset-x-0 z-30 overscroll-contain border-t border-slate-200"
+            : "absolute inset-0 rounded-2xl border border-slate-200 shadow-sm"
         }`}
       >
         <div className="flex shrink-0 items-start justify-between gap-4 px-8 pt-7 compact:px-5 compact:pt-5">

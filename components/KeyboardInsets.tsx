@@ -10,6 +10,12 @@
 // left. Android already resizes the page (`interactiveWidget` in app/layout),
 // so there `--kb` stays near 0 and only the scroll does anything.
 //
+// iOS only reports the keyboard once it has finished sliding up, so a popup
+// waiting for that figure had its foot covered by the keys and then jumped
+// clear of them. On iOS the height is therefore assumed the moment a field
+// takes focus (the last one measured, else a guess) and corrected when the
+// real figure lands, and globals.css slides the popup rather than snapping it.
+//
 // The note editor is left alone: NotesTab's writing mode fits itself to the
 // visible area and keeps its own caret in view.
 
@@ -23,12 +29,24 @@ function isTextField(el: Element | null): el is HTMLInputElement | HTMLTextAreaE
   );
 }
 
+const KB_KEY = "grasp.kbHeight";
+
 export function KeyboardInsets() {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const root = document.documentElement;
     let frame = 0;
+    const ios =
+      /iP(hone|ad|od)/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    let remembered = 0;
+    try {
+      remembered = Number(window.localStorage.getItem(KB_KEY)) || 0;
+    } catch {}
+    let wasTyping = false;
+    // While this is in the future the keyboard may still be on its way up.
+    let opening = 0;
 
     const reveal = () => {
       const el = document.activeElement;
@@ -43,9 +61,22 @@ export function KeyboardInsets() {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const typing = isTextField(document.activeElement);
-        const kb = typing ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+        let kb = typing ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
         // Under 80px is browser chrome moving, not a keyboard.
-        root.style.setProperty("--kb", kb > 80 ? `${Math.round(kb)}px` : "0px");
+        if (kb > 80) {
+          kb = Math.round(kb);
+          if (kb !== remembered) {
+            remembered = kb;
+            try {
+              window.localStorage.setItem(KB_KEY, String(kb));
+            } catch {}
+          }
+        } else if (typing && ios && performance.now() < opening) {
+          kb = Math.min(remembered || Math.round(window.innerHeight * 0.4), window.innerHeight - 200);
+        } else {
+          kb = 0;
+        }
+        root.style.setProperty("--kb", `${Math.max(0, kb)}px`);
         reveal();
       });
     };
@@ -54,9 +85,17 @@ export function KeyboardInsets() {
     // has settled; `resize` covers most of that, the timer the rest.
     let timer: ReturnType<typeof setTimeout>;
     const onFocus = () => {
+      const typing = isTextField(document.activeElement);
+      if (typing && !wasTyping) opening = performance.now() + 700;
+      wasTyping = typing;
       update();
       clearTimeout(timer);
-      timer = setTimeout(update, 350);
+      // The second run is past the `opening` window, so an assumed height is
+      // dropped if no keyboard ever came (a hardware keyboard).
+      timer = setTimeout(() => {
+        update();
+        timer = setTimeout(update, 400);
+      }, 350);
     };
 
     vv.addEventListener("resize", update);

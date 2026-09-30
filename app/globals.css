@@ -453,4 +453,32 @@ body {
 }
 .kb-aware {
   bottom: var(--kb, 0px) !important;
+  transition: bottom 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* One pane replacing another inside a popup: the new one slides in from the
+   side it sits on (the timetable popup's subject editor, and the list on the
+   way back). */
+@keyframes paneInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes paneInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.pane-in-right {
+  animation: paneInRight 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pane-in-left {
+  animation: paneInLeft 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kb-aware {
+    transition: none;
+  }
+  .pane-in-right,
+  .pane-in-left {
+    animation: none;
+  }
 }
