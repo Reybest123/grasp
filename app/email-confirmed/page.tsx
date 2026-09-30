@@ -4,6 +4,7 @@ import { EXPIRED_PATH, currentUser } from "@/lib/session";
 import { Logo } from "@/components/Logo";
 import { SetupAccountMenu } from "@/components/auth/SetupAccountMenu";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { ConfirmedTabNote } from "@/components/auth/ConfirmedTabNote";
 import { RouteFade } from "@/components/RouteFade";
 
 export const metadata = { title: "Email confirmed" };
@@ -45,6 +46,7 @@ export default async function EmailConfirmedPage() {
               Your account is ready. Next, three quick questions so Grasp can fit itself to how you
               study.
             </p>
+            <ConfirmedTabNote />
 
             <Link
               href="/onboarding"

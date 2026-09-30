@@ -7,6 +7,7 @@
 // saved onto the subject is the extraction that comes back.
 
 import { useRef, useState } from "react";
+import { isHeic, isPhoto, prepareImage } from "@/lib/prepareImage";
 import {
   droppedFile,
   isTextFile,
@@ -70,13 +71,29 @@ export function ResourceAdd({
   const [localError, setLocalError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function take(picked: File | undefined) {
-    if (!picked) return;
+  // The latest pick wins: a big photo takes a moment to shrink, and choosing
+  // another meanwhile must not be overwritten when the first finishes.
+  const pickId = useRef(0);
+
+  async function take(original: File | undefined) {
+    if (!original) return;
+    const mine = ++pickId.current;
     // The type first: an unsupported file is refused by name before its size
-    // matters. Only formats the model reads get through (lib/fileTypes.ts).
-    if (!resourceFileSupported(picked)) {
-      setLocalError(unsupportedFileMessage(picked, "resource"));
+    // matters. Only formats the model reads get through (lib/fileTypes.ts); a
+    // HEIC photo is let in to be converted.
+    if (!resourceFileSupported(original) && !isHeic(original)) {
+      setLocalError(unsupportedFileMessage(original, "resource"));
       return;
+    }
+    let picked = original;
+    if (isPhoto(original)) {
+      const prepared = await prepareImage(original);
+      if (mine !== pickId.current) return;
+      if (!prepared.file) {
+        setLocalError(prepared.error ?? tooLargeMessage("resource"));
+        return;
+      }
+      picked = prepared.file;
     }
     if (picked.size > MAX_BYTES) {
       setLocalError(tooLargeMessage("resource"));
@@ -227,7 +244,7 @@ export function ResourceAdd({
                 <span className="text-sm font-semibold">Drop a file here, or click to choose</span>
                 <span className="text-xs text-slate-400">
                   A PNG, JPG, WEBP or GIF image, a {RESOURCE_MAX_PDF_PAGES}-page PDF, or a TXT, MD
-                  or CSV file of up to {RESOURCE_MAX_WORDS.toLocaleString("en")} words. 3 MB at most.
+                  or CSV file of up to {RESOURCE_MAX_WORDS.toLocaleString("en")} words. Photos are resized for you; other files 3 MB at most.
                 </span>
               </button>
             )}

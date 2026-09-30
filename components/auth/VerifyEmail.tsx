@@ -4,11 +4,18 @@
 // link, ask for it again, or leave. Leaving deletes the unconfirmed account, so
 // a student who typed the wrong address can sign up again straight away.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { ErrorNote } from "@/components/ErrorNote";
 import { CheckIcon, MailIcon } from "@/components/icons";
+import { listenForConfirmation } from "@/lib/emailTabs";
+
+// Quick at first, while the student is likely switching to their inbox; slower
+// after that, so a tab left open is not a query every few seconds.
+const POLL_MS = 3000;
+const SLOW_POLL_MS = 10000;
+const QUICK_POLL_FOR_MS = 2 * 60 * 1000;
 
 const STATUS_MESSAGE = {
   expired: "That link has expired or was already replaced. Send a new one below.",
@@ -28,6 +35,48 @@ export function VerifyEmail({
   const [sent, setSent] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState(status ? STATUS_MESSAGE[status] : "");
+
+  // Moves on by itself once the link is clicked. The link's tab announces
+  // itself (instant, same browser); polling covers a link opened on a phone.
+  // /email-confirmed sends an account that already has a plan on to /home.
+  useEffect(() => {
+    let live = true;
+    const moveOn = () => {
+      if (live) {
+        live = false;
+        router.replace("/email-confirmed");
+      }
+    };
+    const stopListening = listenForConfirmation(moveOn);
+    const check = async () => {
+      if (!live || document.visibilityState === "hidden") return;
+      try {
+        const res = await fetch("/api/auth/verify/status", { cache: "no-store" });
+        if (res.status === 401) stop();
+        else if ((await res.json().catch(() => ({}))).verified) moveOn();
+      } catch {
+        // A dropped connection just means the next check tries again.
+      }
+    };
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
+    const stop = () => {
+      live = false;
+      clearTimeout(timer);
+    };
+    const tick = async () => {
+      await check();
+      if (!live) return;
+      timer = setTimeout(tick, Date.now() - started < QUICK_POLL_FOR_MS ? POLL_MS : SLOW_POLL_MS);
+    };
+    timer = setTimeout(tick, POLL_MS);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", check);
+      stopListening();
+    };
+  }, [router]);
 
   async function resend() {
     setBusy(true);

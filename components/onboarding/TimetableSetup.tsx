@@ -16,6 +16,7 @@ import { weeklyLabel } from "@/lib/schedule";
 import { autoColorKey, getColor } from "@/lib/subjectColors";
 import { FoundSubjectEditor } from "@/components/onboarding/FoundSubjectEditor";
 import { ErrorNote } from "@/components/ErrorNote";
+import { isHeic, isPhoto, prepareImage } from "@/lib/prepareImage";
 import {
   MAX_UPLOAD_BYTES,
   droppedFile,
@@ -106,13 +107,28 @@ export function TimetableSetup({
     return saving.current;
   }
 
-  function take(picked: File | undefined) {
-    if (!picked) return;
+  // The latest pick wins: a big photo takes a moment to shrink, and choosing
+  // another meanwhile must not be overwritten when the first finishes.
+  const pickId = useRef(0);
+
+  async function take(original: File | undefined) {
+    if (!original) return;
+    const mine = ++pickId.current;
     // Only formats the model reads get through (lib/fileTypes.ts), named when
-    // refused, before the size is checked.
-    if (!timetableFileSupported(picked)) {
-      setError(unsupportedFileMessage(picked, "timetable"));
+    // refused, before the size is checked. A HEIC photo is let in to be converted.
+    if (!timetableFileSupported(original) && !isHeic(original)) {
+      setError(unsupportedFileMessage(original, "timetable"));
       return;
+    }
+    let picked = original;
+    if (isPhoto(original)) {
+      const prepared = await prepareImage(original);
+      if (mine !== pickId.current || !mounted.current) return;
+      if (!prepared.file) {
+        setError(prepared.error ?? tooLargeMessage("timetable"));
+        return;
+      }
+      picked = prepared.file;
     }
     if (picked.size > MAX_BYTES) {
       setError(tooLargeMessage("timetable"));
@@ -271,7 +287,7 @@ export function TimetableSetup({
               </span>
               <p className="mt-4 text-lg font-bold text-ink">Drop your timetable screenshot here</p>
               <p className="mt-1.5 text-sm text-slate-500">
-                PNG, JPG, WEBP, GIF or PDF, up to 3 MB · any layout
+                Photo, screenshot or PDF (up to 3 MB) · any layout
               </p>
               <span className="mt-6 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition group-hover:bg-brand-700">
                 Choose a file
