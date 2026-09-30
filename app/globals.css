@@ -34,8 +34,11 @@ h3 {
 /* Everything focusable gets a visible ring in the brand colour, so keyboard
    users are never guessing. Mouse users do not see it (:focus-visible).
    Form controls are excluded because they style their own focus state, and
-   two rings on one field reads as an error rather than as focus. */
-:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+   two rings on one field reads as an error rather than as focus.
+   A container focused by script (tabindex="-1", a dialog card taking focus as
+   it opens) is not a control, so it gets no ring: it drew an orange line
+   round the whole timetable popup. */
+:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"]):not([tabindex="-1"]) {
   outline: 2px solid theme("colors.brand.500");
   outline-offset: 2px;
   border-radius: 4px;
@@ -428,4 +431,26 @@ select[class~="border-slate-200"] {
   .pill-progress {
     animation: none;
   }
+}
+
+/* iOS zooms the whole page into any text field set smaller than 16px, and
+   leaves it zoomed. On a phone every field is at least 16px, so it never does. */
+@media (max-width: 767px), (max-height: 500px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* The on-screen keyboard's height (components/KeyboardInsets.tsx). iOS lays
+   the keyboard over the page rather than shrinking it, so a fixed popup kept
+   its lower half, and the field being typed in, behind the keys, and the foot
+   of a page had no room to scroll up out of the way. */
+body {
+  padding-bottom: var(--kb, 0px);
+}
+.kb-aware {
+  bottom: var(--kb, 0px) !important;
 }

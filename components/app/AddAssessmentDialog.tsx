@@ -69,7 +69,7 @@ export function AddAssessmentDialog({
   return (
     <>
       <div onClick={onClose} aria-hidden className="fixed inset-0 z-[60] bg-black/40" />
-      <div className="fixed inset-0 z-[60] grid place-items-center p-4">
+      <div className="kb-aware fixed inset-0 z-[60] grid place-items-center overflow-y-auto p-4">
         <form
           onSubmit={submit}
           noValidate

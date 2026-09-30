@@ -10,7 +10,7 @@
 // copy — so an edit made in the editor is already reflected here, and deleting
 // one there removes it from here too. There is one note, in two places.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Note } from "@/lib/subjects";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { useProfile } from "@/lib/profileStore";
@@ -52,6 +52,16 @@ export function RecordTab({
   const now = useNow();
   const { profile } = useProfile();
   const plan = profile.plan ?? DEFAULT_PLAN;
+
+  // The live notes scroll inside their own box, like the note card, so a long
+  // lecture never lengthens the page. While the student is at the bottom it
+  // follows each new draft; scrolled up to reread, it stays put.
+  const notesBox = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
+  useEffect(() => {
+    const box = notesBox.current;
+    if (box && atBottom.current && rec.phase === "recording") box.scrollTop = box.scrollHeight;
+  }, [rec.notesHtml, rec.phase]);
 
   const recorded = notes.filter((n) => n.recorded);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -115,10 +125,13 @@ export function RecordTab({
       }
       after={
         <span className="mt-3 block text-xs leading-5 text-slate-500">
-          Check your school allows recording before you start. {PLAN_LABEL[plan]} plan:{" "}
+          Check your school allows recording before you start.{" "}
+          {plan === "free" ? "You have" : `${PLAN_LABEL[plan]} plan:`}{" "}
           {profile.unlimited
             ? "unlimited recording."
-            : `${weekLeft === null ? "…" : formatDuration(weekLeft, true)} of recording left this week.`}
+            : `${weekLeft === null ? "…" : formatDuration(weekLeft, true)} of recording left ${
+                plan === "free" ? "in your free trial" : "this week"
+              }.`}
         </span>
       }
     >
@@ -183,7 +196,8 @@ export function RecordTab({
                 weekLeft <= 60 ? "text-amber-600" : "text-slate-500"
               }`}
             >
-              {formatDuration(weekLeft, true)} left this week
+              {formatDuration(weekLeft, true)} left{" "}
+              {plan === "free" ? "in your free trial" : "this week"}
             </span>
           )}
           <span className="font-mono text-sm tabular-nums text-slate-500">{mmss(rec.seconds)}</span>
@@ -259,7 +273,14 @@ export function RecordTab({
         /* Live note-taking view, and the finished article once the polish
            lands. The .editor class is reused so the drafted notes render
            exactly as they will once saved. */
-        <div className="mt-4 min-h-[240px] rounded-2xl bg-slate-50 p-5">
+        <div
+          ref={notesBox}
+          onScroll={(e) => {
+            const box = e.currentTarget;
+            atBottom.current = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+          }}
+          className="mt-4 min-h-[240px] max-h-[max(240px,calc(100dvh-22rem))] overflow-y-auto rounded-2xl bg-slate-50 p-5"
+        >
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
               {rec.phase === "recording" ? "Live notes" : "Your notes"}

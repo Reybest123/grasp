@@ -5,6 +5,7 @@ import "./globals.css";
 import "@/styles/editor.css";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { AmbientGlow } from "@/components/AmbientGlow";
+import { KeyboardInsets } from "@/components/KeyboardInsets";
 
 // Two faces, two jobs. Bricolage carries the headings — it has enough character
 // at large sizes to give the product a voice, and it is tight enough not to
@@ -70,6 +71,7 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body>
         <AmbientGlow />
+        <KeyboardInsets />
         {children}
         <PageViewTracker />
       </body>

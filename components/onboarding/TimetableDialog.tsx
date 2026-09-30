@@ -54,7 +54,7 @@ export function TimetableDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="timetable-dialog-title"
-        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none sm:max-h-[calc(100dvh-4rem)]"
+        className="relative flex max-h-[calc(100dvh-2rem-var(--kb,0px))] sm:max-h-[calc(100dvh-4rem-var(--kb,0px))] w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none"
       >
         <div className="shrink-0 px-6 pt-6 sm:px-8 sm:pt-8">
           <h2 id="timetable-dialog-title" className="text-2xl font-extrabold tracking-tight text-ink">

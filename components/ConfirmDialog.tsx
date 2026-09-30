@@ -78,7 +78,7 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center p-4">
+    <div className="kb-aware fixed inset-0 z-[60] grid place-items-center overflow-y-auto p-4">
       <div onClick={onCancel} className="absolute inset-0 bg-black/45" />
 
       <div
