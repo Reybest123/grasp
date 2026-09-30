@@ -34,6 +34,15 @@ export function TimetableDialog({
   // The heading and its instructions are about uploading; once a read is under
   // way they only take room, which a phone does not have.
   const [intro, setIntro] = useState(true);
+  // Leaving fades the popup out before the notebooks page comes in, rather
+  // than the popup and the dashboard vanishing in one frame.
+  const [closing, setClosing] = useState(false);
+  function leave() {
+    if (closing) return;
+    setClosing(true);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(onDone, reduced ? 0 : 220);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -49,7 +58,10 @@ export function TimetableDialog({
   return (
     <div className="kb-aware fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
       {/* Light enough that the app stays legible behind it. */}
-      <div aria-hidden="true" className="fixed inset-0 bg-ink/35" />
+      <div
+        aria-hidden="true"
+        className={`fixed inset-0 bg-ink/35 transition-opacity duration-200 ${closing ? "opacity-0" : ""}`}
+      />
 
       <div
         ref={cardRef}
@@ -57,7 +69,10 @@ export function TimetableDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Set up your workspace"
-        className="relative flex max-h-full w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none"
+        inert={closing}
+        className={`relative flex max-h-full w-full max-w-xl animate-[popIn_140ms_ease-out] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none transition duration-200 ease-in ${
+          closing ? "translate-y-3 scale-95 opacity-0" : ""
+        }`}
       >
         {intro && (
         <div className="shrink-0 px-6 pt-6 sm:px-8 sm:pt-8">
@@ -76,8 +91,8 @@ export function TimetableDialog({
           <TimetableSetup
             save={save}
             onSubjects={onSubjects}
-            onFinish={onDone}
-            onSkip={onDone}
+            onFinish={leave}
+            onSkip={leave}
             onIntro={setIntro}
           />
         </div>
