@@ -655,6 +655,8 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - **The mobile LCP of about 3.0s was tried and left alone.** Measured on a local production build, three runs each: `experimental.inlineCss` made it slightly worse (3.1s against 2.9s, since the HTML grows from 8KB to 55KB compressed), and dropping the hero's `.rise` fade changed nothing. Both were reverted. **Don't re-try either without measuring.** The figure is Lighthouse's simulated slow-4G estimate, and Google has no real-visitor data for the site yet.
   - **The one console error is Cloudflare's Web Analytics beacon** (`static.cloudflareinsights.com/beacon.min.js`), which Cloudflare injects and the CSP blocks. Nothing loads, so the Privacy Policy's "no third-party analytics" stays true, but it costs the Best Practices score. The fix is to switch Web Analytics off for the zone in Cloudflare, not to allow it in the CSP.
 
+- **"Grasp Study" is an alternate name in the landing page's structured data** (`SITE_ALTERNATE_NAMES` in `lib/site.ts`, 2026-09-30, at the user's request), on the Organization, WebSite and WebApplication. The site ranked 2nd for "graspstudy" but had slid to the second page for "grasp study"; this tells search engines the phrase is this site. It appears nowhere a student reads: the product is still just Grasp.
+
 **Still mocked / not yet built:**
 - Nothing on the limits front: quizzes, recordings, weekly Resource Bank reads and the per-subject Resource Bank document count are all enforced server-side (see above).
 - Nothing: explain, refine, enhance, generate and quiz explanations are on AI tokens (see Weekly allowances), and the timetable read is once per account.

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_ALTERNATE_NAMES, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { Logo } from "@/components/Logo";
 import { ArrowRightIcon } from "@/components/icons";
 import { HeroShowcase } from "@/components/landing/HeroShowcase";
@@ -48,6 +48,7 @@ const STRUCTURED_DATA = {
       "@type": "Organization",
       "@id": `${SITE_URL}/#organization`,
       name: SITE_NAME,
+      alternateName: SITE_ALTERNATE_NAMES,
       url: SITE_URL,
       logo: `${SITE_URL}/apple-icon`,
       email: "liamspencer549@gmail.com",
@@ -56,12 +57,14 @@ const STRUCTURED_DATA = {
       "@type": "WebSite",
       "@id": `${SITE_URL}/#website`,
       name: SITE_NAME,
+      alternateName: SITE_ALTERNATE_NAMES,
       url: SITE_URL,
       publisher: { "@id": `${SITE_URL}/#organization` },
     },
     {
       "@type": "WebApplication",
       name: SITE_NAME,
+      alternateName: SITE_ALTERNATE_NAMES,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
       applicationCategory: "EducationalApplication",

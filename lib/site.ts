@@ -13,6 +13,13 @@ export const SITE_URL = "https://graspstudy.com";
 
 export const SITE_NAME = "Grasp";
 
+/**
+ * What people type when they search for the site by its address. Only ever
+ * given to search engines (structured data), so they tie the two-word phrase to
+ * this site. The product is called Grasp everywhere a student reads.
+ */
+export const SITE_ALTERNATE_NAMES = ["Grasp Study", "GraspStudy"];
+
 export const SITE_TAGLINE = "AI note-taking for students";
 
 export const SITE_DESCRIPTION =
