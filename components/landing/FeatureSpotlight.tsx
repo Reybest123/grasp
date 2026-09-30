@@ -30,9 +30,9 @@ export function FeatureSpotlight({ scene, flip }: { scene: Scene; flip: boolean 
           {scene.label}
         </p>
 
-        <h3 className="mt-4 max-w-md text-3xl font-extrabold leading-[1.1] tracking-[-0.02em] text-ink sm:text-[2.2rem]">
+        <h2 className="mt-4 max-w-md text-3xl font-extrabold leading-[1.1] tracking-[-0.02em] text-ink sm:text-[2.2rem]">
           {scene.title}
-        </h3>
+        </h2>
 
         <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-slate-600">{scene.body}</p>
       </div>

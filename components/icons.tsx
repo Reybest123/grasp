@@ -13,6 +13,9 @@ const base = (className?: string) => ({
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
   className,
+  // Every icon is decoration beside a label, or sits in a control that carries
+  // its own aria-label, so none is announced by a screen reader.
+  "aria-hidden": true,
 });
 
 export function NoteIcon({ className }: IconProps) {

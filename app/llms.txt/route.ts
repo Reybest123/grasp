@@ -2,6 +2,7 @@
 // Keep it literal and in step with the landing page: no prices, since the
 // landing page carries none either.
 
+import { BLOG_POSTS, blogPath } from "@/lib/blog";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-static";
@@ -32,6 +33,10 @@ subjects, timetables and assessments rather than work meetings.
 - [Sign up](${SITE_URL}/signup)
 - [Terms of Service](${SITE_URL}/legal/terms)
 - [Privacy Policy](${SITE_URL}/legal/privacy)
+
+## Study guides
+
+${BLOG_POSTS.map((post) => `- [${post.title}](${SITE_URL}${blogPath(post.slug)}): ${post.description}`).join("\n")}
 `;
 
 export function GET() {

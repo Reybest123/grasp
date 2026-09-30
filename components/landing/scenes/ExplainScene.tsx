@@ -10,7 +10,9 @@ import { SparkleIcon } from "@/components/icons";
 export function ExplainScene() {
   return (
     <div className="scene-in flex h-full flex-col">
-      <h3 className="step-in text-lg font-bold text-ink">Photosynthesis</h3>
+      {/* A paragraph, not a heading: it is a mock note's title, and as a heading it
+          told search engines the landing page was about photosynthesis. */}
+      <p className="step-in font-display text-lg font-bold text-ink">Photosynthesis</p>
 
       <p className="step-in mt-3 text-[15px] leading-7 text-slate-700 [animation-delay:60ms]">
         Plants convert light energy into chemical energy stored as glucose.

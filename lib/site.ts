@@ -7,6 +7,8 @@
  * Railway's own *.up.railway.app address serves the same pages, and search
  * engines should only ever be told about this one.
  */
+import { BLOG_POSTS, blogPath } from "@/lib/blog";
+
 export const SITE_URL = "https://graspstudy.com";
 
 export const SITE_NAME = "Grasp";
@@ -17,10 +19,23 @@ export const SITE_DESCRIPTION =
   "Grasp turns your timetable into ready-to-use subject notebooks, explains anything you highlight, and quizzes you from your own notes.";
 
 /** The signed-out pages worth finding in a search, with how often they change. */
-export const PUBLIC_PAGES: { path: string; changeFrequency: "weekly" | "monthly" | "yearly"; priority: number }[] = [
+export const PUBLIC_PAGES: {
+  path: string;
+  changeFrequency: "weekly" | "monthly" | "yearly";
+  priority: number;
+  /** ISO date the page last changed, where that is known (blog posts). */
+  lastModified?: string;
+}[] = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/signup", changeFrequency: "monthly", priority: 0.8 },
   { path: "/login", changeFrequency: "monthly", priority: 0.5 },
   { path: "/legal/terms", changeFrequency: "yearly", priority: 0.2 },
   { path: "/legal/privacy", changeFrequency: "yearly", priority: 0.2 },
+  { path: "/blog", changeFrequency: "weekly", priority: 0.7 },
+  ...BLOG_POSTS.map((post) => ({
+    path: blogPath(post.slug),
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+    lastModified: post.updated ?? post.date,
+  })),
 ];

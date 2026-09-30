@@ -111,6 +111,12 @@ export default function Home() {
                   {label}
                 </NavAnchor>
               ))}
+              <Link
+                href="/blog"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
+              >
+                Blog
+              </Link>
             </nav>
             <div className="flex items-center gap-1 sm:gap-2">
               <Link
@@ -230,6 +236,9 @@ export default function Home() {
             <Logo />
             <p>© {new Date().getFullYear()} Grasp</p>
             <div className="flex gap-5">
+              <Link href="/blog" className="transition hover:text-ink">
+                Blog
+              </Link>
               <Link href="/legal/terms" className="transition hover:text-ink">
                 Terms
               </Link>

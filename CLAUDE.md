@@ -641,6 +641,13 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - **Known limits:** deleted accounts drop out of every figure; page views and checkout starts only count from 2026-09-24; revenue ignores Stripe fees, refunds and proration.
   - Applied with `npm run db:setup` against the shared Railway database.
 
+- **Blog at `/blog` (2026-09-30, at the user's request, for search).** The landing nav is now How it works / Features / Blog, and the footer links it too. `/blog` lists the posts as cards and `/blog/[slug]` is one post; both are static (`generateStaticParams`, `dynamicParams = false`, so an unknown slug is a 404). No CMS, database or new dependency.
+  - **`lib/blog.ts` is the list** (slug, title, description, date) and **`lib/blogPosts.ts` holds the words**, keyed by slug, as an intro plus sections of paragraphs, bullet lists and numbered steps. They are split because `lib/site.ts` imports the list for `PUBLIC_PAGES`, and the client-side `PageViewTracker` imports `lib/site.ts`; one file would ship every post's body to the browser. **To add a post, add an entry to both.** The sitemap (with `lastModified`), `/llms.txt`, page-view tracking and the index all follow from the list.
+  - **A post is one `<h1>` and a flat run of `<h2>`s**, by construction: a section's heading is always an `<h2>`. Each carries its own canonical, Open Graph `article` tags, and `BlogPosting` plus `BreadcrumbList` JSON-LD; the index carries `Blog`. It ends on one call to action to `/signup` and three other posts.
+  - **The blog follows the landing page's rules**: no price, no trial mention, no emojis, literal copy. Each post's last section says what Grasp does for that topic, and only things it really does. Six posts shipped: Cornell notes, quizzing yourself from notes, notes in class, reading a rubric, a study timetable, and AI note-taking for students.
+  - `components/blog/BlogShell.tsx` is the shared header and footer (the landing page's, with its two section links pointing at `/#how-it-works` and `/#features`), wrapped in `RouteFade`.
+- **Heading and icon fixes for search and screen readers (2026-09-30).** Each landing feature title is an `<h2>` (they were `<h3>`s with no `<h2>` over them since the Features heading was removed, so they read as sub-points of How it works). The mock note's "Photosynthesis" title in `ExplainScene` is a `<p>`, not a heading. Every icon in `components/icons.tsx` is `aria-hidden` through `base()`; there is no `<img>` anywhere, so there is no alt text to write.
+
 **Still mocked / not yet built:**
 - Nothing on the limits front: quizzes, recordings, weekly Resource Bank reads and the per-subject Resource Bank document count are all enforced server-side (see above).
 - Nothing: explain, refine, enhance, generate and quiz explanations are on AI tokens (see Weekly allowances), and the timetable read is once per account.
@@ -682,7 +689,7 @@ scripts/        check-scoping.mjs (npm run check:scoping — fails on a query
                       against a student-owned table with no ownership scope)
                 stripe-setup.mjs (npm run billing:setup — creates the two
                       weekly Stripe Prices, prints the env lines for them)
-app/            page.tsx (landing), login/, signup/, onboarding/, legal/,
+app/            page.tsx (landing), blog/ + blog/[slug]/ (static study guides), login/, signup/, onboarding/, legal/,
                 admin/ (password-gated plan switch + unlimited mode; api/admin, api/admin/unlock),
                 forgot-password/, reset-password/ (the reset email's link),
                 verify-email/ (check-your-email, where unconfirmed accounts wait),
@@ -719,6 +726,7 @@ components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEd
                 LegalPage + LegalSection (the legal pages' frame),
                 PlanCard (landing pricing and onboarding's plan step),
                 RenewPlans (what every page but Settings shows once a plan has ended)
+components/blog/ BlogShell (the header and footer the blog index and posts share)
 components/auth/ AuthForm (login and signup are the same form), VerifyEmail,
                 SetupAccountMenu (avatar menu before a plan: log out, delete account),
                 DeleteAccountDialog (password-confirmed delete, used by that menu),
@@ -769,6 +777,7 @@ lib/            subjects (model + factories), subjectsStore, profileStore,
                 password (scrypt), accounts (field validation),
                 recordingStore, schedule, subjectColors,
                 plan (Pro/Max, prices, trial length, caps, perks),
+                blog (the list of blog posts), blogPosts (their words),
                 currency (what a student is charged in, and reading it off a request),
                 currencyServer (resolving it: the account's own, else the request),
                 currencyStore (handing it to client components from a server layout),
