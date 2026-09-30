@@ -41,7 +41,7 @@ export const SCENES: Scene[] = [
     id: "quiz",
     label: "Quizzes",
     icon: <QuizIcon className="h-4 w-4" />,
-    title: "Quizzed on your work, not a question bank",
+    title: "Quizzed on your actual notes",
     body: "Pick your topics and how many multiple choice, short and long answers you want. Every question comes from your notes. Written answers are marked against them, and a half-right answer gets half marks.",
     subject: "Biology",
     monogram: "B",

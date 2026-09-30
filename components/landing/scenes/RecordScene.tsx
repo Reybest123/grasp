@@ -57,7 +57,7 @@ export function RecordScene() {
       </ul>
 
       <div className="step-in mt-auto rounded-xl bg-white px-3.5 py-2.5 text-xs text-slate-500 shadow-ring [animation-delay:1000ms]">
-        Audio is never stored. Stop, and the notes save into Biology.
+        Once you stop the recording, the notes get saved straight to your notebooks.
       </div>
     </div>
   );

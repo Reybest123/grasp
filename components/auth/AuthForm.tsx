@@ -27,17 +27,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Logo, LogoMark } from "@/components/Logo";
+import { Logo } from "@/components/Logo";
 import { ErrorNote } from "@/components/ErrorNote";
 import { PasswordInput } from "@/components/PasswordInput";
 import { AlertIcon, ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { emailProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
-
-const PROMISES = [
-  "One screenshot of your timetable builds every notebook",
-  "Highlight any line to have it explained where you are reading",
-  "Quizzes written from your own notes, not a generic bank",
-];
 
 type FieldKey = "name" | "email" | "password" | "confirm";
 type Values = Record<FieldKey, string>;
@@ -212,11 +206,9 @@ export function AuthForm({
   return (
     // Fixed to the viewport, like the dashboard: the page never scrolls. The
     // form column only scrolls inside itself on a screen too short to hold it.
-    <main className="grid h-dvh grid-rows-[minmax(0,1fr)] overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <BrandPanel signup={signup} />
-
-      <div className="flex min-h-0 flex-col">
-        <header className="flex shrink-0 items-center px-6 py-3 lg:hidden">
+    <main className="flex h-dvh flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex shrink-0 items-center px-6 py-3 sm:px-8 sm:py-4">
           <Logo />
         </header>
 
@@ -352,58 +344,6 @@ export function AuthForm({
         </section>
       </div>
     </main>
-  );
-}
-
-/** The signed-out student's only reminder of what they are signing up for. */
-function BrandPanel({ signup }: { signup: boolean }) {
-  return (
-    <aside className="relative hidden overflow-hidden bg-ink px-12 py-10 lg:flex lg:flex-col">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 opacity-[0.08]"
-        style={{
-          backgroundImage: "linear-gradient(to bottom, #fff 0 1px, transparent 1px 28px)",
-          backgroundSize: "100% 28px",
-        }}
-      />
-      {/* A warm bloom behind the copy, so the navy is not a flat wall. */}
-      <div
-        aria-hidden="true"
-        className="absolute -left-24 top-1/3 h-[420px] w-[420px] rounded-full bg-brand-600/25 blur-3xl"
-      />
-
-      <Link href="/" className="relative inline-flex items-center gap-2.5 self-start">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-tile">
-          <LogoMark className="h-[58%] w-[58%] text-ink" />
-        </span>
-        <span className="font-display text-[19px] font-extrabold tracking-tight text-white">
-          Grasp
-        </span>
-      </Link>
-
-      <div className="relative mt-auto max-w-md">
-        <h2 className="text-[2.1rem] font-extrabold leading-[1.12] text-white">
-          {signup
-            ? "Your whole timetable, ready to study from."
-            : "Your notebooks are where you left them."}
-        </h2>
-        <ul className="mt-8 space-y-4">
-          {PROMISES.map((p) => (
-            <li key={p} className="flex items-start gap-3 text-[15px] leading-relaxed text-slate-300">
-              <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-500/20 text-brand-300">
-                <CheckIcon className="h-3 w-3" />
-              </span>
-              {p}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <p className="relative mt-10 text-sm text-slate-400">
-        AI note-taking for students.
-      </p>
-    </aside>
   );
 }
 
