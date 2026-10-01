@@ -502,11 +502,20 @@ export async function chargeAiCost(account: Account, costUsd: number): Promise<v
  * rather than the week and stay as they are.
  */
 export async function resetWeeklyUsage(userId: string): Promise<boolean> {
-  const done = await query(
-    () => sql`
-      delete from usage
-      where user_id = ${userId} and kind in ('quiz', 'resource', 'mark', 'ai', 'audio')
-    `
+  const done = await query(() =>
+    transaction(async (sql) => {
+      await sql`
+        delete from usage
+        where user_id = ${userId} and kind in ('quiz', 'resource', 'mark', 'ai')
+      `;
+      // Audio rows are moved out of the week rather than deleted: a lecture
+      // still recording reads its own row (by ref, with no time window) for the
+      // seconds heard, and deleting it would refuse its drafts and final pass.
+      await sql`
+        update usage set created_at = now() - interval '8 days'
+        where user_id = ${userId} and kind = 'audio' and created_at > now() - interval '7 days'
+      `;
+    })
   );
   return done.ok;
 }

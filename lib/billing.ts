@@ -311,7 +311,6 @@ export async function settleSubscriptions(session: Stripe.Checkout.Session): Pro
   const live = all.data.filter((sub) => LIVE.has(sub.status)).sort((x, y) => y.created - x.created);
   const [keep, ...rest] = live;
   if (!keep) return null;
-  if (!rest.length) return keep.id;
 
   const replacedIds = new Set(
     [keep.metadata?.replaces, session.metadata?.replaces].filter((id): id is string => Boolean(id))
@@ -321,12 +320,17 @@ export async function settleSubscriptions(session: Stripe.Checkout.Session): Pro
     // Refund and reset before cancelling: a cancelled subscription drops out
     // of `live`, so a retry after a failure would never come back to it.
     if (replaced) {
-      await resetWeeklyUsage(userId);
+      // Thrown so the webhook answers 500 and Stripe retries before the
+      // replaced plan is cancelled and drops out of reach.
+      if (!(await resetWeeklyUsage(userId))) throw new Error("weekly usage reset failed");
     } else if (keep.created - sub.created < DUPLICATE_WINDOW_SECONDS) {
       await refundLatest(sub);
     }
     await stripe().subscriptions.cancel(sub.id);
   }
+  // Always, even with nothing to cancel: a sync of a subscription another call
+  // has just cancelled can land after this one's, and this puts the account
+  // back on the one that is live.
   await syncSubscription(keep);
   return keep.id;
 }
