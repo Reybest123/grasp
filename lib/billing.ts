@@ -322,11 +322,18 @@ export async function changePlan(
       };
     }
     await syncSubscription(updated);
-    // Informational only (the plan is read from the price), so a failure here
-    // does not undo a switch that has already been paid for.
+    // A switch is a new paid week, so a plan the student had cancelled is
+    // resumed by it: paying for Max is not a request to stop at the end of it.
+    // pending_if_incomplete rejects both this and the metadata, so they go in a
+    // second update, after the charge. A failure here does not undo a switch
+    // that has already been paid for.
     await stripe()
-      .subscriptions.update(subscriptionId, { metadata: { ...subscription.metadata, plan } })
-      .catch((err) => console.error("[grasp] Stripe plan metadata update failed:", err));
+      .subscriptions.update(subscriptionId, {
+        cancel_at_period_end: false,
+        metadata: { ...subscription.metadata, plan },
+      })
+      .then((resumed) => syncSubscription(resumed))
+      .catch((err) => console.error("[grasp] Stripe plan resume/metadata update failed:", err));
     return { ok: true };
   } catch (err) {
     console.error("[grasp] Stripe plan switch failed:", err);

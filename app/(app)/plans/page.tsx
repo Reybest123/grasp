@@ -295,6 +295,15 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
     return `Switching ends ${ending} today and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} now for a ${BILLING_PERIOD} of ${PLAN_LABEL[plan]}, then ${price} every ${BILLING_PERIOD} from today.`;
   }
 
+  const [resuming, setResuming] = useState(false);
+  async function resume() {
+    setResuming(true);
+    setError("");
+    const failed = await status.setCancelled(false);
+    setResuming(false);
+    if (failed) setError(failed);
+  }
+
   async function choose(plan: BilledPlan) {
     setConfirmPlan(null);
     setBusyPlan(plan);
@@ -335,7 +344,12 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
       <div className="grid max-w-4xl gap-6 sm:grid-cols-2 mx-auto">
         {PLANS.map((plan) => {
           const isCurrent = plan === current && !status.expired;
-          const label = isCurrent
+          // A cancelled plan still running to the end of its week: its own card
+          // offers to resume it, exactly as the Resume button below does.
+          const resumable = isCurrent && status.cancelledAt !== null;
+          const label = resumable
+            ? "Resume plan"
+            : isCurrent
             ? "Your current plan"
             : switching
               ? `Switch to ${PLAN_LABEL[plan]}`
@@ -343,15 +357,19 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
           return (
             <PlanCard key={plan} plan={plan} currency={currency} compact>
               <button
-                onClick={() => (switching ? setConfirmPlan(plan) : choose(plan))}
-                disabled={isCurrent || busyPlan !== null}
+                onClick={() =>
+                  resumable ? resume() : switching ? setConfirmPlan(plan) : choose(plan)
+                }
+                disabled={(isCurrent && !resumable) || busyPlan !== null || resuming}
                 className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed ${
-                  isCurrent
+                  resumable
+                    ? "bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
+                    : isCurrent
                     ? "bg-ink text-white disabled:opacity-100"
                     : "border border-slate-200 bg-white text-ink hover:border-slate-300 disabled:opacity-50"
                 }`}
               >
-                {busyPlan === plan ? "Working…" : label}
+                {busyPlan === plan ? "Working…" : resumable && resuming ? "Resuming…" : label}
               </button>
             </PlanCard>
           );
