@@ -492,3 +492,21 @@ export async function chargeAiCost(account: Account, costUsd: number): Promise<v
   );
   if (!result.ok) console.error("[grasp] could not charge AI tokens for", account.id);
 }
+
+/**
+ * Starts the week's allowances afresh. A plan switch charges a full week of the
+ * new plan and restarts the billing week from that moment, so the student has
+ * paid for a whole new week and gets one, rather than the old plan's spending
+ * carried over. Only the weekly pools are cleared: the per-quiz and
+ * per-recording caps (`markq`, `recording`, `draft`, `segdone`) bound one object
+ * rather than the week and stay as they are.
+ */
+export async function resetWeeklyUsage(userId: string): Promise<boolean> {
+  const done = await query(
+    () => sql`
+      delete from usage
+      where user_id = ${userId} and kind in ('quiz', 'resource', 'mark', 'ai', 'audio')
+    `
+  );
+  return done.ok;
+}

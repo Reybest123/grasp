@@ -25,6 +25,7 @@ import { requireUser } from "@/lib/session";
 import { parseAnswers } from "@/lib/onboarding";
 import { isPastDue, needsRenewal, changePlan, cancelImmediately, createCheckoutSession, readBillingRow } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
+import { resetWeeklyUsage } from "@/lib/usage";
 import { isBilledPlan } from "@/lib/plan";
 import { resolveCurrency } from "@/lib/currencyServer";
 
@@ -88,6 +89,9 @@ export async function POST(req: NextRequest) {
   if (hasActiveSubscription) {
     const switched = await changePlan(guard.user.id, plan);
     if (!switched.ok) return NextResponse.json({ error: switched.error }, { status: 502 });
+    // Only reached once the new week has been charged, so a declined card does
+    // not hand out a fresh week.
+    await resetWeeklyUsage(guard.user.id);
     return NextResponse.json({ ok: true });
   }
 
