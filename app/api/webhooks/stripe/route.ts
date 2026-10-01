@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { planForPrice, retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
+import { finishReplacement, planForPrice, retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
 import { sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
 
 const planOf = (subscription: Stripe.Subscription) =>
@@ -54,9 +54,20 @@ export async function POST(req: NextRequest) {
         // disables an endpoint that keeps failing, and a Resend outage must not
         // be what stops every plan from syncing.
         const synced = await syncSubscription(await retrieveSubscription(subscriptionId));
+        // Before the email, so a failure here (answered 500, retried by
+        // Stripe) does not also send the email twice.
+        await finishReplacement(session);
         if (!(await sendSubscribedMail(synced, planOf(synced)))) {
           console.error("[grasp] plan confirmation email not sent for", synced.id);
         }
+        break;
+      }
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const subscriptionId =
+          typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+        if (subscriptionId) await syncSubscription(await retrieveSubscription(subscriptionId));
+        await finishReplacement(session);
         break;
       }
       case "customer.subscription.trial_will_end": {

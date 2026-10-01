@@ -2,10 +2,9 @@
 
 // Plans: which plan the student is on, cancelling or resuming it, and both
 // plans side by side. Laid out like Settings. Real Stripe billing sits behind
-// every button here (lib/billing.ts): switching between an active Pro and Max
-// updates the existing subscription directly, and choosing a plan with no
-// active subscription (never subscribed, or one that has fully ended) opens
-// Stripe Checkout to take a card.
+// every button here (lib/billing.ts): switching between Pro and Max and choosing
+// a plan after one has ended both open Stripe Checkout, so the card is always
+// confirmed on Stripe's page; a switch ends the old plan once the new is paid.
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -16,7 +15,6 @@ import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, planName, planPrice, t
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { PlanWelcome } from "@/components/app/PlanWelcome";
 import { ErrorNote } from "@/components/ErrorNote";
 import { Skeleton } from "@/components/Skeleton";
 import { scrollToElement } from "@/lib/scrollTo";
@@ -285,15 +283,25 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   // The free trial has no subscription to switch, so its buttons go to Checkout.
   const onFree = current === "free";
   const switching = !status.expired && !onFree;
-  const [overlay, setOverlay] = useState<"working" | "welcome" | null>(null);
 
-  // A switch is bought like a new plan (changePlan in lib/billing.ts): a full
-  // week of the new plan now, and the week starts again from today.
+  // A switch is bought like a new plan, through Stripe Checkout (the card is
+  // entered again there): a full week of the new plan, and the old one ends
+  // the moment it is paid (finishReplacement in lib/billing.ts).
   function switchNotice(plan: BilledPlan): string {
     const price = planPrice(plan, currency);
     const ending = onTrial ? `your free ${PLAN_LABEL[current]} trial` : `your ${PLAN_LABEL[current]} plan`;
-    return `Switching ends ${ending} today and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} now for a ${BILLING_PERIOD} of ${PLAN_LABEL[plan]}, then ${price} every ${BILLING_PERIOD} from today.`;
+    return `Switching ends ${ending} as soon as you pay and starts ${PLAN_LABEL[plan]} straight away. You will be charged ${price} for a ${BILLING_PERIOD} of ${PLAN_LABEL[plan]}, then ${price} every ${BILLING_PERIOD} from today. You will confirm your card on Stripe's secure checkout page next.`;
   }
+
+  // Back from Stripe can restore this page from the back/forward cache with a
+  // button still reading "Taking you to checkout".
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setBusyPlan(null);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
 
   const [resuming, setResuming] = useState(false);
   async function resume() {
@@ -308,7 +316,6 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
     setConfirmPlan(null);
     setBusyPlan(plan);
     setError("");
-    if (switching) setOverlay("working");
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -319,7 +326,6 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
       if (!res.ok) {
         setError(data.error ?? "That did not go through. Try again.");
         setBusyPlan(null);
-        setOverlay(null);
         return;
       }
       if (typeof data.url === "string") {
@@ -327,14 +333,11 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
         window.location.href = data.url;
         return;
       }
-      // Switched directly on the existing subscription. The welcome shows
-      // first; pressing on reloads so every field that reads the profile or
-      // the plan status picks up the new plan in one go.
-      setOverlay("welcome");
+      setError("Grasp could not start checkout. Try again.");
+      setBusyPlan(null);
     } catch {
       setError("Grasp could not reach the server. Check your connection.");
       setBusyPlan(null);
-      setOverlay(null);
     }
   }
 
@@ -372,16 +375,12 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
                     : "border border-slate-200 bg-white text-ink hover:border-slate-300 disabled:opacity-50"
                 }`}
               >
-                {busyPlan === plan ? "Working…" : resumable && resuming ? "Resuming…" : label}
+                {busyPlan === plan ? "Taking you to checkout…" : resumable && resuming ? "Resuming…" : label}
               </button>
             </PlanCard>
           );
         })}
       </div>
-
-      {overlay && busyPlan && (
-        <PlanWelcome plan={busyPlan} phase={overlay} onDone={() => window.location.reload()} />
-      )}
 
       <ConfirmDialog
         open={confirmPlan !== null}
@@ -406,7 +405,7 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
             ""
           )
         }
-        confirmLabel={confirmPlan ? `Switch to ${PLAN_LABEL[confirmPlan]}` : ""}
+        confirmLabel="Continue to checkout"
         cancelLabel={onTrial ? "Keep my trial" : `Keep ${PLAN_LABEL[current]}`}
         onConfirm={() => confirmPlan && choose(confirmPlan)}
         onCancel={() => setConfirmPlan(null)}

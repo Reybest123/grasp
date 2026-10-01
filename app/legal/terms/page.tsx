@@ -65,7 +65,8 @@ export default function Terms() {
           </li>
           <li>
             <b>Switching plans.</b> Switching between Pro and Max works like buying the new
-            plan. It takes effect straight away, you are charged a full week of the new plan at
+            plan: you confirm your card on Stripe&apos;s checkout page, and once you pay, your old
+            plan ends and the new one starts. You are charged a full week of the new plan at
             once, and your weekly billing starts again from that day. There is no credit or refund for the time left on the plan you switched
             from.
           </li>

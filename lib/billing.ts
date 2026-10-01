@@ -22,6 +22,7 @@ import { track } from "@/lib/events";
 import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/currency";
 import { chargeLabel } from "@/lib/billingMail";
 import { SITE_URL } from "@/lib/site";
+import { resetWeeklyUsage } from "@/lib/usage";
 
 /**
  * Stripe Tax, switched on with STRIPE_TAX=on once it is activated in the
@@ -187,8 +188,10 @@ async function ensureCustomer(
 /**
  * Starts a Checkout Session for a brand new subscription: onboarding's plan
  * step for an account with none yet, or resubscribing after a subscription has
- * fully ended. Switching between Pro and Max on an *active* subscription goes
- * through `changePlan` below instead — no need to collect the card again.
+ * fully ended, or switching between Pro and Max. A switch (`replaces`) goes
+ * through Checkout too, at the user's request, so the student sees the price
+ * and confirms their card on Stripe's own page; the old subscription is only
+ * cancelled once the new one is paid (`finishReplacement`).
  *
  * Neither plan has a Stripe trial: both are charged when Checkout completes.
  * The free trial is a separate, cardless state (lib/plan.ts) that never
@@ -202,6 +205,7 @@ export async function createCheckoutSession({
   currency,
   successUrl,
   cancelUrl,
+  replaces,
 }: {
   userId: string;
   email: string;
@@ -216,6 +220,8 @@ export async function createCheckoutSession({
   currency: Currency;
   successUrl: string;
   cancelUrl: string;
+  /** The account's current subscription, when this is a switch. Set by the server, never the client. */
+  replaces?: string;
 }): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   if (!hasBilling()) return { ok: false, error: "Billing is not set up yet." };
   if (!PLAN_AVAILABLE[plan]) return { ok: false, error: "That plan is not available yet." };
@@ -245,7 +251,7 @@ export async function createCheckoutSession({
       // before the card is taken, and "start straight away" is the EU and UK
       // consumer's request for the plan to begin inside the 14-day
       // cancellation period (Terms, #refunds).
-      custom_text: { submit: { message: checkoutDisclosure(plan, charged) } },
+      custom_text: { submit: { message: checkoutDisclosure(plan, charged, Boolean(replaces)) } },
       ...(AUTOMATIC_TAX
         ? {
             automatic_tax: { enabled: true },
@@ -254,7 +260,7 @@ export async function createCheckoutSession({
           }
         : {}),
       client_reference_id: userId,
-      metadata: { userId, plan },
+      metadata: { userId, plan, ...(replaces ? { replaces } : {}) },
       success_url: successUrl,
       cancel_url: cancelUrl,
     });
@@ -266,79 +272,62 @@ export async function createCheckoutSession({
   }
 }
 
-function checkoutDisclosure(plan: BilledPlan, currency: Currency): string {
+function checkoutDisclosure(plan: BilledPlan, currency: Currency, switching = false): string {
   const price = chargeLabel(plan, currency);
   const terms = `${SITE_URL.replace(/^https:\/\//, "")}/legal/terms`;
-  const charge = `${price} now, then ${price} every week until you cancel. Cancel any time on Grasp's Plans page.`;
+  const charge = `${switching ? "This replaces your current plan, which ends as soon as you pay, with no refund for its unused days. " : ""}${price} now, then ${price} every week until you cancel. Cancel any time on Grasp's Plans page.`;
   return `${charge} By subscribing you agree to Grasp's Terms of Service (${terms}) and ask for your plan to start straight away.`;
 }
 
 /**
- * Moves an *active* subscription straight to the other plan — no new Checkout,
- * no re-entering a card, because Stripe already has one on file. Prorated, so
- * the difference is billed or credited against the current period rather than
- * waiting for the next one.
+ * Ends the plan a switch replaced, once the new one is paid. Called from the
+ * Checkout return route and the webhook, whichever lands first. Throws on a
+ * Stripe failure so the webhook answers 500 and Stripe retries; a retry is safe
+ * because every step checks what is already done.
+ *
+ * Two Checkouts opened for the same switch (two tabs, or an old link) can both
+ * be paid. The second then finds the old plan already ended and another live
+ * subscription beside its own, so it is the duplicate: it is cancelled and
+ * refunded, and the account is synced back onto the one that won.
  */
-export async function changePlan(
-  userId: string,
-  plan: BilledPlan
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!hasBilling()) return { ok: false, error: "Billing is not set up yet." };
-  if (!PLAN_AVAILABLE[plan]) return { ok: false, error: "That plan is not available yet." };
+export async function finishReplacement(session: Stripe.Checkout.Session): Promise<void> {
+  const replaces = session.metadata?.replaces;
+  const userId = session.client_reference_id;
+  const newId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+  const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+  if (!replaces || !userId || !newId || !customerId) return;
+  // A delayed payment method completes later (checkout.session.async_payment_succeeded).
+  if (session.payment_status === "unpaid") return;
 
-  const billing = await readBillingRow(userId);
-  if (!billing.ok) return { ok: false, error: billing.error };
-  const subscriptionId = billing.data?.stripeSubscriptionId;
-  if (!subscriptionId || isExpired(billing.data?.subscriptionStatus ?? null)) {
-    return { ok: false, error: "You do not have an active plan to switch. Choose a plan to subscribe." };
+  const old = await stripe().subscriptions.retrieve(replaces);
+  const oldCustomer = typeof old.customer === "string" ? old.customer : old.customer.id;
+  if (oldCustomer !== customerId) return;
+
+  if (old.status !== "canceled") {
+    await stripe().subscriptions.cancel(replaces);
+    await resetWeeklyUsage(userId);
+    return;
   }
 
-  try {
-    const subscription = await stripe().subscriptions.retrieve(subscriptionId);
-    const item = subscription.items.data[0];
-    if (!item) return { ok: false, error: "Grasp could not find your subscription. Try again." };
-    // A switch is bought like a new plan: a full week of the new plan is charged
-    // now and the week starts again from today, with no credit and no partial
-    // charge for the old one (Terms, #refunds). Ending a trial restarts the
-    // cycle by itself; otherwise the billing anchor is moved to now. No plan is
-    // sold with a trial now, but a subscription started before that still can be.
-    //
-    // pending_if_incomplete applies the switch only once that charge succeeds:
-    // a declined card leaves the student on the plan they had, rather than on
-    // the new plan with an unpaid invoice. It does not accept metadata, so the
-    // plan label is written separately below.
-    const updated = await stripe().subscriptions.update(subscriptionId, {
-      items: [{ id: item.id, price: priceId(plan) }],
-      proration_behavior: "none",
-      payment_behavior: "pending_if_incomplete",
-      ...(subscription.status === "trialing"
-        ? { trial_end: "now" as const }
-        : { billing_cycle_anchor: "now" as const }),
-    });
-    if (updated.pending_update) {
-      return {
-        ok: false,
-        error: "Your card was declined, so your plan has not changed. Update your card and try again.",
-      };
+  const live = await stripe().subscriptions.list({ customer: customerId, status: "active", limit: 10 });
+  const winner = live.data.find((sub) => sub.id !== newId);
+  if (!winner) return; // a retry of the switch that already went through
+
+  const duplicate = await stripe().subscriptions.retrieve(newId);
+  if (duplicate.status !== "canceled") await stripe().subscriptions.cancel(newId);
+  const invoiceId =
+    typeof duplicate.latest_invoice === "string" ? duplicate.latest_invoice : duplicate.latest_invoice?.id;
+  if (invoiceId) {
+    const payments = await stripe().invoicePayments.list({ invoice: invoiceId, limit: 10 });
+    for (const p of payments.data) {
+      const intent = p.payment.payment_intent;
+      const intentId = typeof intent === "string" ? intent : intent?.id;
+      if (p.status !== "paid" || !intentId) continue;
+      const refunded = await stripe().refunds.list({ payment_intent: intentId, limit: 1 });
+      if (!refunded.data.length) await stripe().refunds.create({ payment_intent: intentId });
     }
-    await syncSubscription(updated);
-    // A switch is a new paid week, so a plan the student had cancelled is
-    // resumed by it: paying for Max is not a request to stop at the end of it.
-    // pending_if_incomplete rejects both this and the metadata, so they go in a
-    // second update, after the charge. A failure here does not undo a switch
-    // that has already been paid for.
-    await stripe()
-      .subscriptions.update(subscriptionId, {
-        cancel_at_period_end: false,
-        metadata: { ...subscription.metadata, plan },
-      })
-      .then((resumed) => syncSubscription(resumed))
-      .catch((err) => console.error("[grasp] Stripe plan resume/metadata update failed:", err));
-    return { ok: true };
-  } catch (err) {
-    console.error("[grasp] Stripe plan switch failed:", err);
-    return { ok: false, error: "Grasp could not reach Stripe just now. Try again in a moment." };
   }
+  await syncSubscription(winner);
 }
 
 export async function cancelAtPeriodEnd(

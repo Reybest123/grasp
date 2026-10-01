@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
 import { query, sql } from "@/lib/db";
 import { isBilledPlan } from "@/lib/plan";
-import { stripeClient, syncSubscription } from "@/lib/billing";
+import { finishReplacement, stripeClient, syncSubscription } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
 
 export async function GET(req: NextRequest) {
@@ -39,6 +39,10 @@ export async function GET(req: NextRequest) {
         const subscription =
           typeof session.subscription === "string" ? null : session.subscription;
         if (subscription) await syncSubscription(subscription);
+        // The webhook retries this if it fails here.
+        await finishReplacement(session).catch((err) =>
+          console.error("[grasp] ending the replaced plan failed on return:", err)
+        );
       }
     } catch (err) {
       // The webhook is still coming; a student is not left stuck on a plain

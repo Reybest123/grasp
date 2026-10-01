@@ -23,9 +23,8 @@ import { track } from "@/lib/events";
 import { query, sql } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { parseAnswers } from "@/lib/onboarding";
-import { isPastDue, needsRenewal, changePlan, cancelImmediately, createCheckoutSession, readBillingRow } from "@/lib/billing";
+import { isPastDue, needsRenewal, cancelImmediately, createCheckoutSession, readBillingRow } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
-import { resetWeeklyUsage } from "@/lib/usage";
 import { isBilledPlan } from "@/lib/plan";
 import { resolveCurrency } from "@/lib/currencyServer";
 
@@ -85,14 +84,10 @@ export async function POST(req: NextRequest) {
   const subscriptionId = billing.data?.stripeSubscriptionId ?? null;
   const status = billing.data?.subscriptionStatus ?? null;
   const hasActiveSubscription = subscriptionId && !needsRenewal(status);
-
-  if (hasActiveSubscription) {
-    const switched = await changePlan(guard.user.id, plan);
-    if (!switched.ok) return NextResponse.json({ error: switched.error }, { status: 502 });
-    // Only reached once the new week has been charged, so a declined card does
-    // not hand out a fresh week.
-    await resetWeeklyUsage(guard.user.id);
-    return NextResponse.json({ ok: true });
+  // A switch goes through Checkout like any purchase; this only stops a second
+  // subscription to the plan already running.
+  if (hasActiveSubscription && guard.user.plan === plan) {
+    return NextResponse.json({ error: `You are already on ${plan === "max" ? "Max" : "Pro"}.` }, { status: 409 });
   }
 
   // A subscription that still exists in Stripe but needs renewing (the card
@@ -119,6 +114,9 @@ export async function POST(req: NextRequest) {
     currency: await resolveCurrency(guard.user),
     successUrl: `${origin}/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}&to=${returnTo}`,
     cancelUrl: `${origin}/${returnTo === "renew" ? "home" : returnTo}`,
+    // Set from the account, never the request: the subscription this purchase
+    // ends once it is paid.
+    replaces: hasActiveSubscription ? subscriptionId : undefined,
   });
   if (!session.ok) return NextResponse.json({ error: session.error }, { status: 502 });
   await track("checkout_started", { userId: guard.user.id, detail: plan });
