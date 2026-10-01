@@ -18,6 +18,7 @@ import {
   BankIcon,
   MicIcon,
   ArrowLeftIcon,
+  BackIcon,
   EditIcon,
 } from "@/components/icons";
 
@@ -341,6 +342,16 @@ export function SubjectWorkspace({
         )}
         {visited.has("quizzes") && (
           <div hidden={tab !== "quizzes"}>
+          {/* The breadcrumb also closes a quiz, but a plain Back is what a
+              student looks for, on a phone especially. */}
+          {quizCrumb && (
+            <button
+              onClick={closeQuiz}
+              className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-ink"
+            >
+              <BackIcon className="h-4 w-4" /> All quizzes
+            </button>
+          )}
           <QuizzesTab
             subject={subject}
             notes={subject.notes}

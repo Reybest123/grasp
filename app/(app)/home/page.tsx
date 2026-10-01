@@ -603,25 +603,28 @@ function WeekAllowances() {
       label: "AI tokens",
       hint: "Any Explain, Refine, AI enhance, AI generate or quiz answer explanation counts towards tokens. Some tasks use more tokens than others, depending on how much work they take.",
       allowance: usage?.tokens,
-      format: (n) => formatCount(n),
+      format: (n) => `${formatCount(n)} ${n === 1 ? "token" : "tokens"}`,
     },
     {
       label: "Quizzes",
       hint: "Each quiz generated from your notes. A quiz you delete does not hand its allowance back.",
       allowance: usage?.quizzes,
-      format: (n) => formatCount(n),
+      format: (n) => `${formatCount(n)} ${n === 1 ? "quiz" : "quizzes"}`,
     },
     {
       label: "Lecture recording",
       hint: "Time actually recorded. Every recording counts as at least a minute.",
       allowance: usage?.recordings,
-      format: (n, coarse) => formatDuration(n, !coarse),
+      // Under a minute the coarse form would read "0m", which hides time that is
+      // really still there.
+      format: (n, coarse) =>
+        coarse && n > 0 && n < 60 ? `${Math.floor(n)} ${Math.floor(n) === 1 ? "second" : "seconds"}` : formatDuration(n, !coarse),
     },
     {
       label: "Resource Bank",
       hint: "Each document in your Resource Bank. A document is only read once, however often it is used after that.",
       allowance: usage?.resources,
-      format: (n) => formatCount(n),
+      format: (n) => `${formatCount(n)} ${n === 1 ? "document" : "documents"}`,
     },
   ];
 
@@ -682,6 +685,12 @@ function WeekAllowances() {
       </div>
     </>
   );
+}
+
+/** Never rounds up to 100 while anything is left: 100% means none left. */
+function usedPercent(used: number, limit: number): number {
+  if (used >= limit) return 100;
+  return Math.min(99, Math.round((used / limit) * 100));
 }
 
 function Meter({
@@ -746,7 +755,7 @@ function Meter({
             </>
           ) : (
             <>
-              <span className="font-semibold text-ink">{Math.round(share * 100)}% used</span> ·{" "}
+              <span className="font-semibold text-ink">{usedPercent(used, limit)}% used</span> ·{" "}
               {used >= limit ? "none left" : `${format(limit - used, true)} left`}
             </>
           )}
