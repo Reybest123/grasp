@@ -191,7 +191,7 @@ async function ensureCustomer(
  * fully ended, or switching between Pro and Max. A switch (`replaces`) goes
  * through Checkout too, at the user's request, so the student sees the price
  * and confirms their card on Stripe's own page; the old subscription is only
- * cancelled once the new one is paid (`finishReplacement`).
+ * cancelled once the new one is paid (`settleSubscriptions`).
  *
  * Neither plan has a Stripe trial: both are charged when Checkout completes.
  * The free trial is a separate, cardless state (lib/plan.ts) that never
@@ -243,7 +243,9 @@ export async function createCheckoutSession({
       line_items: [{ price: priceId(plan), quantity: 1 }],
       payment_method_collection: "always",
       subscription_data: {
-        metadata: { userId, plan },
+        // `replaces` rides on the new subscription itself, so whichever
+        // Checkout's cleanup runs first still knows which plan it replaced.
+        metadata: { userId, plan, ...(replaces ? { replaces } : {}) },
       },
       // Stated beside the pay button, where it is read: the price, that it
       // renews every week, and how to stop it. Auto-renewal laws (the US
@@ -279,55 +281,68 @@ function checkoutDisclosure(plan: BilledPlan, currency: Currency, switching = fa
   return `${charge} By subscribing you agree to Grasp's Terms of Service (${terms}) and ask for your plan to start straight away.`;
 }
 
+/** A purchase made within this long of another counts as a duplicate and is refunded. */
+const DUPLICATE_WINDOW_SECONDS = 24 * 60 * 60;
+
+const LIVE = new Set(["active", "trialing", "past_due", "unpaid"]);
+
 /**
- * Ends the plan a switch replaced, once the new one is paid. Called from the
- * Checkout return route and the webhook, whichever lands first. Throws on a
- * Stripe failure so the webhook answers 500 and Stripe retries; a retry is safe
- * because every step checks what is already done.
+ * After any paid Checkout, leaves the customer with exactly one live
+ * subscription: the newest. Every other one is cancelled. Called from the
+ * Checkout return route and the webhook, whichever lands first, and throws on a
+ * Stripe failure so the webhook answers 500 and Stripe retries; every step
+ * checks what is already done, so a retry is safe. Two calls racing agree,
+ * because "newest" is read off Stripe rather than off whichever call is running.
  *
- * Two Checkouts opened for the same switch (two tabs, or an old link) can both
- * be paid. The second then finds the old plan already ended and another live
- * subscription beside its own, so it is the duplicate: it is cancelled and
- * refunded, and the account is synced back onto the one that won.
+ * - The plan a switch replaced (`replaces`) is cancelled with no refund for its
+ *   unused days (Terms, #refunds), and the week's allowances start afresh.
+ * - Any other one bought within a day is a duplicate purchase (two checkout
+ *   tabs, an old checkout link, onboarding paid twice), so it is refunded too.
+ * - Anything older is a plan that was already in use, and is only cancelled.
  */
-export async function finishReplacement(session: Stripe.Checkout.Session): Promise<void> {
-  const replaces = session.metadata?.replaces;
+export async function settleSubscriptions(session: Stripe.Checkout.Session): Promise<string | null> {
   const userId = session.client_reference_id;
-  const newId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
-  if (!replaces || !userId || !newId || !customerId) return;
+  if (!userId || !customerId) return null;
   // A delayed payment method completes later (checkout.session.async_payment_succeeded).
-  if (session.payment_status === "unpaid") return;
+  if (session.payment_status === "unpaid") return null;
 
-  const old = await stripe().subscriptions.retrieve(replaces);
-  const oldCustomer = typeof old.customer === "string" ? old.customer : old.customer.id;
-  if (oldCustomer !== customerId) return;
+  const all = await stripe().subscriptions.list({ customer: customerId, status: "all", limit: 20 });
+  const live = all.data.filter((sub) => LIVE.has(sub.status)).sort((x, y) => y.created - x.created);
+  const [keep, ...rest] = live;
+  if (!keep) return null;
+  if (!rest.length) return keep.id;
 
-  if (old.status !== "canceled") {
-    await stripe().subscriptions.cancel(replaces);
-    await resetWeeklyUsage(userId);
-    return;
-  }
-
-  const live = await stripe().subscriptions.list({ customer: customerId, status: "active", limit: 10 });
-  const winner = live.data.find((sub) => sub.id !== newId);
-  if (!winner) return; // a retry of the switch that already went through
-
-  const duplicate = await stripe().subscriptions.retrieve(newId);
-  if (duplicate.status !== "canceled") await stripe().subscriptions.cancel(newId);
-  const invoiceId =
-    typeof duplicate.latest_invoice === "string" ? duplicate.latest_invoice : duplicate.latest_invoice?.id;
-  if (invoiceId) {
-    const payments = await stripe().invoicePayments.list({ invoice: invoiceId, limit: 10 });
-    for (const p of payments.data) {
-      const intent = p.payment.payment_intent;
-      const intentId = typeof intent === "string" ? intent : intent?.id;
-      if (p.status !== "paid" || !intentId) continue;
-      const refunded = await stripe().refunds.list({ payment_intent: intentId, limit: 1 });
-      if (!refunded.data.length) await stripe().refunds.create({ payment_intent: intentId });
+  const replacedIds = new Set(
+    [keep.metadata?.replaces, session.metadata?.replaces].filter((id): id is string => Boolean(id))
+  );
+  for (const sub of rest) {
+    const replaced = replacedIds.has(sub.id);
+    // Refund and reset before cancelling: a cancelled subscription drops out
+    // of `live`, so a retry after a failure would never come back to it.
+    if (replaced) {
+      await resetWeeklyUsage(userId);
+    } else if (keep.created - sub.created < DUPLICATE_WINDOW_SECONDS) {
+      await refundLatest(sub);
     }
+    await stripe().subscriptions.cancel(sub.id);
   }
-  await syncSubscription(winner);
+  await syncSubscription(keep);
+  return keep.id;
+}
+
+/** Refunds a subscription's latest paid invoice, once. */
+async function refundLatest(sub: Stripe.Subscription): Promise<void> {
+  const invoiceId = typeof sub.latest_invoice === "string" ? sub.latest_invoice : sub.latest_invoice?.id;
+  if (!invoiceId) return;
+  const payments = await stripe().invoicePayments.list({ invoice: invoiceId, limit: 10 });
+  for (const p of payments.data) {
+    const intent = p.payment.payment_intent;
+    const intentId = typeof intent === "string" ? intent : intent?.id;
+    if (p.status !== "paid" || !intentId) continue;
+    const refunded = await stripe().refunds.list({ payment_intent: intentId, limit: 1 });
+    if (!refunded.data.length) await stripe().refunds.create({ payment_intent: intentId });
+  }
 }
 
 export async function cancelAtPeriodEnd(

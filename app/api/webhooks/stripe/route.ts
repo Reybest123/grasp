@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { finishReplacement, planForPrice, retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
+import { settleSubscriptions, planForPrice, retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
 import { sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
 
 const planOf = (subscription: Stripe.Subscription) =>
@@ -56,7 +56,9 @@ export async function POST(req: NextRequest) {
         const synced = await syncSubscription(await retrieveSubscription(subscriptionId));
         // Before the email, so a failure here (answered 500, retried by
         // Stripe) does not also send the email twice.
-        await finishReplacement(session);
+        const kept = await settleSubscriptions(session);
+        // A duplicate purchase that was just refunded gets no "plan started" email.
+        if (kept && kept !== synced.id) break;
         if (!(await sendSubscribedMail(synced, planOf(synced)))) {
           console.error("[grasp] plan confirmation email not sent for", synced.id);
         }
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
         const subscriptionId =
           typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
         if (subscriptionId) await syncSubscription(await retrieveSubscription(subscriptionId));
-        await finishReplacement(session);
+        await settleSubscriptions(session);
         break;
       }
       case "customer.subscription.trial_will_end": {

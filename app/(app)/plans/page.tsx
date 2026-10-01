@@ -286,7 +286,7 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
 
   // A switch is bought like a new plan, through Stripe Checkout (the card is
   // entered again there): a full week of the new plan, and the old one ends
-  // the moment it is paid (finishReplacement in lib/billing.ts).
+  // the moment it is paid (settleSubscriptions in lib/billing.ts).
   function switchNotice(plan: BilledPlan): string {
     const price = planPrice(plan, currency);
     const ending = onTrial ? `your free ${PLAN_LABEL[current]} trial` : `your ${PLAN_LABEL[current]} plan`;
