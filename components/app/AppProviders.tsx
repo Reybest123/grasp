@@ -16,6 +16,7 @@ import { RecordingProvider } from "@/lib/recordingStore";
 import { AppShell } from "@/components/app/AppShell";
 import { SessionHeartbeat } from "@/components/app/SessionHeartbeat";
 import { LimitDialog } from "@/components/app/LimitDialog";
+import { WelcomeFromCheckout } from "@/components/app/PlanWelcome";
 
 export function AppProviders({
   expired,
@@ -39,6 +40,7 @@ export function AppProviders({
           {/* Inside the recording provider so its link to /plans can go through
               the recording guard like every other way off the Record tab. */}
           <LimitDialog />
+          <WelcomeFromCheckout />
           <AppShell expired={expired} paymentFailed={paymentFailed} freeTrialEnded={freeTrialEnded}>
             {children}
           </AppShell>

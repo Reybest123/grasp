@@ -16,6 +16,7 @@ import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, planName, planPrice, t
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PlanWelcome } from "@/components/app/PlanWelcome";
 import { ErrorNote } from "@/components/ErrorNote";
 import { Skeleton } from "@/components/Skeleton";
 import { scrollToElement } from "@/lib/scrollTo";
@@ -283,6 +284,8 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
   const onTrial = profile.trialEndsAt !== null;
   // The free trial has no subscription to switch, so its buttons go to Checkout.
   const onFree = current === "free";
+  const switching = !status.expired && !onFree;
+  const [overlay, setOverlay] = useState<"working" | "welcome" | null>(null);
 
   // A switch is bought like a new plan (changePlan in lib/billing.ts): a full
   // week of the new plan now, and the week starts again from today.
@@ -296,6 +299,7 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
     setConfirmPlan(null);
     setBusyPlan(plan);
     setError("");
+    if (switching) setOverlay("working");
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -306,6 +310,7 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
       if (!res.ok) {
         setError(data.error ?? "That did not go through. Try again.");
         setBusyPlan(null);
+        setOverlay(null);
         return;
       }
       if (typeof data.url === "string") {
@@ -313,14 +318,14 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
         window.location.href = data.url;
         return;
       }
-      // Switched directly on the existing subscription: reload so every field
-      // that reads the profile or the plan status (this page, the rail, the
-      // header chip) picks up the new plan in one go, rather than each having
-      // to be told individually.
-      window.location.reload();
+      // Switched directly on the existing subscription. The welcome shows
+      // first; pressing on reloads so every field that reads the profile or
+      // the plan status picks up the new plan in one go.
+      setOverlay("welcome");
     } catch {
       setError("Grasp could not reach the server. Check your connection.");
       setBusyPlan(null);
+      setOverlay(null);
     }
   }
 
@@ -330,7 +335,6 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
       <div className="grid max-w-4xl gap-6 sm:grid-cols-2 mx-auto">
         {PLANS.map((plan) => {
           const isCurrent = plan === current && !status.expired;
-          const switching = !status.expired && !onFree;
           const label = isCurrent
             ? "Your current plan"
             : switching
@@ -353,6 +357,10 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
           );
         })}
       </div>
+
+      {overlay && busyPlan && (
+        <PlanWelcome plan={busyPlan} phase={overlay} onDone={() => window.location.reload()} />
+      )}
 
       <ConfirmDialog
         open={confirmPlan !== null}

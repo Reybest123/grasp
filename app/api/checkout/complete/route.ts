@@ -8,6 +8,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
+import { query, sql } from "@/lib/db";
+import { isBilledPlan } from "@/lib/plan";
 import { stripeClient, syncSubscription } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
 
@@ -45,5 +47,17 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // The plan as it now stands, so the page can open on "Welcome to Max". Read
+  // back rather than taken from the URL: only a plan that actually started is
+  // welcomed. If the webhook has not landed yet there is simply no welcome.
+  const row = await query(
+    () => sql`select plan, subscription_status from users where id = ${guard.user.id}`
+  );
+  const current = row.ok ? (row.data as { plan: string | null; subscription_status: string | null }[])[0] : undefined;
+  if (current && isBilledPlan(current.plan) && current.subscription_status !== "canceled") {
+    const url = new URL(destination);
+    url.searchParams.set("welcome", current.plan);
+    return NextResponse.redirect(url.toString());
+  }
   return NextResponse.redirect(destination);
 }
