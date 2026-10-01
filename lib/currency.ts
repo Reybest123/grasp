@@ -71,7 +71,60 @@ export function countryFromHeaders(headers: Headers): string | null {
     headers.get("x-vercel-ip-country"); // Vercel
   if (geo && geo.length === 2 && geo !== "XX") return geo.toUpperCase();
 
-  return regionFromAcceptLanguage(headers.get("accept-language"));
+  return (
+    countryFromTimeZone(readCookie(headers.get("cookie"), TIME_ZONE_COOKIE)) ??
+    regionFromAcceptLanguage(headers.get("accept-language"))
+  );
+}
+
+/**
+ * Set by the browser (components/TimeZoneCookie.tsx) to the device's own time
+ * zone. Read after the edge's geolocation and before the language header: a
+ * Mac set to US English in Brisbane says "en-US" but "Australia/Brisbane".
+ * Matters wherever the request skips Cloudflare (staging, local dev).
+ */
+export const TIME_ZONE_COOKIE = "grasp_tz";
+
+function readCookie(header: string | null, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) {
+      try {
+        return decodeURIComponent(rest.join("="));
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+/** Only the zones of countries billed in their own currency; anything else falls through. */
+const ZONE_COUNTRY: Record<string, string> = {
+  "Pacific/Auckland": "NZ", "Pacific/Chatham": "NZ",
+  "Europe/London": "GB", "Europe/Belfast": "GB",
+  "Europe/Vienna": "AT", "Europe/Brussels": "BE", "Europe/Zagreb": "HR", "Asia/Nicosia": "CY",
+  "Asia/Famagusta": "CY", "Europe/Nicosia": "CY", "Europe/Tallinn": "EE", "Europe/Helsinki": "FI",
+  "Europe/Paris": "FR", "Europe/Berlin": "DE", "Europe/Busingen": "DE", "Europe/Athens": "GR",
+  "Europe/Dublin": "IE", "Europe/Rome": "IT", "Europe/Riga": "LV", "Europe/Vilnius": "LT",
+  "Europe/Luxembourg": "LU", "Europe/Malta": "MT", "Europe/Amsterdam": "NL", "Europe/Lisbon": "PT",
+  "Atlantic/Azores": "PT", "Atlantic/Madeira": "PT", "Europe/Bratislava": "SK",
+  "Europe/Ljubljana": "SI", "Europe/Madrid": "ES", "Africa/Ceuta": "ES", "Atlantic/Canary": "ES",
+};
+
+const CANADIAN_ZONES = [
+  "Toronto", "Vancouver", "Edmonton", "Winnipeg", "Halifax", "St_Johns", "Regina", "Moncton",
+  "Whitehorse", "Yellowknife", "Iqaluit", "Glace_Bay", "Goose_Bay", "Dawson_Creek", "Dawson",
+  "Swift_Current", "Fort_Nelson", "Creston", "Rankin_Inlet", "Resolute", "Cambridge_Bay",
+  "Inuvik", "Atikokan", "Blanc-Sablon", "Montreal",
+];
+
+export function countryFromTimeZone(zone: string | null | undefined): string | null {
+  if (!zone) return null;
+  if (zone.startsWith("Australia/") || zone === "Antarctica/Macquarie") return "AU";
+  if (zone.startsWith("America/") && CANADIAN_ZONES.includes(zone.slice("America/".length))) return "CA";
+  return ZONE_COUNTRY[zone] ?? null;
 }
 
 /** "en-AU,en;q=0.9" -> "AU". The first tag only: the rest are fallbacks, not where they are. */

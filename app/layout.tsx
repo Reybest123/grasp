@@ -5,6 +5,7 @@ import "./globals.css";
 import "@/styles/editor.css";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { AmbientGlow } from "@/components/AmbientGlow";
+import { TimeZoneCookie } from "@/components/TimeZoneCookie";
 import { KeyboardInsets } from "@/components/KeyboardInsets";
 
 // Two faces, two jobs. Bricolage carries the headings — it has enough character
@@ -74,6 +75,7 @@ export default function RootLayout({
         <KeyboardInsets />
         {children}
         <PageViewTracker />
+        <TimeZoneCookie />
       </body>
     </html>
   );

@@ -154,13 +154,15 @@ export default function Privacy() {
 
       <LegalSection title="Cookies and local storage">
         <p>
-          Grasp sets one cookie, <code>grasp_session</code>, which keeps you logged in. It can only be
+          Grasp sets two cookies. <code>grasp_session</code> keeps you logged in. It can only be
           read by Grasp&apos;s server, and it expires after 30 days, after 30 minutes with no Grasp tab
           open, or when you log out. It is
           strictly necessary for your account to work, which is why Grasp does not show a cookie
           banner asking you to accept it. Grasp&apos;s own staff may also have a{" "}
           <code>grasp_admin</code> cookie, used only for testing; it is never set for students and
-          is deleted when the browser closes.
+          is deleted when the browser closes. The second, <code>grasp_tz</code>, holds your
+          device&apos;s time zone (for example &quot;Australia/Brisbane&quot;) so Grasp can show prices in
+          your own currency. It holds nothing else and lasts a year.
         </p>
         <p>
           Grasp also stores one setting in your browser: whether you have hidden the tip at the
