@@ -11,7 +11,8 @@ import { PlanCard } from "@/components/PlanCard";
 import { ErrorNote } from "@/components/ErrorNote";
 import { ArrowRightIcon } from "@/components/icons";
 import { useCurrency } from "@/lib/currencyStore";
-import { PLANS, PLAN_LABEL, type BilledPlan } from "@/lib/plan";
+import { PLANS, PLAN_LABEL, isBilledPlan, type BilledPlan } from "@/lib/plan";
+import { useProfile } from "@/lib/profileStore";
 
 export function RenewPlans({
   paymentFailed,
@@ -33,6 +34,11 @@ export function RenewPlans({
     window.addEventListener("pageshow", onShow);
     return () => window.removeEventListener("pageshow", onShow);
   }, []);
+
+  // The paid plan the student had before it ended, so its card can offer to
+  // resume it and the other to continue with that one instead.
+  const { profile } = useProfile();
+  const previous = !freeTrialEnded && profile.plan && isBilledPlan(profile.plan) ? profile.plan : null;
 
   async function choose(plan: BilledPlan) {
     setBusy(plan);
@@ -90,7 +96,11 @@ export function RenewPlans({
                 </>
               ) : (
                 <>
-                  Choose {PLAN_LABEL[plan]}
+                  {previous === plan
+                    ? `Resume ${PLAN_LABEL[plan]} plan`
+                    : previous
+                      ? `Continue with ${PLAN_LABEL[plan]}`
+                      : `Choose ${PLAN_LABEL[plan]}`}
                   <ArrowRightIcon className="h-5 w-5" />
                 </>
               )}

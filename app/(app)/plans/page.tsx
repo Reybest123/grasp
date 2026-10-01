@@ -347,11 +347,14 @@ function AllPlans({ status }: { status: ReturnType<typeof usePlanStatus> }) {
           // A cancelled plan still running to the end of its week: its own card
           // offers to resume it, exactly as the Resume button below does.
           const resumable = isCurrent && status.cancelledAt !== null;
+          const cancelled = status.cancelledAt !== null && !status.expired;
           const label = resumable
-            ? "Resume plan"
+            ? `Resume ${PLAN_LABEL[plan]} plan`
             : isCurrent
             ? "Your current plan"
-            : switching
+            : switching && cancelled
+              ? `Continue with ${PLAN_LABEL[plan]}`
+              : switching
               ? `Switch to ${PLAN_LABEL[plan]}`
               : `Choose ${PLAN_LABEL[plan]}`;
           return (
