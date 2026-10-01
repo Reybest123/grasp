@@ -380,6 +380,14 @@ export async function cancelAtPeriodEnd(
     return { ok: true };
   } catch (err) {
     console.error("[grasp] Stripe cancel/resume failed:", err);
+    // Grasp's copy can be behind Stripe (a missed webhook): re-read the
+    // subscription, and if it has in fact ended, say that and lock the account
+    // to match rather than blaming the connection.
+    const current = await stripe().subscriptions.retrieve(subscriptionId).catch(() => null);
+    if (current?.status === "canceled") {
+      await syncSubscription(current).catch(() => null);
+      return { ok: false, error: "Your plan has already ended. Refresh the page to choose a plan again." };
+    }
     return { ok: false, error: "Grasp could not reach Stripe just now. Try again in a moment." };
   }
 }
