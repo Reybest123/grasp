@@ -51,7 +51,7 @@ const STRUCTURED_DATA = {
       alternateName: SITE_ALTERNATE_NAMES,
       url: SITE_URL,
       logo: `${SITE_URL}/apple-icon`,
-      email: "liamspencer549@gmail.com",
+      email: "graspstudyai@gmail.com",
     },
     {
       "@type": "WebSite",

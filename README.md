@@ -169,4 +169,4 @@ See the file layout section of [`CLAUDE.md`](./CLAUDE.md) for a file-by-file map
 ---
 
 AI-generated notes, explanations and marks can be wrong. Grasp is a study aid, not an authoritative
-source. Questions: liamspencer549@gmail.com
+source. Questions: graspstudyai@gmail.com

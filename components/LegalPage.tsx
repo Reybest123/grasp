@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { BackIcon } from "@/components/icons";
 
-export const CONTACT_EMAIL = "liamspencer549@gmail.com";
+export const CONTACT_EMAIL = "graspstudyai@gmail.com";
 
 export function LegalPage({
   title,

@@ -61,7 +61,7 @@ export default function SettingsPage() {
         <a href="/legal/privacy" target="_blank" rel="noopener" className="transition hover:text-ink">
           Privacy Policy
         </a>
-        <a href="mailto:liamspencer549@gmail.com" className="transition hover:text-ink">
+        <a href="mailto:graspstudyai@gmail.com" className="transition hover:text-ink">
           Contact
         </a>
       </p>

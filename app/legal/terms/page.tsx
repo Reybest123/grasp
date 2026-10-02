@@ -98,10 +98,10 @@ export default function Terms() {
           <li>
             <b>How to ask.</b> Email{" "}
             <a
-              href="mailto:liamspencer549@gmail.com"
+              href="mailto:graspstudyai@gmail.com"
               className="font-semibold text-brand-700 hover:underline"
             >
-              liamspencer549@gmail.com
+              graspstudyai@gmail.com
             </a>{" "}
             from the email address on your account, ideally within 14 days of the charge. Approved
             refunds go back to the original payment method, usually within 10 business days.
@@ -214,10 +214,10 @@ export default function Terms() {
           These terms are governed by the laws of Queensland, Australia. If you have a problem with
           Grasp, email{" "}
           <a
-            href="mailto:liamspencer549@gmail.com"
+            href="mailto:graspstudyai@gmail.com"
             className="font-semibold text-brand-700 hover:underline"
           >
-            liamspencer549@gmail.com
+            graspstudyai@gmail.com
           </a>{" "}
           first so it can be sorted out directly. If it cannot, it can be taken to the courts of
           Queensland. This does not stop you using a consumer protection agency, or the courts
