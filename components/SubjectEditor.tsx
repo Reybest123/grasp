@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DateSelect } from "@/components/DateSelect";
 import { DaySelect, TimeSelect } from "@/components/ClassTimeSelects";
 import { useEnterTransition } from "@/lib/useEnterTransition";
+import { useVisualViewport } from "@/lib/useVisualViewport";
 
 export function SubjectEditor({
   subject: subjectProp,
@@ -48,6 +49,22 @@ export function SubjectEditor({
   const [classes, setClasses] = useState<ClassSlot[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // On a phone the sheet takes over the whole screen, sized to the part left
+  // visible by the keyboard, so the field being typed in has room above the
+  // keys and nothing has to guess where the middle of the screen is.
+  const area = useVisualViewport();
+
+  // ...and the page behind stays put while it is open, or iOS scrolls it to
+  // reach a field and the sheet's header goes with it.
+  useEffect(() => {
+    if (!open || !window.matchMedia("(max-width: 767px), (max-height: 500px)").matches) return;
+    const root = document.documentElement;
+    const prev = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = prev;
+    };
+  }, [open]);
 
   // Reload the form whenever a different subject is opened.
   useEffect(() => {
@@ -109,7 +126,8 @@ export function SubjectEditor({
         aria-modal="true"
         aria-label="Edit subject"
         inert={!open}
-        className={`fixed right-0 top-0 z-50 flex h-[calc(100dvh-var(--kb,0px))] w-full max-w-[460px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-[transform,height] duration-300 ease-out ${
+        style={area ? { top: area.top, height: area.height } : undefined}
+        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out compact:z-[56] compact:max-w-none compact:border-l-0 compact:shadow-none ${
           visible ? "translate-x-0" : "translate-x-full"
         }`}
       >

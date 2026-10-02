@@ -10,6 +10,7 @@
 // also means an edit can move an assessment to a different subject.
 
 import { useEffect, useState } from "react";
+import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, SHEET_ENTER } from "@/lib/useKeyboardLift";
 import type { Subject } from "@/lib/subjects";
 import type { Exam } from "@/lib/schedule";
 import { getColor } from "@/lib/subjectColors";
@@ -51,6 +52,7 @@ export function AddAssessmentDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const lift = useKeyboardLift();
   if (!open) return null;
 
   // A date is the one thing an assessment cannot do without — there is nothing
@@ -68,15 +70,15 @@ export function AddAssessmentDialog({
 
   return (
     <>
-      <div onClick={onClose} aria-hidden className="fixed inset-0 z-[60] bg-black/40" />
-      <div className="kb-aware fixed inset-0 z-[60] grid place-items-center overflow-y-auto p-4">
+      <div style={lift} className={`${SHEET_LAYER} z-[60]`}>
+        <div onClick={onClose} aria-hidden className="absolute inset-0 bg-black/40" />
         <form
           onSubmit={submit}
           noValidate
           role="dialog"
           aria-modal="true"
           aria-label={editing ? "Edit assessment" : "Add an assessment"}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl [animation:popIn_150ms_ease-out]"
+          className={`${SHEET_CARD} ${SHEET_ENTER} max-w-md border border-slate-200 p-6`}
         >
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">

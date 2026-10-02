@@ -9,6 +9,7 @@
 // while it is open, and focus goes back to whatever opened it afterwards.
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, SHEET_ENTER } from "@/lib/useKeyboardLift";
 import { AlertIcon } from "@/components/icons";
 
 export function ConfirmDialog({
@@ -75,10 +76,11 @@ export function ConfirmDialog({
     };
   }, [open]);
 
+  const lift = useKeyboardLift();
   if (!open) return null;
 
   return (
-    <div className="kb-aware fixed inset-0 z-[60] grid place-items-center overflow-y-auto p-4">
+    <div style={lift} className={`${SHEET_LAYER} z-[60]`}>
       <div onClick={onCancel} className="absolute inset-0 bg-black/45" />
 
       <div
@@ -87,7 +89,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-body"
-        className="relative w-full max-w-[400px] animate-[popIn_140ms_ease-out] rounded-2xl bg-white p-6 text-center shadow-2xl"
+        className={`${SHEET_CARD} ${SHEET_ENTER} max-w-[400px] p-6 text-center`}
       >
         <span
           className={`mx-auto grid h-12 w-12 place-items-center rounded-full ${

@@ -9,6 +9,7 @@
 
 import { ColorSwatches } from "@/components/ColorSwatches";
 import { useEffect, useRef, useState } from "react";
+import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, sheetMotion } from "@/lib/useKeyboardLift";
 import type { Quiz } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
 import { useEnterTransition } from "@/lib/useEnterTransition";
@@ -65,6 +66,7 @@ export function QuizEditDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
 
+  const lift = useKeyboardLift();
   if (!quiz) return null;
 
   const preview = getColor(colorKey);
@@ -84,7 +86,8 @@ export function QuizEditDialog({
   return (
     <div
       inert={!open}
-      className={`kb-aware fixed inset-0 z-[60] grid place-items-center overflow-y-auto p-4 ${open ? "" : "pointer-events-none"}`}
+      style={lift}
+      className={`${SHEET_LAYER} z-[60] ${open ? "" : "pointer-events-none"}`}
     >
       <div
         onClick={onClose}
@@ -102,9 +105,7 @@ export function QuizEditDialog({
           e.preventDefault();
           save();
         }}
-        className={`relative w-full max-w-[420px] rounded-2xl bg-white shadow-2xl transition duration-200 ease-out motion-reduce:transition-none ${
-          visible ? "scale-100 opacity-100" : "scale-[0.96] opacity-0"
-        }`}
+        className={`${SHEET_CARD} max-w-[420px] ${sheetMotion(visible)}`}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-3">

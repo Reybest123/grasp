@@ -5,6 +5,7 @@
 // click away from losing the account.
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, SHEET_ENTER } from "@/lib/useKeyboardLift";
 import { useRouter } from "next/navigation";
 import { AlertIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -97,10 +98,11 @@ export function DeleteAccountDialog({
     }
   }
 
+  const lift = useKeyboardLift();
   if (!open) return null;
 
   return (
-    <div className="kb-aware fixed inset-0 z-[60] grid place-items-center overflow-y-auto p-4">
+    <div style={lift} className={`${SHEET_LAYER} z-[60]`}>
       <div onClick={busy ? undefined : onClose} className="absolute inset-0 bg-black/45" />
 
       <form
@@ -111,7 +113,7 @@ export function DeleteAccountDialog({
         aria-modal="true"
         aria-labelledby="delete-account-title"
         aria-describedby="delete-account-body"
-        className="relative w-full max-w-[400px] animate-[popIn_140ms_ease-out] rounded-2xl bg-white p-6 shadow-2xl"
+        className={`${SHEET_CARD} ${SHEET_ENTER} max-w-[400px] p-6`}
       >
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-red-600">
           <AlertIcon className="h-6 w-6" />

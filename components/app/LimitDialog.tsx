@@ -14,6 +14,7 @@
 // the dialog becomes a single acknowledgement.
 
 import { useEffect, useRef, useState } from "react";
+import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, sheetMotion } from "@/lib/useKeyboardLift";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useRecording } from "@/lib/recordingStore";
@@ -52,6 +53,7 @@ export function LimitDialog() {
     };
   }, [open]);
 
+  const lift = useKeyboardLift();
   if (!last) return null;
 
   const { title, upgrade } = limitCopy(last.kind, profile.plan ?? DEFAULT_PLAN);
@@ -59,7 +61,8 @@ export function LimitDialog() {
   return (
     <div
       inert={!open}
-      className={`fixed inset-0 z-[70] grid place-items-center p-4 ${open ? "" : "pointer-events-none"}`}
+      style={lift}
+      className={`${SHEET_LAYER} z-[70] ${open ? "" : "pointer-events-none"}`}
     >
       <div
         onClick={() => setEvent(null)}
@@ -72,9 +75,7 @@ export function LimitDialog() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="limit-title"
-        className={`relative w-full max-w-[420px] rounded-2xl bg-white p-6 text-center shadow-2xl transition duration-200 ease-out motion-reduce:transition-none ${
-          visible ? "scale-100 opacity-100" : "scale-[0.96] opacity-0"
-        }`}
+        className={`${SHEET_CARD} max-w-[420px] p-6 text-center ${sheetMotion(visible)}`}
       >
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
           <PlansIcon className="h-6 w-6" />

@@ -166,6 +166,22 @@ select[class~="border-slate-200"] {
   }
 }
 
+/* A popup arriving as a bottom sheet on a phone (lib/useKeyboardLift.ts). */
+@keyframes sheetUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes sheetUp {
+    from { transform: none; }
+    to { transform: none; }
+  }
+}
+
 /* Floating "Explain" pill — already x-centred, so keep the translate. */
 @keyframes fadeIn {
   from {
@@ -445,15 +461,11 @@ select[class~="border-slate-200"] {
 }
 
 /* The on-screen keyboard's height (components/KeyboardInsets.tsx). iOS lays
-   the keyboard over the page rather than shrinking it, so a fixed popup kept
-   its lower half, and the field being typed in, behind the keys, and the foot
-   of a page had no room to scroll up out of the way. */
+   the keyboard over the page rather than shrinking it, so the foot of a page
+   had no room to scroll up out of the way. Popups follow the keyboard through
+   lib/useKeyboardLift.ts instead. */
 body {
   padding-bottom: var(--kb, 0px);
-}
-.kb-aware {
-  bottom: var(--kb, 0px) !important;
-  transition: bottom 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* One pane replacing another inside a popup: the new one slides in from the
@@ -474,9 +486,6 @@ body {
   animation: paneInLeft 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .kb-aware {
-    transition: none;
-  }
   .pane-in-right,
   .pane-in-left {
     animation: none;
