@@ -9,10 +9,9 @@
 
 import { ColorSwatches } from "@/components/ColorSwatches";
 import { useEffect, useRef, useState } from "react";
-import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, sheetMotion } from "@/lib/useKeyboardLift";
+import { Popup, SHEET_CARD } from "@/components/Popup";
 import type { Quiz } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
-import { useEnterTransition } from "@/lib/useEnterTransition";
 import { CloseIcon, QuizIcon, TrashIcon } from "@/components/icons";
 
 export function QuizEditDialog({
@@ -34,7 +33,6 @@ export function QuizEditDialog({
   if (quizProp && quizProp !== last) setLast(quizProp);
   const quiz = quizProp ?? last;
   const open = quizProp !== null;
-  const visible = useEnterTransition(open);
 
   const [name, setName] = useState("");
   const [colorKey, setColorKey] = useState(subjectColorKey);
@@ -69,7 +67,6 @@ export function QuizEditDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
 
-  const lift = useKeyboardLift();
   if (!quiz) return null;
 
   const preview = getColor(colorKey);
@@ -87,17 +84,7 @@ export function QuizEditDialog({
   }
 
   return (
-    <div
-      inert={!open}
-      style={lift}
-      className={`${SHEET_LAYER} z-[60] ${open ? "" : "pointer-events-none"}`}
-    >
-      <div
-        onClick={onClose}
-        className={`absolute inset-0 bg-black/45 transition-opacity duration-200 ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
-      />
+    <Popup open={open} onClose={onClose}>
 
       <form
         ref={formRef}
@@ -110,7 +97,7 @@ export function QuizEditDialog({
           e.preventDefault();
           save();
         }}
-        className={`${SHEET_CARD} max-w-[420px] outline-none ${sheetMotion(visible)}`}
+        className={`${SHEET_CARD} max-w-[420px] outline-none`}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-3">
@@ -175,6 +162,6 @@ export function QuizEditDialog({
           </button>
         </div>
       </form>
-    </div>
+    </Popup>
   );
 }

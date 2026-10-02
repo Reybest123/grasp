@@ -10,7 +10,7 @@
 // also means an edit can move an assessment to a different subject.
 
 import { useEffect, useState } from "react";
-import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, SHEET_ENTER } from "@/lib/useKeyboardLift";
+import { Popup, SHEET_CARD } from "@/components/Popup";
 import type { Subject } from "@/lib/subjects";
 import type { Exam } from "@/lib/schedule";
 import { getColor } from "@/lib/subjectColors";
@@ -52,7 +52,6 @@ export function AddAssessmentDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const lift = useKeyboardLift();
   if (!open) return null;
 
   // A date is the one thing an assessment cannot do without — there is nothing
@@ -69,16 +68,14 @@ export function AddAssessmentDialog({
   const chosen = subjects.find((s) => s.id === subjectId);
 
   return (
-    <>
-      <div style={lift} className={`${SHEET_LAYER} z-[60]`}>
-        <div onClick={onClose} aria-hidden className="absolute inset-0 bg-black/40" />
+    <Popup open onClose={onClose} backdrop="bg-black/40">
         <form
           onSubmit={submit}
           noValidate
           role="dialog"
           aria-modal="true"
           aria-label={editing ? "Edit assessment" : "Add an assessment"}
-          className={`${SHEET_CARD} ${SHEET_ENTER} max-w-md border border-slate-200 p-6`}
+          className={`${SHEET_CARD} max-w-md border border-slate-200 p-6`}
         >
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -165,8 +162,7 @@ export function AddAssessmentDialog({
             </button>
           </div>
         </form>
-      </div>
-    </>
+    </Popup>
   );
 }
 

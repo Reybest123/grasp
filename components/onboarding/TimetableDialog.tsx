@@ -15,7 +15,7 @@
 // scrolls, so the scrollbar sits inside the card rather than along its edge.
 
 import { useEffect, useRef, useState } from "react";
-import { useKeyboardLift, SHEET_ENTER } from "@/lib/useKeyboardLift";
+import { Popup } from "@/components/Popup";
 import { TimetableSetup } from "@/components/onboarding/TimetableSetup";
 import type { ExtractedSubject } from "@/lib/ai";
 
@@ -42,7 +42,7 @@ export function TimetableDialog({
     if (closing) return;
     setClosing(true);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setTimeout(onDone, reduced ? 0 : 220);
+    setTimeout(onDone, reduced ? 0 : 300);
   }
 
   useEffect(() => {
@@ -54,20 +54,13 @@ export function TimetableDialog({
     };
   }, [open]);
 
-  const lift = useKeyboardLift();
   if (!open) return null;
 
   return (
-    <div
-      style={lift}
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 transition-[top,bottom] duration-200 ease-out motion-reduce:transition-none sm:p-8 compact:items-end compact:p-0"
-    >
-      {/* Light enough that the app stays legible behind it. */}
-      <div
-        aria-hidden="true"
-        className={`fixed inset-0 bg-ink/35 transition-opacity duration-200 ${closing ? "opacity-0" : ""}`}
-      />
-
+    // Light enough that the app stays legible behind it. No `onClose`: the
+    // popup cannot be dismissed without choosing (see CLAUDE.md, onboarding).
+    // Leaving slides it away, the same as any other popup.
+    <Popup open={!closing} backdrop="bg-ink/35">
       <div
         ref={cardRef}
         tabIndex={-1}
@@ -75,9 +68,7 @@ export function TimetableDialog({
         aria-modal="true"
         aria-label="Set up your workspace"
         inert={closing}
-        className={`relative flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none transition duration-200 ease-in compact:max-h-[calc(100%-1.5rem)] compact:max-w-none compact:rounded-b-none ${SHEET_ENTER} ${
-          closing ? "translate-y-3 scale-95 opacity-0" : ""
-        }`}
+        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none compact:max-h-none compact:min-h-0 compact:max-w-none compact:rounded-b-none"
       >
         {intro && (
         <div className="shrink-0 px-6 pt-6 sm:px-8 sm:pt-8">
@@ -102,6 +93,6 @@ export function TimetableDialog({
           />
         </div>
       </div>
-    </div>
+    </Popup>
   );
 }

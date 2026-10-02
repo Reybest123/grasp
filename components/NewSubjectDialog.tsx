@@ -11,9 +11,8 @@
 
 import { ColorSwatches } from "@/components/ColorSwatches";
 import { useEffect, useRef, useState } from "react";
-import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, sheetMotion } from "@/lib/useKeyboardLift";
+import { Popup, SHEET_CARD } from "@/components/Popup";
 import { getColor } from "@/lib/subjectColors";
-import { useEnterTransition } from "@/lib/useEnterTransition";
 import { CloseIcon, WorkspaceIcon } from "@/components/icons";
 
 export function NewSubjectDialog({
@@ -28,7 +27,6 @@ export function NewSubjectDialog({
   onCreate: (data: { name: string; teacher: string; colorKey: string }) => void;
   onClose: () => void;
 }) {
-  const visible = useEnterTransition(open);
 
   const [name, setName] = useState("");
   const [teacher, setTeacher] = useState("");
@@ -62,7 +60,6 @@ export function NewSubjectDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultColorKey]);
 
-  const lift = useKeyboardLift();
   const trimmed = name.trim();
   const preview = getColor(colorKey);
 
@@ -75,17 +72,7 @@ export function NewSubjectDialog({
   }
 
   return (
-    <div
-      inert={!open}
-      style={lift}
-      className={`${SHEET_LAYER} z-[60] ${open ? "" : "pointer-events-none"}`}
-    >
-      <div
-        onClick={onClose}
-        className={`absolute inset-0 bg-black/45 transition-opacity duration-200 ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
-      />
+    <Popup open={open} onClose={onClose}>
 
       <form
         ref={formRef}
@@ -98,7 +85,7 @@ export function NewSubjectDialog({
           e.preventDefault();
           submit();
         }}
-        className={`${SHEET_CARD} max-w-[420px] outline-none ${sheetMotion(visible)}`}
+        className={`${SHEET_CARD} max-w-[420px] outline-none`}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-3">
@@ -171,6 +158,6 @@ export function NewSubjectDialog({
           </button>
         </div>
       </form>
-    </div>
+    </Popup>
   );
 }

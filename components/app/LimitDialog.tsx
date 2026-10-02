@@ -14,13 +14,12 @@
 // the dialog becomes a single acknowledgement.
 
 import { useEffect, useRef, useState } from "react";
-import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, sheetMotion } from "@/lib/useKeyboardLift";
+import { Popup, SHEET_CARD } from "@/components/Popup";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useRecording } from "@/lib/recordingStore";
 import { DEFAULT_PLAN, PLAN_LABEL } from "@/lib/plan";
 import { limitCopy, subscribeLimit, type LimitEvent } from "@/lib/limitNotice";
-import { useEnterTransition } from "@/lib/useEnterTransition";
 import { PlansIcon } from "@/components/icons";
 
 export function LimitDialog() {
@@ -34,7 +33,6 @@ export function LimitDialog() {
   useEffect(() => subscribeLimit(setEvent), []);
 
   const open = event !== null;
-  const visible = useEnterTransition(open);
   if (event && event !== last) setLast(event);
 
   useEffect(() => {
@@ -53,29 +51,18 @@ export function LimitDialog() {
     };
   }, [open]);
 
-  const lift = useKeyboardLift();
   if (!last) return null;
 
   const { title, upgrade } = limitCopy(last.kind, profile.plan ?? DEFAULT_PLAN);
 
   return (
-    <div
-      inert={!open}
-      style={lift}
-      className={`${SHEET_LAYER} z-[70] ${open ? "" : "pointer-events-none"}`}
-    >
-      <div
-        onClick={() => setEvent(null)}
-        className={`absolute inset-0 bg-black/45 transition-opacity duration-200 motion-reduce:transition-none ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
-      />
+    <Popup open={open} onClose={() => setEvent(null)} z={70}>
 
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="limit-title"
-        className={`${SHEET_CARD} max-w-[420px] p-6 text-center ${sheetMotion(visible)}`}
+        className={`${SHEET_CARD} max-w-[420px] p-6 text-center`}
       >
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
           <PlansIcon className="h-6 w-6" />
@@ -113,6 +100,6 @@ export function LimitDialog() {
           )}
         </div>
       </div>
-    </div>
+    </Popup>
   );
 }

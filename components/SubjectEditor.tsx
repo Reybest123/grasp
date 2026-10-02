@@ -5,7 +5,7 @@
 // the app still works. Whatever they do fill in becomes AI context (lib/schedule).
 
 import { ColorSwatches } from "@/components/ColorSwatches";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Subject } from "@/lib/subjects";
 import { makeSlot, makeExam } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
@@ -16,6 +16,8 @@ import { DateSelect } from "@/components/DateSelect";
 import { DaySelect, TimeSelect } from "@/components/ClassTimeSelects";
 import { useEnterTransition } from "@/lib/useEnterTransition";
 import { useVisualViewport } from "@/lib/useVisualViewport";
+import { useRevealFocused } from "@/lib/useRevealFocused";
+import { useCompact } from "@/components/Popup";
 
 export function SubjectEditor({
   subject: subjectProp,
@@ -53,6 +55,21 @@ export function SubjectEditor({
   // visible by the keyboard, so the field being typed in has room above the
   // keys and nothing has to guess where the middle of the screen is.
   const area = useVisualViewport();
+  const compact = useCompact();
+  // The box being typed in is kept in view inside the form, above the keys.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useRevealFocused(bodyRef, area, open);
+  // While the keyboard is up on a phone, Cancel and Save are hidden so the
+  // form gets that room; they come back when typing stops. Tracked by focus
+  // rather than by measuring the keyboard, since Android shrinks the page for
+  // its keyboard and leaves nothing to measure.
+  const [typing, setTyping] = useState(false);
+  function settleTyping() {
+    setTimeout(() => {
+      const el = document.activeElement;
+      setTyping(!!el && !!bodyRef.current?.contains(el) && isTextBox(el));
+    }, 0);
+  }
 
   // ...and the page behind stays put while it is open, or iOS scrolls it to
   // reach a field and the sheet's header goes with it.
@@ -150,7 +167,14 @@ export function SubjectEditor({
           </button>
         </div>
 
-        <div className="flex-1 space-y-7 overflow-y-auto px-5 py-6">
+        <div
+          ref={bodyRef}
+          // Read once focus has settled, so moving between two boxes does
+          // not flash the buttons back for a frame.
+          onFocus={settleTyping}
+          onBlur={settleTyping}
+          className="flex-1 space-y-7 overflow-y-auto px-5 py-6"
+        >
           {/* Name + teacher */}
           <section className="space-y-3">
             <Field label="Subject name">
@@ -304,7 +328,9 @@ export function SubjectEditor({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
+        <div
+          className={`justify-end gap-2 border-t border-slate-200 px-5 py-4 ${compact && typing ? "hidden" : "flex"}`}
+        >
           <button
             onClick={onClose}
             className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
@@ -337,6 +363,13 @@ export function SubjectEditor({
         onCancel={() => setConfirmDelete(false)}
       />
     </>
+  );
+}
+
+function isTextBox(el: EventTarget): boolean {
+  return (
+    el instanceof HTMLTextAreaElement ||
+    (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit"].includes(el.type))
   );
 }
 

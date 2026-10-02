@@ -5,7 +5,7 @@
 // click away from losing the account.
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useKeyboardLift, SHEET_LAYER, SHEET_CARD, SHEET_ENTER } from "@/lib/useKeyboardLift";
+import { Popup, SHEET_CARD } from "@/components/Popup";
 import { useRouter } from "next/navigation";
 import { AlertIcon } from "@/components/icons";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -102,12 +102,10 @@ export function DeleteAccountDialog({
     }
   }
 
-  const lift = useKeyboardLift();
   if (!open) return null;
 
   return (
-    <div style={lift} className={`${SHEET_LAYER} z-[60]`}>
-      <div onClick={busy ? undefined : onClose} className="absolute inset-0 bg-black/45" />
+    <Popup open onClose={busy ? undefined : onClose}>
 
       <form
         ref={dialogRef}
@@ -118,7 +116,7 @@ export function DeleteAccountDialog({
         aria-labelledby="delete-account-title"
         aria-describedby="delete-account-body"
         tabIndex={-1}
-        className={`${SHEET_CARD} ${SHEET_ENTER} max-w-[400px] p-6 outline-none`}
+        className={`${SHEET_CARD} max-w-[400px] p-6 outline-none`}
       >
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-red-600">
           <AlertIcon className="h-6 w-6" />
@@ -162,6 +160,6 @@ export function DeleteAccountDialog({
           </button>
         </div>
       </form>
-    </div>
+    </Popup>
   );
 }

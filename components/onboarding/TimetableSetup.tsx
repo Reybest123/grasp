@@ -298,7 +298,11 @@ export function TimetableSetup({
               <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-100">
                 <ImageIcon className="h-7 w-7" />
               </span>
-              <p className="mt-4 text-lg font-bold text-ink">Drop your timetable screenshot here</p>
+              <p className="mt-4 text-lg font-bold text-ink">
+                {/* A phone has nothing to drag a file from. */}
+                <span className="compact:hidden">Drop your timetable screenshot here</span>
+                <span className="hidden compact:inline">Upload your timetable</span>
+              </p>
               <p className="mt-1.5 text-sm text-slate-500">
                 Photo, screenshot or PDF (up to 3 MB) · any layout
               </p>
