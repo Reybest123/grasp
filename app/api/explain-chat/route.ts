@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
 
   const schedule =
     typeof context === "string" && context.trim()
-      ? `\n\nThe student's schedule for this subject: ${context.trim().slice(0, LIMITS.contextChars)}
-Use this naturally when it genuinely helps — e.g. tying revision advice to an upcoming exam or their next class. Do not force it in or mention it in every reply.`
+      ? `\n\nWhat you know about the student: ${context.trim().slice(0, LIMITS.contextChars)}
+If the student asks about any of this (their name, their teacher, when their next class is, when an assessment is due), answer it directly from these facts in a sentence, even though it is not about the selected text, and do not guess beyond them. If something they ask about is not listed here, say they have not added it to Grasp yet. Otherwise, use it only when it genuinely helps, such as tying revision advice to an upcoming exam or their next class. Do not force it in or mention it in every reply. Call the student by name only now and then, not in every reply.`
       : "";
 
   const system = `You are Grasp, a study assistant built into a student's notes. The student has selected part of their note and is talking to you about it.

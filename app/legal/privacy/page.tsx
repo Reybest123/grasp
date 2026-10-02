@@ -118,7 +118,9 @@ export default function Privacy() {
           <li>
             <b>OpenAI</b> provides the AI features. When you use one, the material it needs is sent
             to OpenAI: your note text, a highlighted passage and your question, lecture audio,
-            timetable screenshots, Resource Bank documents, or your quiz answers. Under OpenAI&apos;s
+            timetable screenshots, Resource Bank documents, or your quiz answers, along with your name
+            and your subjects&apos; teachers, class times and assessment dates, so it can answer
+            questions about them. Under OpenAI&apos;s
             API terms this is not used to train their models, and it may be kept by OpenAI for up to
             30 days to monitor for abuse before being deleted.
           </li>

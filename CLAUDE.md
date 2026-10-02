@@ -671,6 +671,8 @@ The database grew a `users.currency` column with the multi-currency work above; 
 
 - **"Grasp Study" is an alternate name in the landing page's structured data** (`SITE_ALTERNATE_NAMES` in `lib/site.ts`, 2026-09-30, at the user's request), on the Organization, WebSite and WebApplication. The site ranked 2nd for "graspstudy" but had slid to the second page for "grasp study"; this tells search engines the phrase is this site. It appears nowhere a student reads: the product is still just Grasp.
 
+- **The AI knows the student's name, teachers and timetable** (2026-10-02, at the user's request). `subjectContext` in `lib/schedule.ts` now takes `{ subject, subjects, studentName, now }` and writes: the name, the date and time, this subject's teacher, classes, next class and upcoming assessments, the next class of any subject (worked out in code, not by the model), then every other subject's teacher and class times, last so the 1,500-character cut loses the tail first (a full seven-subject week measured 848). Explain/Refine's prompt answers questions about these directly ("when's my next class", "who's my teacher") and says when something has not been added; checked against gpt-4o-mini. `/api/generate` now labels the context as background never to be written into the note. Settings' name hint reads "What Grasp calls you." The Privacy Policy says the name and timetable go to OpenAI.
+
 **Still mocked / not yet built:**
 - Nothing on the limits front: quizzes, recordings, weekly Resource Bank reads and the per-subject Resource Bank document count are all enforced server-side (see above).
 - Nothing: explain, refine, enhance, generate and quiz explanations are on AI tokens (see Weekly allowances), and the timetable read is once per account.

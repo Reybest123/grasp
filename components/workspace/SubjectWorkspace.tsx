@@ -6,6 +6,7 @@ import type { Note, Quiz, Subject } from "@/lib/subjects";
 import { briefsFor, type Resource } from "@/lib/resources";
 import { useSubjects } from "@/lib/subjectsStore";
 import { useRecording } from "@/lib/recordingStore";
+import { useProfile } from "@/lib/profileStore";
 import { getColor } from "@/lib/subjectColors";
 import { weeklyLabel, subjectContext } from "@/lib/schedule";
 import { NotesTab } from "@/components/workspace/NotesTab";
@@ -67,7 +68,8 @@ export function SubjectWorkspace({
   const [quizOpenId, setQuizOpenId] = useState<string | null>(null);
   // Notes live in the subject store, not local state, so edits and formatting
   // survive a refresh. Both the Notes tab and the Record tab write through here.
-  const { updateSubject } = useSubjects();
+  const { subjects, updateSubject } = useSubjects();
+  const { profile } = useProfile();
   const rec = useRecording();
   const [activeId, setActiveId] = useState<string | undefined>(subject.notes[0]?.id);
 
@@ -199,9 +201,10 @@ export function SubjectWorkspace({
   const color = getColor(subject.colorKey);
   const weekly = weeklyLabel(subject.classes);
 
-  // Class times + exams travel with every AI request for this subject, so
-  // explanations and quizzes can reference the student's actual week.
-  const context = now ? subjectContext(subject.name, subject.classes, subject.exams, now) : "";
+  // The student's name, this subject's teacher, class times and exams, and the
+  // rest of their week travel with every AI request for this subject, so
+  // Explain can answer "when is my next class?" and quizzes know what is coming.
+  const context = now ? subjectContext({ subject, subjects, studentName: profile.name, now }) : "";
 
   // The Resource Bank travels with every AI request for this subject as the
   // extraction Grasp already made of each document (§3.4) — never the file, and

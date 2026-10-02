@@ -134,7 +134,7 @@ function ProfileSection() {
       <form onSubmit={submit} noValidate className="flex flex-1 flex-col">
         {error && <ErrorNote message={error} className="mb-5" />}
 
-        <Field label="Your name" hint="What Grasp calls you on your home page.">
+        <Field label="Your name" hint="What Grasp calls you.">
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}

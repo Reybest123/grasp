@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   const cleanTitle = typeof title === "string" ? title.trim().slice(0, 200) : "";
   const schedule =
     typeof context === "string" && context.trim()
-      ? `\n\n${context.trim().slice(0, LIMITS.contextChars)}`
+      ? `\n\nBackground on the student (never write this into the note): ${context.trim().slice(0, LIMITS.contextChars)}`
       : "";
   const focus =
     typeof instructions === "string" && instructions.trim()

@@ -237,28 +237,71 @@ export function weeklyLabel(classes: ClassSlot[]): string | null {
     .join(" · ");
 }
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+type ContextSubject = { id: string; name: string; teacher?: string; classes: ClassSlot[]; exams: Exam[] };
+
 /**
- * Plain-English schedule context handed to the AI alongside notes, so answers
- * and quizzes can reference the student's actual week and upcoming assessment.
+ * Plain-English background handed to the AI alongside notes: who the student
+ * is, the time, this subject's teacher, classes and assessments, and the rest
+ * of their week. It is what lets Explain answer "when is my next class?" or
+ * "who teaches this?", and lets quizzes lean towards what is coming up.
+ *
+ * Most important first, because the routes cut it at `LIMITS.contextChars`:
+ * the other subjects' timetable goes last, so a long week loses its tail
+ * rather than this subject's own details.
  */
-export function subjectContext(
-  name: string,
-  classes: ClassSlot[],
-  exams: Exam[],
-  now: Date = new Date()
-): string {
-  const parts = [`Subject: ${name}.`, `Today is ${DAY_NAMES[now.getDay()]}.`];
-  const weekly = weeklyLabel(classes);
-  if (weekly) parts.push(`The student's classes for this subject are: ${weekly}.`);
-  const next = nextClassLabel(classes, now);
+export function subjectContext({
+  subject,
+  subjects = [],
+  studentName,
+  now = new Date(),
+}: {
+  subject: ContextSubject;
+  subjects?: ContextSubject[];
+  studentName?: string;
+  now?: Date;
+}): string {
+  const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const parts: string[] = [];
+  const name = studentName?.trim();
+  if (name) parts.push(`The student's name is ${name}.`);
+  parts.push(
+    `It is now ${DAY_NAMES[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}, ${formatTime(hhmm)}.`
+  );
+  parts.push(`Subject: ${subject.name}.`);
+  const teacher = subject.teacher?.trim();
+  if (teacher) parts.push(`Teacher: ${teacher}.`);
+  const weekly = weeklyLabel(subject.classes);
+  if (weekly) parts.push(`Classes for this subject each week: ${weekly}.`);
+  const next = nextClassLabel(subject.classes, now);
   if (next) parts.push(`${next}.`);
   // Overdue ones are left out: the AI should weight work towards what is
   // still coming, not towards a date that has been and gone.
-  const upcoming = examStatuses(exams, now).filter((e) => !e.overdue);
+  const upcoming = examStatuses(subject.exams, now).filter((e) => !e.overdue);
   if (upcoming.length) {
     parts.push(
       `Upcoming assessments (soonest first): ${upcoming.map((e) => e.label).join("; ")}.`
     );
+  }
+
+  // The soonest class of any subject, worked out here rather than left to the
+  // model, which is unreliable at date arithmetic.
+  const others = subjects.filter((s) => s.id !== subject.id && s.classes.length);
+  let soonest: { s: ContextSubject; n: NextClass } | null = null;
+  for (const s of [subject, ...others]) {
+    const n = nextClass(s.classes, now);
+    if (n && (!soonest || n.minutesAway < soonest.n.minutesAway)) soonest = { s, n };
+  }
+  if (soonest && others.length) {
+    const label = nextClassLabel(soonest.s.classes, now)?.replace(/^Next class /, "");
+    parts.push(`The student's next class of any subject is ${soonest.s.name} ${label}.`);
+  }
+  if (others.length) {
+    const week = others
+      .map((s) => `${s.name}${s.teacher?.trim() ? ` (${s.teacher.trim()})` : ""}: ${weeklyLabel(s.classes)}`)
+      .join("; ");
+    parts.push(`Their other subjects' classes: ${week}.`);
   }
   return parts.join(" ");
 }
