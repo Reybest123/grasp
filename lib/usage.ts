@@ -115,7 +115,10 @@ export async function allowance(account: Account, kind: UsageKind): Promise<Resu
     type Row = { used: number; resets_at: string | Date | null };
     if (kind === "recording") {
       const rows = (await sql`
-        select coalesce(sum(greatest(units, ${CAPS.recordingMinChargeSeconds})), 0)::int as used,
+        -- A recording's continuation after a plan switch is not a recording of
+        -- its own, so it is charged what it heard, without the minimum.
+        select coalesce(sum(case when ref like ${"%" + RESUMED} then units
+                                 else greatest(units, ${CAPS.recordingMinChargeSeconds}) end), 0)::int as used,
                min(created_at) + interval '7 days' as resets_at
         from usage
         where user_id = ${account.id} and kind = 'audio' and created_at > now() - interval '7 days'
@@ -274,7 +277,7 @@ export async function claimRecordingSegment(
   const release = async () => {
     await query(
       () =>
-        sql`update usage set units = units - 1 where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId} and units > 1`
+        sql`update usage set units = units - 1 where user_id = ${account.id} and kind = 'recording' and ref = ${recordingId} and units > 0`
     );
   };
   if (counts.data.claimed > maxSegments(plan)) return refused("recording", week.data.resetsAt);
@@ -296,20 +299,40 @@ export async function recordAudioSeconds(
 ): Promise<void> {
   if (account.unlimited) return;
   const units = Math.max(1, Math.ceil(seconds));
-  await query(async () => {
-    await sql`
-      insert into usage (user_id, kind, ref, units)
-      values (${account.id}, 'audio', ${recordingId}, ${units})
-      on conflict (user_id, kind, ref) do update set units = usage.units + ${units}
-    `;
-    // Segments finished, against those claimed in claimRecordingSegment.
-    await sql`
+  // Segments finished, against those claimed in claimRecordingSegment. Counted
+  // first and on its own, so a failure writing the seconds below cannot leave
+  // a finished segment looking unfinished, which would refuse the next one.
+  await query(
+    () => sql`
       insert into usage (user_id, kind, ref)
       values (${account.id}, 'segdone', ${recordingId})
       on conflict (user_id, kind, ref) do update set units = usage.units + 1
-    `;
+    `
+  );
+  await query(async () => {
+    const rows = (await sql`
+      insert into usage (user_id, kind, ref, units)
+      values (${account.id}, 'audio', ${recordingId}, ${units})
+      on conflict (user_id, kind, ref) do update set units = usage.units + ${units}
+      returning created_at < now() - interval '7 days' as stale
+    `) as { stale: boolean }[];
+    // A plan switch moves the week's audio rows out of the week
+    // (resetWeeklyUsage), including the row of a lecture still recording, which
+    // keeps growing because its drafts read it for the seconds heard. What it
+    // hears after the switch is counted against the new week in a row of its
+    // own, or the rest of that lecture would never count at all.
+    if (rows[0]?.stale) {
+      await sql`
+        insert into usage (user_id, kind, ref, units)
+        values (${account.id}, 'audio', ${recordingId + RESUMED}, ${units})
+        on conflict (user_id, kind, ref) do update set units = usage.units + ${units}
+      `;
+    }
   });
 }
+
+/** Suffix on the audio row a recording continues in after a plan switch. */
+const RESUMED = ":resumed";
 
 /**
  * Takes one note draft for a recording, and says how much transcript it may
@@ -363,9 +386,12 @@ export async function claimLiveDraft(
 export async function claimMarking(
   account: Account,
   quizId: string
-): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
+): Promise<
+  | { ok: true; release: () => Promise<void>; releaseQuiz: () => Promise<void> }
+  | { ok: false; response: Response }
+> {
   const noop = async () => {};
-  if (account.unlimited) return { ok: true, release: noop };
+  if (account.unlimited) return { ok: true, release: noop, releaseQuiz: noop };
 
   // One statement: the conflicting row is locked while it is updated, so two
   // markings of one quiz fired together cannot both read a count of one.
@@ -410,6 +436,10 @@ export async function claimMarking(
       );
       await releaseQuiz();
     },
+    // Only the quiz's own count. For a reply the model wrote but that could not
+    // be read: the week's marking stays spent, since that call was paid for,
+    // but the quiz is not left one marking short, which stranded its retake.
+    releaseQuiz,
   };
 }
 

@@ -30,8 +30,10 @@ export async function GET(req: NextRequest) {
   // signs this browser into the account it just confirmed. Any other account is
   // signed out first, or proxy.ts would send the student back into it.
   if (!user || user.id !== userId) {
+    // A link too old to sign in with only confirms; whoever is signed in here
+    // stays signed in, rather than being logged out for nothing.
+    if (!canSignIn) return to(user ? (user.plan ? "/home" : "/email-confirmed") : "/login?verified=1");
     if (user) await destroySession();
-    if (!canSignIn) return to("/login?verified=1");
     const signedIn = await query(() => createSession(userId));
     if (!signedIn.ok) return to("/login?verified=1");
     // /email-confirmed itself sends an account that already has a plan on to

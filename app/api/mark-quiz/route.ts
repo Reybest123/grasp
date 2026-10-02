@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ marks: valid, used: pickUsed(parsed.used, briefs) });
   } catch {
     console.error("[grasp] marking JSON did not parse:", result.content.slice(0, 300));
+    await spend.releaseQuiz();
     return NextResponse.json(
       { error: "Grasp could not mark those answers just now. Try again in a moment." },
       { status: 502 }

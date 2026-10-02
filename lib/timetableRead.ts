@@ -28,14 +28,24 @@ export async function timetableStatus(
 ): Promise<{ ok: true; status: TimetableStatus } | Failed> {
   if (user.unlimited) return { ok: true, status: { available: true, triesLeft: TIMETABLE_TRIES } };
   const result = await query(
-    () => sql`select timetable_done_at, timetable_tries from users where id = ${user.id}`
+    () => sql`select timetable_done_at, timetable_tries,
+        exists (select 1 from subjects where user_id = ${user.id}) as has_subjects
+      from users where id = ${user.id}`
   );
   if (!result.ok) return result;
-  const row = result.data[0] as { timetable_done_at: Date | null; timetable_tries: number } | undefined;
+  const row = result.data[0] as
+    | { timetable_done_at: Date | null; timetable_tries: number; has_subjects: boolean }
+    | undefined;
   const triesLeft = Math.max(0, TIMETABLE_TRIES - (row?.timetable_tries ?? TIMETABLE_TRIES));
+  // A read replaces every subject the account has, so once the student has
+  // made notebooks of their own (by leaving the popup and adding them by
+  // hand) the offer is over: a read now would delete them and their notes.
   return {
     ok: true,
-    status: { available: !!row && !row.timetable_done_at && triesLeft > 0, triesLeft },
+    status: {
+      available: !!row && !row.timetable_done_at && !row.has_subjects && triesLeft > 0,
+      triesLeft,
+    },
   };
 }
 
@@ -52,6 +62,7 @@ export async function claimTimetableRead(
   const result = await query(
     () => sql`update users set timetable_tries = timetable_tries + 1
       where id = ${user.id} and timetable_done_at is null and timetable_tries < ${TIMETABLE_TRIES}
+        and not exists (select 1 from subjects where user_id = ${user.id})
       returning timetable_tries`
   );
   if (!result.ok) return result;
