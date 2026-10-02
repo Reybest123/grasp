@@ -1,0 +1,22 @@
+# Emails the weekly exchange-rate report (scripts/fx-report.mjs).
+# Needs two repository secrets: RESEND_API_KEY and FX_REPORT_TO.
+name: Exchange rate report
+
+on:
+  schedule:
+    # Monday 9:00am in Brisbane (23:00 UTC on Sunday; Queensland has no daylight saving).
+    - cron: "0 23 * * 0"
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/fx-report.mjs --send
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          FX_REPORT_TO: ${{ secrets.FX_REPORT_TO }}
