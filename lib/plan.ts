@@ -62,6 +62,10 @@ export const PLAN_PRICE_USD: Record<BilledPlan, number> = { pro: 5.99, max: 10.4
  * The AUD prices are the anchor the others were converted from by hand on
  * 2026-09-29 (A$1 = US$0.65, €0.60, £0.51, NZ$1.10, CA$0.90), each landing
  * near US$5.90 / US$9.70 so every currency covers the USD cost model.
+ * SGD, INR and JPY were added on 2026-10-02 from the USD anchor (US$1 =
+ * S$1.30, ₹87, ¥148), landing at about US$6.15 / 5.74 / 6.01 for Pro and
+ * US$10.76 / 10.33 / 10.47 for Max. INR is at parity, not local spending
+ * power: a cheaper Indian price would not cover Max's worst case (US$6.95).
  *
  * At AUD 0.65 to the dollar the AUD prices come to about $5.84 and $9.74, so
  * an Australian student is the slightly better deal. Worth knowing when the
@@ -75,6 +79,9 @@ export const PLAN_PRICE_BY_CURRENCY: Record<Currency, Record<BilledPlan, number>
   gbp: { pro: 4.69, max: 7.99 },
   nzd: { pro: 9.99, max: 16.99 },
   cad: { pro: 7.99, max: 13.99 },
+  sgd: { pro: 7.99, max: 13.99 },
+  inr: { pro: 499, max: 899 },
+  jpy: { pro: 890, max: 1550 },
 };
 
 /** How often a plan is billed, as it reads after "/" and "a". */

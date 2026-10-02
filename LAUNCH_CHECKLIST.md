@@ -22,7 +22,7 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 
 ## Stripe live mode (this is the launch blocker)
 
-Live since 2026-09-29: live Prices in six currencies, live webhook `we_1UKu6BKHv49RfUXUDt0sN150` with all four events, live values on the `grasp` service, and staging copying them on purpose (so staging charges real cards too). All test accounts were deleted.
+Live since 2026-09-29: live Prices in six currencies (SGD, INR and JPY added in test mode on 2026-10-02; **the live Prices still need them**, by running `npm run billing:setup` with the live key), live webhook `we_1UKu6BKHv49RfUXUDt0sN150` with all four events, live values on the `grasp` service, and staging copying them on purpose (so staging charges real cards too). All test accounts were deleted.
 
 
 - [x] Activate the Stripe account (live mode) and add the bank account for payouts

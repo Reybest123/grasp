@@ -14,9 +14,11 @@
 // No server-only imports and no dependency on lib/plan.ts: the client reads
 // these too, and plan.ts imports `Currency` from here.
 
-export type Currency = "usd" | "aud" | "eur" | "gbp" | "nzd" | "cad";
+export type Currency = "usd" | "aud" | "eur" | "gbp" | "nzd" | "cad" | "sgd" | "inr" | "jpy";
 
-export const CURRENCIES: readonly Currency[] = ["usd", "aud", "eur", "gbp", "nzd", "cad"];
+export const CURRENCIES: readonly Currency[] = [
+  "usd", "aud", "eur", "gbp", "nzd", "cad", "sgd", "inr", "jpy",
+];
 
 /**
  * What anyone Grasp cannot place is charged in. USD rather than AUD because it
@@ -40,6 +42,9 @@ const COUNTRY_CURRENCY: Record<string, Currency> = {
   GB: "gbp",
   NZ: "nzd",
   CA: "cad",
+  SG: "sgd",
+  IN: "inr",
+  JP: "jpy",
   ...Object.fromEntries(EUROZONE.map((code) => [code, "eur" as const])),
 };
 
@@ -111,6 +116,9 @@ const ZONE_COUNTRY: Record<string, string> = {
   "Europe/Luxembourg": "LU", "Europe/Malta": "MT", "Europe/Amsterdam": "NL", "Europe/Lisbon": "PT",
   "Atlantic/Azores": "PT", "Atlantic/Madeira": "PT", "Europe/Bratislava": "SK",
   "Europe/Ljubljana": "SI", "Europe/Madrid": "ES", "Africa/Ceuta": "ES", "Atlantic/Canary": "ES",
+  "Asia/Singapore": "SG", "Singapore": "SG",
+  "Asia/Kolkata": "IN", "Asia/Calcutta": "IN",
+  "Asia/Tokyo": "JP", "Japan": "JP",
 };
 
 const CANADIAN_ZONES = [
@@ -157,8 +165,24 @@ const CURRENCY_PREFIX: Record<Currency, string> = {
   gbp: "£",
   nzd: "NZ$",
   cad: "CA$",
+  sgd: "S$",
+  inr: "₹",
+  jpy: "¥",
 };
 
+/**
+ * Currencies priced in whole units and written without decimals. Yen has no
+ * minor unit at all (Stripe takes its amounts as whole yen); rupees do, but
+ * Grasp's prices are whole rupees and "₹499.00" is not how a price is written
+ * in India.
+ */
+const WHOLE_UNITS: readonly Currency[] = ["jpy", "inr"];
+
 export function formatMoney(amount: number, currency: Currency): string {
-  return `${CURRENCY_PREFIX[currency]}${amount.toFixed(2)}`;
+  const digits = WHOLE_UNITS.includes(currency) ? 0 : 2;
+  const figure = amount.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  return `${CURRENCY_PREFIX[currency]}${figure}`;
 }

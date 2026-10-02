@@ -77,26 +77,29 @@ const PLANS = [
     plan: "pro",
     label: "Grasp Pro",
     lookupKey: "grasp_pro_weekly",
-    amounts: { usd: 5.99, aud: 8.99, eur: 5.49, gbp: 4.69, nzd: 9.99, cad: 7.99 },
+    amounts: { usd: 5.99, aud: 8.99, eur: 5.49, gbp: 4.69, nzd: 9.99, cad: 7.99, sgd: 7.99, inr: 499, jpy: 890 },
   },
   {
     plan: "max",
     label: "Grasp Max",
     lookupKey: "grasp_max_weekly",
-    amounts: { usd: 10.49, aud: 14.99, eur: 8.99, gbp: 7.99, nzd: 16.99, cad: 13.99 },
+    amounts: { usd: 10.49, aud: 14.99, eur: 8.99, gbp: 7.99, nzd: 16.99, cad: 13.99, sgd: 13.99, inr: 899, jpy: 1550 },
   },
 ];
 
-const cents = (n) => Math.round(n * 100);
+// Stripe takes amounts in the currency's smallest unit: cents for most, but
+// whole yen for JPY, which has no minor unit.
+const ZERO_DECIMAL = new Set(["jpy"]);
+const minorUnits = (n, currency) => Math.round(ZERO_DECIMAL.has(currency) ? n : n * 100);
 
 /** Whether a Price already carries exactly the amounts wanted, in every currency. */
 function matches(price, amounts) {
   if (price.recurring?.interval !== "week") return false;
   if (price.currency !== BASE_CURRENCY) return false;
-  if (price.unit_amount !== cents(amounts[BASE_CURRENCY])) return false;
+  if (price.unit_amount !== minorUnits(amounts[BASE_CURRENCY], BASE_CURRENCY)) return false;
   for (const [currency, amount] of Object.entries(amounts)) {
     if (currency === BASE_CURRENCY) continue;
-    if (price.currency_options?.[currency]?.unit_amount !== cents(amount)) return false;
+    if (price.currency_options?.[currency]?.unit_amount !== minorUnits(amount, currency)) return false;
   }
   return true;
 }
@@ -142,6 +145,26 @@ for (const { plan, label, amounts, lookupKey } of PLANS) {
     continue;
   }
 
+  // Only the alternative currencies differ (one was added, or one's amount was
+  // changed): Stripe lets a Price's `currency_options` be updated, so the
+  // Price, its id and the env vars pointing at it all stay as they are.
+  if (
+    found &&
+    found.recurring?.interval === "week" &&
+    found.currency === BASE_CURRENCY &&
+    found.unit_amount === minorUnits(amounts[BASE_CURRENCY], BASE_CURRENCY)
+  ) {
+    const options = {};
+    for (const [currency, amount] of Object.entries(amounts)) {
+      if (currency === BASE_CURRENCY) continue;
+      options[currency] = { unit_amount: minorUnits(amount, currency), tax_behavior: "inclusive" };
+    }
+    await stripe.prices.update(found.id, { currency_options: options });
+    console.log(`  ${label}: updated ${found.id} in place (${written} a week)`);
+    envLines.push([plan, found.id]);
+    continue;
+  }
+
   if (found) {
     console.log(
       `  ${label}: existing price ${found.id} does not match ${written} a week — a Price cannot ` +
@@ -155,13 +178,13 @@ for (const { plan, label, amounts, lookupKey } of PLANS) {
   const currencyOptions = {};
   for (const [currency, amount] of Object.entries(amounts)) {
     if (currency === BASE_CURRENCY) continue;
-    currencyOptions[currency] = { unit_amount: cents(amount), tax_behavior: "inclusive" };
+    currencyOptions[currency] = { unit_amount: minorUnits(amount, currency), tax_behavior: "inclusive" };
   }
 
   const price = await stripe.prices.create({
     product: product.id,
     currency: BASE_CURRENCY,
-    unit_amount: cents(amounts[BASE_CURRENCY]),
+    unit_amount: minorUnits(amounts[BASE_CURRENCY], BASE_CURRENCY),
     recurring: { interval: "week" },
     currency_options: currencyOptions,
     lookup_key: lookupKey,

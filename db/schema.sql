@@ -95,7 +95,7 @@ alter table users add column if not exists stripe_subscription_id text;
 alter table users add column if not exists subscription_status text;
 alter table users add column if not exists current_period_end timestamptz;
 
--- Which currency the account is billed in (usd, aud, eur, gbp, nzd or cad; lib/currency.ts).
+-- Which currency the account is billed in (usd, aud, eur, gbp, nzd, cad, sgd, inr or jpy; lib/currency.ts).
 -- Written once, when the Stripe Customer is created, and read in preference to
 -- guessing from the request ever after: a Stripe subscription cannot change
 -- currency once it exists, so this is the only figure the account can actually
