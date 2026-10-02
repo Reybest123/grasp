@@ -10,13 +10,14 @@
 // copy — so an edit made in the editor is already reflected here, and deleting
 // one there removes it from here too. There is one note, in two places.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "@/lib/subjects";
 import { useRecording, mmss } from "@/lib/recordingStore";
 import { useProfile } from "@/lib/profileStore";
 import { DEFAULT_PLAN, PLAN_LABEL, formatDuration } from "@/lib/plan";
 import { useNow } from "@/lib/subjectsStore";
 import { updatedLabel } from "@/lib/schedule";
+import { ensureHtml, sanitizeNoteHtml } from "@/lib/richText";
 import type { ResourceBrief } from "@/lib/resources";
 import { ResourceCitation } from "@/components/workspace/ResourceCitation";
 import { AiFlag } from "@/components/workspace/AiFlag";
@@ -472,6 +473,9 @@ function RecordedNote({
   now: Date | null;
   onEdit: () => void;
 }) {
+  // A stored note is shown through the same sanitiser as anything else that
+  // reaches the page as HTML, rather than trusted because it is our own.
+  const body = useMemo(() => sanitizeNoteHtml(ensureHtml(note.body)), [note.body]);
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-ring">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -497,7 +501,7 @@ function RecordedNote({
       <div className="mt-5 rounded-2xl bg-slate-50 p-5">
         <div
           className="editor text-[15px] leading-7 text-slate-700"
-          dangerouslySetInnerHTML={{ __html: note.body }}
+          dangerouslySetInnerHTML={{ __html: body }}
         />
       </div>
       <AiFlag source="live-notes" output={note.body} className="mt-4" />
