@@ -137,6 +137,7 @@ export function NotesTab({
   addNote,
   deleteNote,
   context,
+  chatContext,
   subjectName,
   resources,
 }: {
@@ -147,6 +148,8 @@ export function NotesTab({
   addNote: (title: string, body: string) => string;
   deleteNote: (id: string) => void;
   context: string;
+  /** `context` plus the student's name, for Explain/Refine only */
+  chatContext: string;
   subjectName: string;
   /** the subject's Resource Bank, already read and extracted (§3.4) */
   resources: ResourceBrief[];
@@ -1976,7 +1979,7 @@ export function NotesTab({
         onClose={() => setPanelOpen(false)}
         selected={selectedText}
         noteHtml={noteHtml}
-        context={context}
+        context={chatContext}
         resources={resources}
         onApplyRevision={commitHtml}
         inputRef={explainInputRef}

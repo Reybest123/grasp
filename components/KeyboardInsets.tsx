@@ -50,6 +50,13 @@ export function KeyboardInsets() {
         const kb = typing ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
         // Under 80px is browser chrome moving, not a keyboard.
         root.style.setProperty("--kb", `${kb > 80 ? Math.round(kb) : 0}px`);
+        // iOS can leave the visible area shifted down inside the page once its
+        // keyboard has gone, and taps on fixed popups then land that far off
+        // their target: a field that worked the first time could not be tapped
+        // again. Folding the shift into a real scroll puts the two back in line.
+        if (!typing && vv.offsetTop > 1 && Math.abs(vv.scale - 1) < 0.01) {
+          window.scrollTo(window.scrollX, window.scrollY + vv.offsetTop);
+        }
         reveal();
       });
     };

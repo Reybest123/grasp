@@ -42,6 +42,10 @@ export function DeleteAccountDialog({
   useEffect(() => {
     if (!open) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Focus goes to the popup itself, not into a text box: a box focused on
+    // open brings a phone's keyboard straight up before the student has asked
+    // to type. Tapping the box is what opens it.
+    dialogRef.current?.focus();
 
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") return onCloseRef.current();
@@ -113,7 +117,8 @@ export function DeleteAccountDialog({
         aria-modal="true"
         aria-labelledby="delete-account-title"
         aria-describedby="delete-account-body"
-        className={`${SHEET_CARD} ${SHEET_ENTER} max-w-[400px] p-6`}
+        tabIndex={-1}
+        className={`${SHEET_CARD} ${SHEET_ENTER} max-w-[400px] p-6 outline-none`}
       >
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-red-600">
           <AlertIcon className="h-6 w-6" />
@@ -135,7 +140,6 @@ export function DeleteAccountDialog({
             value={password}
             onChange={setPassword}
             autoComplete="current-password"
-            autoFocus
             className={INPUT}
           />
         </label>

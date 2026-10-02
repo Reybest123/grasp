@@ -39,6 +39,7 @@ export function QuizEditDialog({
   const [name, setName] = useState("");
   const [colorKey, setColorKey] = useState(subjectColorKey);
   const nameRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -52,8 +53,10 @@ export function QuizEditDialog({
     setName(quizProp.title);
     setColorKey(quizProp.colorKey ?? subjectColorKey);
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    // Selected, since editing usually means replacing the generated name.
-    requestAnimationFrame(() => nameRef.current?.select());
+    // Focus goes to the popup itself, not into a text box: a box focused on
+    // open brings a phone's keyboard straight up before the student has asked
+    // to type. Tapping the box is what opens it.
+    requestAnimationFrame(() => formRef.current?.focus());
 
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onCloseRef.current();
@@ -97,6 +100,8 @@ export function QuizEditDialog({
       />
 
       <form
+        ref={formRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="quiz-edit-title"
@@ -105,7 +110,7 @@ export function QuizEditDialog({
           e.preventDefault();
           save();
         }}
-        className={`${SHEET_CARD} max-w-[420px] ${sheetMotion(visible)}`}
+        className={`${SHEET_CARD} max-w-[420px] outline-none ${sheetMotion(visible)}`}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-3">

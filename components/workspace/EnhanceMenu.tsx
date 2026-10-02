@@ -72,7 +72,6 @@ export function EnhanceMenu({
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onRun(instructions.trim(), on.map((r) => r.id));
         }}
         rows={3}
-        autoFocus
         placeholder="Optional — e.g. keep it to Y11 level, aim it at the mock"
         className="mt-3 w-full resize-none rounded-xl border border-slate-300 p-2.5 text-sm outline-none transition focus:border-brand-500"
       />

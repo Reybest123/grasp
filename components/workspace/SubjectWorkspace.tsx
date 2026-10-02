@@ -201,10 +201,13 @@ export function SubjectWorkspace({
   const color = getColor(subject.colorKey);
   const weekly = weeklyLabel(subject.classes);
 
-  // The student's name, this subject's teacher, class times and exams, and the
-  // rest of their week travel with every AI request for this subject, so
-  // Explain can answer "when is my next class?" and quizzes know what is coming.
-  const context = now ? subjectContext({ subject, subjects, studentName: profile.name, now }) : "";
+  // This subject's teacher, class times and exams, and the rest of the week,
+  // travel with every AI request for this subject, so Explain can answer "when
+  // is my next class?" and quizzes know what is coming. The student's name goes
+  // to Explain/Refine only, where it can be asked about: given to the quiz
+  // explanations, the model opened its answers with it ("Sam, correct...").
+  const context = now ? subjectContext({ subject, subjects, now }) : "";
+  const chatContext = now ? subjectContext({ subject, subjects, studentName: profile.name, now }) : "";
 
   // The Resource Bank travels with every AI request for this subject as the
   // extraction Grasp already made of each document (§3.4) — never the file, and
@@ -322,6 +325,7 @@ export function SubjectWorkspace({
             addNote={addNote}
             deleteNote={deleteNote}
             context={context}
+            chatContext={chatContext}
             subjectName={subject.name}
             resources={resources}
           />
