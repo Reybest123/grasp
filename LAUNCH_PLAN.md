@@ -21,13 +21,13 @@ Last updated 2026-10-03. Prices were written on 2026-09-26 from memory, not read
 ## Before launch
 
 1. **Railway Hobby plan.** Done 2026-09-26. US$5 a month, which includes US$5 of usage; expect about US$10–15 a month in total once the three services run all month, since usage past the included US$5 is billed on top.
-2. **Stripe live mode.** Done 2026-09-29: account active, live Prices (all nine currencies since 2026-10-03), live env vars on the `grasp` service, live webhook with all five events. Pro and Max were bought with a real card and the full flow tested on 2026-10-01. Still to do: refund those test charges.
+2. **Stripe live mode.** Done 2026-09-29: account active, live Prices (all nine currencies since 2026-10-03), live env vars on the `grasp` service, live webhook with all five events. Pro and Max were bought with a real card and the full flow tested on 2026-10-01. Those charges were kept on purpose, to see the first payout arrive.
    - **Age:** Stripe's terms normally need the account holder to be 18. Dad is the business representative on the account. The ABN (25 427 279 360, 2026-09-29) is on the Terms.
 3. **Stripe dashboard settings, in live mode** (none of these can be set from code):
    - **Failed-payment emails, optional** (Settings > Billing > Customer emails). Grasp locks the app and says the card was declined, but only once the student opens it; Stripe's email reaches them when they are not using Grasp.
    - **Statement descriptor** `GRASPSTUDY`, done (Settings > Business > Public details), so a weekly charge is recognised on a bank statement rather than disputed as fraud.
    - **Live webhook events.** Done: all five, `checkout.session.async_payment_succeeded` and `customer.subscription.trial_will_end` included (checked 2026-10-03).
-   - **Terms of Service URL** (`https://graspstudy.com/legal/terms`) in Public details.
+   - **Terms of Service URL**: not needed. The dashboard has no field for it, and Checkout already links the Terms beside the pay button.
 4. **OpenAI.** Done. Auto-reload is on, the monthly spend limit is US$120 with alerts at 80% and 100%, and the account reached Tier 2 on 2026-09-26 after a US$50 top-up. The US$120 limit is a hard stop that switches the AI off for everyone, so raise it as students grow.
 5. **Legal pass.** Done 2026-09-26: Queensland law, the Australian Consumer Law wording, fairer change and closure terms, and Cloudflare and overseas processing in the Privacy Policy. Extended 2026-09-28 for selling abroad: the EU and UK 14-day cancellation right in the Terms and a GDPR section in the Privacy Policy (see "Selling outside Australia"). ABN 25 427 279 360 and the operator's name added to both pages 2026-09-29.
 6. **`www.graspstudy.com`.** Done 2026-09-26: it redirects to `graspstudy.com` through a Cloudflare Page Rule.

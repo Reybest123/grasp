@@ -683,11 +683,7 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - **A failed segment no longer leaves a phantom in-flight segment**: `release` can take the claim count to 0, and `segdone` is counted before the seconds are written. Verified against the database with a throwaway account.
   - **Not changed, by the user's decision:** two Checkout tabs paid within a day get the second refunded as a duplicate, so up to a day of the first could be free (`DUPLICATE_WINDOW_SECONDS`). In the user's own test, Stripe refused the second tab outright, saying the payment was already complete.
 
-**Still mocked / not yet built:**
-- Nothing on the limits front: quizzes, recordings, weekly Resource Bank reads and the per-subject Resource Bank document count are all enforced server-side (see above).
-- Nothing: explain, refine, enhance, generate and quiz explanations are on AI tokens (see Weekly allowances), and the timetable read is once per account.
-- Changing an account's email, which needs a confirmation link sent to the new address first.
-- Nothing on billing: Stripe has been live since 2026-09-29 (live key, Prices in all nine currencies since 2026-10-03, webhook `we_1UKu6BKHv49RfUXUDt0sN150` with all five events, on the `grasp` service). Staging runs its own test-mode Stripe (§12). A real purchase and the full billing flow (switch, cancel and resume, declined card, duplicate refund, emails) were tested by the user on 2026-10-01, live and on staging in test mode.
+- **iOS no longer turns text into links** (2026-10-03): `formatDetection` in `app/layout.tsx` switches off Safari's email, phone and address detection, which made the student's own address in the phone drawer open a mail to themselves.
 
 **Recording behaviour is finished, not outstanding — never list it as a next step.** One recording at a time, surviving in-app navigation behind the `guard` warning, and ending on a real page reload (the browser's `beforeunload` prompt covers that) is the settled design. The user has confirmed it more than once; do not propose persisting a recording across reloads, removing the warning, or reworking any of it unless they raise it themselves.
 

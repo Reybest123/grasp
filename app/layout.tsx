@@ -49,6 +49,9 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
+  // iOS Safari otherwise turns any email or number it sees into a link, so the
+  // student's own address in the phone drawer opened a mail to themselves.
+  formatDetection: { email: false, telephone: false, address: false },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
