@@ -643,7 +643,7 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - **AI cost caps on every route.** The subject name is capped at 100 characters in live notes and the Resource Bank read, and the file name at 200; `/api/resource-extract` now requires a `subjectId`, since leaving it out skipped the per-subject cap. Quiz generation requires a whole-number `answerIndex` and tells the model not to write options that depend on their position ("All of the above"), since the options are shuffled. Enhance and `EQUATION_PROMPT` no longer turn a slash in prose (and/or, km/h, a date) into a fraction.
   - **UI:** onboarding's plan buttons reset when Back from Stripe restores the page from the back/forward cache; closing the timetable popup mid-read no longer lets the late result replace the student's subjects, and the same file can be picked twice; the limit dialog's Upgrade goes through the recording `guard` (it now mounts inside `RecordingProvider`); Ctrl/Cmd/middle-click on the rail opens a new tab; deleting a subject that is being recorded into ends that recording, and the confirm says so.
   - **Cleanup:** the colour picker copied into three dialogs is now `components/ColorSwatches.tsx`; the quiz card's own "time ago" wording was replaced by `updatedLabel`; `CURRENCIES`, `planAmountCents` and `nextExam` had no callers and were deleted; three copies of "remove a table and find somewhere for the caret" are one `removeTable` in `lib/tables.ts`, which also adds an empty paragraph when the table was last.
-  - **Not done, and why.** Keeping one component per file in `AuthForm.tsx`, `AppShell.tsx`, `Sidebar.tsx` and the 880-line `app/(app)/home/page.tsx`, a shared `Modal`, `useScrollLock` and `useDismiss`, one exported fetch helper in place of ten hand-rolled ones, and splitting the subjects and recording contexts so a keystroke does not re-render the whole shell. Each is a refactor of its own rather than a fix; they were listed, not attempted.
+  - **Not done, and why.** A shared `useScrollLock` and `useDismiss`, one exported fetch helper in place of ten hand-rolled ones, and splitting the subjects and recording contexts so a keystroke does not re-render the whole shell. Each is a refactor of its own rather than a fix. **Done since:** the shared modal is `components/Popup.tsx` (2026-10-02), and one component per file (2026-10-03): the dashboard's pieces moved out of `app/(app)/home/page.tsx` into `components/home/` (the page is now about 125 lines, and `WEEK` lives in `lib/stats.ts`), `Field` out of `AuthForm` into `components/auth/Field.tsx`, `RecordingChip` out of `AppShell`, and `RailLink` and `FootButton` out of `Sidebar` (which exports the `Item` type they share). Moved code only, nothing changed in behaviour.
 
 - **Security headers and a Next.js patch (2026-09-24).** `npm audit` reported a critical Next.js advisory (remote code execution, 16.0.0-16.3.2) and a high one in `sharp`; `npm audit fix` moved them to next 16.3.6 and sharp 0.35.4, and audit is now clean. `next.config.mjs` sends security headers on every response: a same-origin-only `Content-Security-Policy` (`frame-ancestors 'none'`, `object-src 'none'`, `data:`/`blob:` images for the checklist tick and square-root mask), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` (keeps a reset-link token out of other sites' logs), a `Permissions-Policy` allowing only our own microphone use, and HSTS in production; `poweredByHeader` is off. **Nothing in the browser loads from another origin today**, and the CSP depends on that: Stripe Checkout is reached by navigation, which CSP does not govern. Anything that adds a third-party script, font, image or `fetch` from the browser has to be added to the policy too, or it will be silently blocked. `script-src` keeps `'unsafe-inline'` because Next's bootstrap is inline without a nonce; the note sanitiser is still the primary XSS defence. Verified with a production build: headers present, no CSP violations on `/` or `/login`. CORS was deliberately left unset, since no other site should call the API.
 
@@ -757,7 +757,8 @@ components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEd
                 PlanCard (landing pricing and onboarding's plan step),
                 RenewPlans (what every page but Settings shows once a plan has ended)
 components/blog/ BlogShell (the header and footer the blog index and posts share)
-components/auth/ AuthForm (login and signup are the same form), VerifyEmail,
+components/auth/ AuthForm (login and signup are the same form), Field (a labelled box with its error),
+                VerifyEmail,
                 SetupAccountMenu (avatar menu before a plan: log out, delete account),
                 DeleteAccountDialog (password-confirmed delete, used by that menu),
                 PasswordReset (forgot-password and choose-a-new-password screens)
@@ -778,11 +779,15 @@ components/app/ AppProviders (the provider tree the (app) layout mounts),
                 SessionHeartbeat (keeps the session alive while a tab is open),
                 AppShell (header + useChrome context + log-out confirm),
                 PageTransition (fades each route in; keyed on pathname),
-                Sidebar, ProfileMenu (avatar menu), MobileNav (burger + full-screen
+                Sidebar, RailLink + FootButton (the rail's two kinds of button),
+                RecordingChip (the header's live-recording chip), ProfileMenu (avatar menu), MobileNav (burger + full-screen
                       drawer on phones), AddAssessmentDialog,
                 LimitDialog (a spent weekly allowance, and the way to /plans),
                 LoadFailed (subjects could not be loaded),
                 AssessmentMenu (Edit / Mark as resolved / Delete on the dashboard)
+components/home/ the dashboard's pieces, one per file: StatRow, StatTile, UnderstandingDetail,
+                StudyDetail, CoverageDetail, WeekAllowances, Meter, Assessments,
+                TimetablePrompt, NoSubjects, HomeSkeleton
 components/workspace/
                 SubjectWorkspace (shell + tab routing + note & quiz CRUD)
                 NotesTab, NoteToolbar, EquationEditor, TablePicker, TableMenu,

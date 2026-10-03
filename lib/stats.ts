@@ -12,6 +12,9 @@
 import type { Subject } from "@/lib/subjects";
 import { isEmptyHtml } from "@/lib/richText";
 
+/** The dashboard's window: the last seven days, today included. */
+export const WEEK = 7;
+
 /**
  * The 0.8 / 0.5 bands the quiz score chip and question borders already use.
  * Kept here so the dashboard and the results screen cannot drift apart on what

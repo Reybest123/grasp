@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { ErrorNote } from "@/components/ErrorNote";
-import { Field } from "@/components/auth/AuthForm";
+import { Field } from "@/components/auth/Field";
 import { ArrowLeftIcon, MailIcon } from "@/components/icons";
 import { emailProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
 
