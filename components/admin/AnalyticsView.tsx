@@ -9,6 +9,8 @@ import { formatMoney } from "@/lib/currency";
 import { Logo } from "@/components/Logo";
 import { ErrorNote } from "@/components/ErrorNote";
 import { DailyChart } from "@/components/admin/DailyChart";
+import { TaxWatchView } from "@/components/admin/TaxWatchView";
+import type { TaxWatch } from "@/lib/taxWatch";
 
 // Above 100% only happens while tracking is newer than the accounts it is
 // compared with, so it says nothing and is left out.
@@ -18,7 +20,17 @@ const share = (value: number) => `${Math.round(value * 100)}%`;
 const dateLabel = (iso: string) =>
   new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
 
-export function AnalyticsView({ data, range }: { data: Analytics | null; range: RangeKey }) {
+export function AnalyticsView({
+  data,
+  range,
+  tax,
+}: {
+  data: Analytics | null;
+  range: RangeKey;
+  tax: { data: TaxWatch | null; failed: boolean };
+}) {
+  const vatDue = Boolean(tax.data?.live && (tax.data.eu.payments > 0 || tax.data.uk.payments > 0));
+
   return (
     <div className="min-h-dvh bg-slate-50">
       <header className="border-b border-[#efe3d6] bg-[#f8efe6]">
@@ -59,6 +71,15 @@ export function AnalyticsView({ data, range }: { data: Analytics | null; range: 
           </nav>
         </div>
 
+        {vatDue && (
+          <a
+            href="#tax"
+            className="mt-6 block rounded-2xl border border-red-300 bg-red-50 p-4 text-sm font-semibold text-red-800 hover:bg-red-100"
+          >
+            Someone in the EU or UK has paid, so VAT registration is needed. See the tax section.
+          </a>
+        )}
+
         {data ? (
           <Report data={data} />
         ) : (
@@ -67,6 +88,8 @@ export function AnalyticsView({ data, range }: { data: Analytics | null; range: 
             message="The figures could not be loaded. Check that npm run db:setup has been run against this database, since it adds the events table."
           />
         )}
+
+        <TaxWatchView tax={tax.data} failed={tax.failed} />
       </main>
     </div>
   );
