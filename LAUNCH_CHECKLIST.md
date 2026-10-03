@@ -1,6 +1,6 @@
 # Grasp launch checklist
 
-Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more; this is only what has to be done. Last updated 2026-09-28.
+Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more; this is only what has to be done. Last updated 2026-10-03.
 
 ## Already done
 
@@ -22,21 +22,21 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 
 ## Stripe live mode (this is the launch blocker)
 
-Live since 2026-09-29: live Prices in six currencies (SGD, INR and JPY added in test mode on 2026-10-02; **the live Prices still need them**, by running `npm run billing:setup` with the live key), live webhook `we_1UKu6BKHv49RfUXUDt0sN150` with all four events, live values on the `grasp` service, and staging copying them on purpose (so staging charges real cards too). All test accounts were deleted.
+Live since 2026-09-29: live Prices in all nine currencies (SGD, INR and JPY added to the live Prices on 2026-10-03, same Price ids), live webhook `we_1UKu6BKHv49RfUXUDt0sN150` with all five events, and live values on the `grasp` service. Staging has its own test-mode Stripe since 2026-10-01, so it takes `4242` test cards, not real ones. All test accounts were deleted.
 
 
 - [x] Activate the Stripe account (live mode) and add the bank account for payouts
 - [x] Run `npm run billing:setup` with the live secret key to create the live weekly Prices (each one in USD and AUD). It prints the env lines.
-- [x] On Railway, set the four live values on the `grasp` service: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_MAX`. Staging reads these from production, so it will then take real cards too; to keep staging on test cards, give it its own test-mode values instead of the references.
+- [x] On Railway, set the four live values on the `grasp` service: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_MAX`. Staging has its own test-mode values (2026-10-01), not references to these.
 - [x] Delete your test accounts (or reset the database) after switching: they hold test-mode Stripe customer ids, which live Stripe refuses
-- [x] Create the live webhook endpoint at `https://graspstudy.com/api/webhooks/stripe` with exactly four events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end` (the last one sends the trial reminder email). Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
-- [ ] Buy Pro yourself with a real card. Check the plan shows on the Plans page and the trial end date is right.
-- [ ] Buy Max yourself. Then switch between the two once. Then cancel and resume.
-- [ ] Refund the test charges in the Stripe dashboard
-- [ ] Failed-payment emails: Stripe dashboard, Settings, Billing, Subscriptions and emails. Turn on "Send emails when card payments fail" and "Send emails about expiring cards". Set what happens when every retry fails to "cancel the subscription". (Menu names are from memory; use the dashboard search if they have moved.) Grasp locks the app and says the card was declined, but only when the student opens it; these emails reach them when they are not using Grasp.
+- [x] Create the live webhook endpoint at `https://graspstudy.com/api/webhooks/stripe` with five events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end` (the last one sends the trial reminder email). Checked against live Stripe 2026-10-03. Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
+- [x] Buy Pro yourself with a real card. Check the plan shows on the Plans page.
+- [x] Buy Max yourself. Then switch between the two once. Then cancel and resume. (Done 2026-10-01.)
+- [ ] Refund the test charges in the Stripe dashboard. As of 2026-10-03 five live charges of your own are unrefunded: A$8.99 on 2026-09-29, and A$14.99, A$8.99, A$14.99, A$8.99 on 2026-10-01 (A$56.95 in all).
+- [ ] Optional, not a launch blocker: failed-payment emails: Stripe dashboard, Settings, Billing, Subscriptions and emails. Turn on "Send emails when card payments fail" and "Send emails about expiring cards". Set what happens when every retry fails to "cancel the subscription". (Menu names are from memory; use the dashboard search if they have moved.) Grasp locks the app and says the card was declined, but only when the student opens it; these emails reach them when they are not using Grasp.
 - [x] Statement descriptor: Settings, Business, Public details. Set it to `GRASPSTUDY` so the weekly charge is recognised on a bank statement instead of disputed.
 - [ ] Terms of Service URL in the same Public details page: `https://graspstudy.com/legal/terms`
-- [ ] Once there is an ABN and a business address: activate Stripe Tax, then set `STRIPE_TAX=on` on both Railway services. The rest of selling abroad (EU and UK VAT, US sales tax, a GDPR representative) is in `LAUNCH_PLAN.md`'s "Selling outside Australia", with when to do each.
+- [ ] Can be done now that there is an ABN (after launch is fine): activate Stripe Tax, then set `STRIPE_TAX=on` on both Railway services. The rest of selling abroad (EU and UK VAT, US sales tax, a GDPR representative) is in `LAUNCH_PLAN.md`'s "Selling outside Australia", with when to do each.
 - [x] Search for "Grasp" as a trade mark before spending on ads (2026-09-28: no study tools found under the name)
 
 ## Launch day

@@ -4,7 +4,7 @@ The tick-list of what to do, in order, is `LAUNCH_CHECKLIST.md`.
 
 When to pay for what, and what has to be done before launch. Everything is in AUD unless marked US$. Converted at A$1 = US$0.65, the same rate `CLAUDE.md` §6 uses. Overseas services usually add 10% GST for Australian customers.
 
-Last updated 2026-09-28. Prices were written on 2026-09-26 from memory, not read off each provider's site. Check the provider's pricing page before paying.
+Last updated 2026-10-03. Prices were written on 2026-09-26 from memory, not read off each provider's site. Check the provider's pricing page before paying.
 
 ## What is being paid for today
 
@@ -21,12 +21,12 @@ Last updated 2026-09-28. Prices were written on 2026-09-26 from memory, not read
 ## Before launch
 
 1. **Railway Hobby plan.** Done 2026-09-26. US$5 a month, which includes US$5 of usage; expect about US$10–15 a month in total once the three services run all month, since usage past the included US$5 is billed on top.
-2. **Stripe live mode.** Activate the account (an ABN is free and recommended), create the live Prices with `npm run billing:setup`, set the four live env vars on Railway, create the live webhook, then buy Pro and Max yourself with a real card and refund both. Nobody has paid with a real card yet, so this is the one path that has never been tested end to end.
+2. **Stripe live mode.** Done 2026-09-29: account active, live Prices (all nine currencies since 2026-10-03), live env vars on the `grasp` service, live webhook with all five events. Pro and Max were bought with a real card and the full flow tested on 2026-10-01. Still to do: refund those test charges.
    - **Age:** Stripe's terms normally need the account holder to be 18. Dad is the business representative on the account. The ABN (25 427 279 360, 2026-09-29) is on the Terms.
 3. **Stripe dashboard settings, in live mode** (none of these can be set from code):
-   - **Failed-payment emails** (Settings > Billing > Customer emails). Grasp locks the app and says the card was declined, but only once the student opens it; Stripe's email reaches them when they are not using Grasp.
-   - **Statement descriptor** `GRASPSTUDY` (Settings > Business > Public details), so a weekly charge is recognised on a bank statement rather than disputed as fraud.
-   - **Add `customer.subscription.trial_will_end`** to the live webhook along with the other three events. It sends the trial reminder email. The test-mode endpoint already has it (2026-09-28).
+   - **Failed-payment emails, optional** (Settings > Billing > Customer emails). Grasp locks the app and says the card was declined, but only once the student opens it; Stripe's email reaches them when they are not using Grasp.
+   - **Statement descriptor** `GRASPSTUDY`, done (Settings > Business > Public details), so a weekly charge is recognised on a bank statement rather than disputed as fraud.
+   - **Live webhook events.** Done: all five, `checkout.session.async_payment_succeeded` and `customer.subscription.trial_will_end` included (checked 2026-10-03).
    - **Terms of Service URL** (`https://graspstudy.com/legal/terms`) in Public details.
 4. **OpenAI.** Done. Auto-reload is on, the monthly spend limit is US$120 with alerts at 80% and 100%, and the account reached Tier 2 on 2026-09-26 after a US$50 top-up. The US$120 limit is a hard stop that switches the AI off for everyone, so raise it as students grow.
 5. **Legal pass.** Done 2026-09-26: Queensland law, the Australian Consumer Law wording, fairer change and closure terms, and Cloudflare and overseas processing in the Privacy Policy. Extended 2026-09-28 for selling abroad: the EU and UK 14-day cancellation right in the Terms and a GDPR section in the Privacy Policy (see "Selling outside Australia"). ABN 25 427 279 360 and the operator's name added to both pages 2026-09-29.
