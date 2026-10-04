@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { settleSubscriptions, planForPrice, retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
-import { sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
+import { sendRenewedMail, sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
 
 const planOf = (subscription: Stripe.Subscription) =>
   planForPrice(subscription.items.data[0]?.price?.id) ?? undefined;
@@ -83,6 +83,19 @@ export async function POST(req: NextRequest) {
         const subscription = await retrieveSubscription((event.data.object as Stripe.Subscription).id);
         if (!(await sendTrialEndingMail(subscription, planOf(subscription)))) {
           console.error("[grasp] trial reminder email not sent for", subscription.id);
+        }
+        break;
+      }
+      case "invoice.paid": {
+        // A week's renewal going through: the subscription itself is synced
+        // by the subscription.updated that comes with it, so this only emails.
+        const invoice = event.data.object as Stripe.Invoice;
+        const ref = invoice.parent?.subscription_details?.subscription;
+        const subscriptionId = typeof ref === "string" ? ref : ref?.id;
+        if (!subscriptionId || invoice.billing_reason !== "subscription_cycle") break;
+        const subscription = await retrieveSubscription(subscriptionId);
+        if (!(await sendRenewedMail(invoice, subscription, planOf(subscription)))) {
+          console.error("[grasp] renewal email not sent for", subscription.id);
         }
         break;
       }

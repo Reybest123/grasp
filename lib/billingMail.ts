@@ -1,4 +1,4 @@
-// The two emails Grasp sends about billing, server-side only. Both are sent
+// The three emails Grasp sends about billing, server-side only. Both are sent
 // from the Stripe webhook (app/api/webhooks/stripe), never from the Checkout
 // return route, so each goes out once per event rather than once per path.
 //
@@ -120,5 +120,25 @@ export async function sendTrialEndingMail(subscription: Stripe.Subscription, pla
     `Your free trial of ${label} ends ${when}.`,
     `When it does, your card will be charged ${price}, and then ${price} every week until you cancel.`,
     "If you do not want to keep it, cancel on the Plans page before the trial ends and you will not be charged.",
+  ]);
+}
+
+/**
+ * Sent when a week's renewal is paid (`invoice.paid` with billing_reason
+ * `subscription_cycle`). Only the paid renewals: the first week has its own
+ * email above, and a declined renewal is said on the screen the student is
+ * locked into. No date, since the account has no stored time zone and a date
+ * in the wrong one reads as a day out.
+ */
+export async function sendRenewedMail(invoice: Stripe.Invoice, subscription: Stripe.Subscription, plan: BilledPlan | undefined): Promise<boolean> {
+  if (invoice.billing_reason !== "subscription_cycle" || invoice.amount_paid <= 0) return true;
+  const userId = subscription.metadata?.userId;
+  const currency = billedIn(subscription);
+  if (!userId || !plan || !currency) return true;
+  const price = chargeLabel(plan, currency);
+  const label = `Grasp ${PLAN_LABEL[plan]}`;
+  return send(userId, `Your ${label} plan has renewed`, [
+    `You have been charged ${price} for another week of ${label}.`,
+    `Your plan renews every week at ${price} until you cancel. You can cancel at any time on the Plans page, and your plan keeps working until the end of the week you have paid for.`,
   ]);
 }

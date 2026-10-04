@@ -1,7 +1,8 @@
 // Tests that a weekly plan renews, against Stripe test mode and the staging
 // webhook, using a Stripe test clock so a week can pass in seconds.
 //
-//   node scripts/renewal-test.mjs setup             throwaway account + Pro subscription on a test clock
+//   node scripts/renewal-test.mjs setup [email]     throwaway account + Pro subscription on a test clock
+//                                                   (give an inbox you own to receive the renewal email)
 //   node scripts/renewal-test.mjs advance [days]    moves the clock on (default 7 days + 1 hour)
 //   node scripts/renewal-test.mjs decline           swaps the card for one that declines
 //   node scripts/renewal-test.mjs status            prints Stripe and the database side by side
@@ -28,6 +29,8 @@ const STATE = new URL("../.renewal-test.json", import.meta.url);
 const state = existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : {};
 const save = () => writeFileSync(STATE, JSON.stringify(state, null, 2));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const [cmd, arg] = process.argv.slice(2);
 
 function hash(password) {
   const salt = randomBytes(16);
@@ -64,11 +67,9 @@ async function status() {
     console.log(`  ${iso(i.created)}  ${i.billing_reason.padEnd(20)} ${(i.amount_due / 100).toFixed(2)} ${i.currency}  ${i.status}`);
 }
 
-const [cmd, arg] = process.argv.slice(2);
-
 if (cmd === "setup") {
   if (state.userId) throw new Error("Already set up. Run cleanup first.");
-  const email = `renewal-test-${Date.now()}@example.com`;
+  const email = arg || `renewal-test-${Date.now()}@example.com`;
   const password = "RenewalTest-" + randomBytes(3).toString("hex");
   const { rows } = await db.query(
     `insert into users (email, name, password_hash, email_verified_at, onboarding, timetable_done_at, currency)
