@@ -66,8 +66,21 @@ follow-up.
 
 ## Email templates
 
-Replace everything in [square brackets]. Send from graspstudyai@gmail.com, one
-email per school, written to a named person.
+Replace everything in [square brackets]. One email per school, written to a
+named person where the page gives one.
+
+**Who sends them (2026-10-04, the user's decision):** Liam, from his own
+liamspencer address rather than graspstudyai@gmail.com, since a personal
+address reads as a person sharing something useful rather than a company
+chasing customers. The emails still say plainly that Liam is with Grasp and
+sign off with graspstudy.com. That is not optional: the Spam Act requires a
+commercial email to identify who it is from, and a librarian who later works
+out that a "personal" email was from the business behind the link would trust
+it less, not more. The press pitch (4) is the founder's own story, so the
+founder sends that one.
+
+The school list itself (names, addresses, which page would link) is kept in
+`outreach/schools.csv`, which is not committed, since the repo is public.
 
 ### 1. Teacher-librarian
 
@@ -76,9 +89,10 @@ email per school, written to a named person.
 > Hi [name],
 >
 > I came across your library's [study skills page] ([link to their page]) and
-> thought one of our guides might be useful to add.
+> thought something we have made might be useful to add.
 >
-> I run Grasp, a study site from Brisbane. We have made a free study
+> I'm Liam, part of the small team behind Grasp, a study site from Brisbane.
+> We have made a free study
 > timetable planner for school students: they add their subjects, assessment
 > dates and free time, and it lays out a week of study blocks they can print.
 > No sign-up, no ads, and nothing they type leaves their browser:
@@ -100,7 +114,7 @@ email per school, written to a named person.
 > I will write a guide on it.
 >
 > Thanks,
-> [Your name]
+> Liam
 > Grasp, graspstudy.com
 >
 > If you would rather not hear from me again, just reply and say so.
@@ -111,6 +125,7 @@ email per school, written to a named person.
 >
 > Hi [name],
 >
+> I'm Liam, part of the small team behind Grasp, a study site from Brisbane.
 > With exams coming up, I wanted to pass on a free study planner your
 > students might find useful. They add their subjects, assessment dates and
 > free time, and it lays out a week of study blocks they can print, with more
@@ -128,7 +143,7 @@ email per school, written to a named person.
 > All of it is free to share in a newsletter, on the class page, or anywhere else.
 >
 > Thanks,
-> [Your name]
+> Liam
 > Grasp, graspstudy.com
 >
 > If you would rather not hear from me again, just reply and say so.
@@ -138,7 +153,7 @@ email per school, written to a named person.
 > **Subject:** Re: [original subject]
 >
 > Hi [name], just checking this reached you. No worries at all if it is not a
-> fit. Thanks, [Your name]
+> fit. Thanks, Liam
 
 ### 4. Local press (Brisbane Times, ABC Brisbane, local news sites)
 
@@ -158,6 +173,37 @@ email per school, written to a named person.
 >
 > [Your name], [phone]
 > graspstudyai@gmail.com
+
+### 5. Teacher-librarian network convenor (one email, a whole district)
+
+The Queensland School Library Association (qsla.org.au/network) lists a
+convenor for each district network of teacher-librarians, with their email,
+so that school librarians can reach each other. One convenor passing the
+planner on reaches every school library in the district.
+
+> **Subject:** A free study planner for your network's students
+>
+> Hi [name],
+>
+> I'm Liam, part of the small team behind Grasp, a study site from Brisbane.
+> I found your name as convenor of the [district] network on the QSLA site.
+>
+> We have made a free study timetable planner for secondary students: they
+> add their subjects, assessment dates and free time, and it lays out a week
+> of study blocks they can print. No sign-up, no ads, and nothing they type
+> leaves their browser:
+>
+> https://graspstudy.com/study-planner
+>
+> If you think it would be useful to the librarians in your network, I would
+> be grateful if you passed it on. And if they would like a guide on any
+> study topic, I am happy to write one.
+>
+> Thanks,
+> Liam
+> Grasp, graspstudy.com
+>
+> If you would rather not hear from me again, just reply and say so.
 
 ## Listing kit
 

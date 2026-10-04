@@ -31,3 +31,6 @@ next-env.d.ts
 .vscode/
 .idea/
 .renewal-test.json
+
+# Outreach contact lists (BACKLINKS.md): staff names and addresses stay off the public repo
+outreach/
