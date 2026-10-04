@@ -242,6 +242,9 @@ export default function Home() {
               <Link href="/blog" className="transition hover:text-ink">
                 Blog
               </Link>
+              <Link href="/study-planner" className="transition hover:text-ink">
+                Study planner
+              </Link>
               <Link href="/legal/terms" className="transition hover:text-ink">
                 Terms
               </Link>

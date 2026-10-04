@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/blog/BlogShell";
-import { ArrowRightIcon, BackIcon } from "@/components/icons";
+import { ArrowRightIcon, BackIcon, CalendarIcon } from "@/components/icons";
 import { BLOG_IMAGE_SIZE, BLOG_POSTS, blogDateLabel, blogImage, blogPath } from "@/lib/blog";
 import { BLOG_BODIES, readingMinutes, type BlogBlock } from "@/lib/blogPosts";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -144,6 +144,22 @@ export default async function BlogPost({ params }: Props) {
             </section>
           ))}
         </div>
+
+        {post.tool && (
+          <Link
+            href={post.tool.href}
+            className="group mt-12 flex items-center gap-4 rounded-2xl border border-brand-200 bg-brand-50/60 p-6 transition hover:border-brand-300"
+          >
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-brand-600 shadow-sm">
+              <CalendarIcon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-bold text-ink">{post.tool.title}</span>
+              <span className="mt-1 block text-sm leading-relaxed text-slate-600">{post.tool.text}</span>
+            </span>
+            <ArrowRightIcon className="h-5 w-5 shrink-0 text-brand-600 transition group-hover:translate-x-0.5" />
+          </Link>
+        )}
 
         <div className="mt-14 rounded-2xl border border-slate-200 bg-white p-7">
           <h2 className="text-2xl font-bold text-ink">Try it with your own subjects</h2>

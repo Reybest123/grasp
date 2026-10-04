@@ -6,10 +6,11 @@ const NAV: [string, string][] = [
   ["How it works", "/#how-it-works"],
   ["Features", "/#features"],
   ["Blog", "/blog"],
+  ["Study planner", "/study-planner"],
 ];
 
 /**
- * The frame the blog index and every post share: the landing page's header
+ * The frame the blog index, every post and the study planner share: the landing page's header
  * (its two section links pointing back at the landing page) and its footer.
  * Like the landing page, it says nothing about price.
  */
@@ -17,7 +18,7 @@ export function BlogShell({ children }: { children: React.ReactNode }) {
   return (
     <RouteFade>
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
+        <header className="sticky top-0 z-50 print:hidden border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
             <Logo />
             <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
@@ -50,13 +51,16 @@ export function BlogShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-slate-200 bg-white">
+        <footer className="border-t border-slate-200 bg-white print:hidden">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-6 py-9 text-sm text-slate-500 sm:flex-row">
             <Logo />
             <p>© {new Date().getFullYear()} Grasp</p>
             <div className="flex gap-5">
               <Link href="/blog" className="transition hover:text-ink">
                 Blog
+              </Link>
+              <Link href="/study-planner" className="transition hover:text-ink">
+                Study planner
               </Link>
               <Link href="/legal/terms" className="transition hover:text-ink">
                 Terms

@@ -13,9 +13,11 @@ helps its students, and that is what to offer:
 
 - **The study guides at graspstudy.com/blog.** Free, no account, no price on
   the page. These are what the emails below point at.
-- **A free study planner** (to build: no sign-up, nothing sent to the AI, so
-  it costs nothing to run). Once it exists it is the strongest thing to offer,
-  since "a free tool for your students" is an easy yes for a librarian.
+- **The free study planner at graspstudy.com/study-planner** (built
+  2026-10-04). No sign-up, and it runs in the browser with nothing sent to the
+  AI, so it costs nothing however many students use it. It is the strongest
+  thing to offer, since "a free tool for your students" is an easy yes for a
+  librarian. Lead with it.
 
 Never ask a school to link to the sign-up page or the plans. Never say "AI" in
 the subject line; plenty of schools are wary of it, and the guides stand on
@@ -69,15 +71,21 @@ email per school, written to a named person.
 
 ### 1. Teacher-librarian
 
-> **Subject:** A free study guide for your [study skills] page
+> **Subject:** A free study planner for your [study skills] page
 >
 > Hi [name],
 >
 > I came across your library's [study skills page] ([link to their page]) and
 > thought one of our guides might be useful to add.
 >
-> I run Grasp, a study site from Brisbane, and we have written free, plain
-> guides for school students, with no sign-up or ads:
+> I run Grasp, a study site from Brisbane. We have made a free study
+> timetable planner for school students: they add their subjects, assessment
+> dates and free time, and it lays out a week of study blocks they can print.
+> No sign-up, no ads, and nothing they type leaves their browser:
+>
+> https://graspstudy.com/study-planner
+>
+> We have also written some short study guides:
 >
 > - How to take Cornell notes, with a worked example:
 >   https://graspstudy.com/blog/how-to-take-cornell-notes
@@ -86,7 +94,8 @@ email per school, written to a named person.
 > - How to read a marking rubric:
 >   https://graspstudy.com/blog/how-to-read-a-marking-rubric
 >
-> If any of them would suit your students, you are welcome to link to them.
+> If the planner or any of the guides would suit your students, you are
+> welcome to link to them.
 > And if there is a study topic your students keep asking about, tell me and
 > I will write a guide on it.
 >
@@ -98,20 +107,25 @@ email per school, written to a named person.
 
 ### 2. Teacher or study-skills coordinator (before exams)
 
-> **Subject:** Study guides for your Year [11/12]s before exams
+> **Subject:** A free study planner for your Year [11/12]s before exams
 >
 > Hi [name],
 >
-> With exams coming up, I wanted to pass on some free study guides your
-> students might find useful. They are short, practical and written for
-> school students:
+> With exams coming up, I wanted to pass on a free study planner your
+> students might find useful. They add their subjects, assessment dates and
+> free time, and it lays out a week of study blocks they can print, with more
+> time for the subjects that are close and shaky. No sign-up:
+>
+> https://graspstudy.com/study-planner
+>
+> And two short guides to go with it:
 >
 > - How to make a study timetable you will actually follow:
 >   https://graspstudy.com/blog/how-to-make-a-study-timetable
 > - How to quiz yourself from your own notes:
 >   https://graspstudy.com/blog/how-to-quiz-yourself-from-your-notes
 >
-> They are free to share in a newsletter, on the class page, or anywhere else.
+> All of it is free to share in a newsletter, on the class page, or anywhere else.
 >
 > Thanks,
 > [Your name]

@@ -12,7 +12,7 @@
  */
 export function AmbientGlow() {
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden print:hidden">
       <div className="absolute -right-48 -top-40 h-[46rem] w-[56rem] rounded-full bg-[radial-gradient(closest-side,theme(colors.brand.200/.75),transparent)] blur-2xl" />
       <div className="absolute -bottom-56 -left-56 h-[40rem] w-[50rem] rounded-full bg-[radial-gradient(closest-side,theme(colors.brand.200/.5),transparent)] blur-2xl" />
       <div className="absolute -left-40 top-1/4 h-[28rem] w-[36rem] rounded-full bg-[radial-gradient(closest-side,theme(colors.sky.200/.35),transparent)] blur-2xl" />

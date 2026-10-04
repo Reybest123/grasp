@@ -664,6 +664,11 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - **The blog follows the landing page's rules**: no price, no trial mention, no emojis, literal copy. Each post's last section says what Grasp does for that topic, and only things it really does. Six posts shipped: Cornell notes, quizzing yourself from notes, notes in class, reading a rubric, a study timetable, and AI note-taking for students.
   - **Every post has a cover photo** (2026-10-04, at the user's request, after lumenstudy.com.au/blog): `public/blog/<slug>.jpg`, 1200x630, free Unsplash photos (Unsplash License, no credit required) downloaded and self-hosted, since the CSP allows no outside images. `imageAlt` in `lib/blog.ts` is required, so a new post needs a photo too; `blogImage(slug)` is its path. It sits on top of each index card (`alt=""` there, since the title names the link) and under the post's title (`preload`, it is the page's largest element), and it is the post's Open Graph, Twitter and JSON-LD image in place of the site-wide card. Served through `next/image` (WebP, sized per screen). **`proxy.ts` exempts `/blog/<slug>.jpg` from the staging password** (`GATE_EXEMPT_FILE`): the image optimiser fetches the original through the proxy without the browser's password, so on staging every cover came back 401 and broke.
   - `components/blog/BlogShell.tsx` is the shared header and footer (the landing page's, with its two section links pointing at `/#how-it-works` and `/#features`), wrapped in `RouteFade`.
+- **Free study planner at `/study-planner` (2026-10-04, at the user's request)**, the free thing schools are asked to link to (`BACKLINKS.md`). No account, nothing sent to the server or the AI: subjects (name, Shaky / Okay / Confident, optional next assessment), blocks per day (0 to 6) and block length go in, and a printable week of study blocks comes out, with why each subject got its blocks and what is coming up. Inputs are kept in `localStorage` (`grasp.studyPlanner`, validated on read) so a returning student finds their week.
+  - **`lib/studyPlanner.ts` is the logic, as plain functions.** Weight is confidence (3/2/1) times urgency (x2 inside 14 days, x1.5 inside 28). Every subject gets one block when there are enough, the rest are shared by weight (largest remainder), and too few blocks go to the most pressing subjects. Placement spreads each subject through the week (its k-th block falls due at `(k + 0.5) * slots / count`, and each slot takes the most overdue), with penalties for a subject already studied that day and for back-to-back blocks. The last block of the week is a catch-up block unless turned off. Days are counted on UTC calendar dates, and today is only read in the browser.
+  - **Framed by `BlogShell`**, which now has a Study planner nav and footer link (the landing footer has one too); in `PUBLIC_PAGES`, `/llms.txt` and the sitemap; `WebApplication` JSON-LD with a free `offers`, since the tool itself is free. The study timetable guide ends on a card leading to it (`tool` on a `BlogPostMeta`).
+  - **Print** prints only the week (header, footer, form, explainer and `AmbientGlow` are `print:hidden`), landscape, with the subject tints kept (`print-color-adjust: exact`).
+  - Checked in the browser on a production build: three subjects in, a sensible week out, saved across a reload. Not yet seen on a real phone.
 - **Heading and icon fixes for search and screen readers (2026-09-30).** Each landing feature title is an `<h2>` (they were `<h3>`s with no `<h2>` over them since the Features heading was removed, so they read as sub-points of How it works). The mock note's "Photosynthesis" title in `ExplainScene` is a `<p>`, not a heading. Every icon in `components/icons.tsx` is `aria-hidden` through `base()`; there is no `<img>` anywhere, so there is no alt text to write.
 
 - **SEO status (2026-09-30).** graspstudy.com is verified in Google Search Console as a Domain property and `sitemap.xml` is submitted (done by the user; Google re-fetches it, so it is never resubmitted). The blog above is the first content beyond the landing page. **Still open:** choosing the next posts from Search Console's real queries. Per-post share images were done on 2026-10-04 (the cover photos). **Backlinks started 2026-10-04**: `BACKLINKS.md` holds the plan (school librarians and teachers first, since launch sites are crowded), the email templates and the listing kit. A `.com` does not raise ranking by itself, and nothing here promises a ranking.
@@ -724,7 +729,7 @@ scripts/        check-scoping.mjs (npm run check:scoping — fails on a query
                 renewal-test.mjs (weekly renewal on a Stripe test clock, test mode only)
                 stripe-setup.mjs (npm run billing:setup — creates the two
                       weekly Stripe Prices, prints the env lines for them)
-app/            page.tsx (landing), blog/ + blog/[slug]/ (static study guides), login/, signup/, onboarding/, legal/,
+app/            page.tsx (landing), blog/ + blog/[slug]/ (static study guides), study-planner/ (free tool), login/, signup/, onboarding/, legal/,
                 admin/ (password-gated plan switch + unlimited mode; api/admin, api/admin/unlock),
                 forgot-password/, reset-password/ (the reset email's link),
                 verify-email/ (check-your-email, where unconfirmed accounts wait),
@@ -761,7 +766,9 @@ components/     icons.tsx, Logo, ConfirmDialog, Skeleton, SubjectCard, SubjectEd
                 LegalPage + LegalSection (the legal pages' frame),
                 PlanCard (landing pricing and onboarding's plan step),
                 RenewPlans (what every page but Settings shows once a plan has ended)
-components/blog/ BlogShell (the header and footer the blog index and posts share)
+components/blog/ BlogShell (the header and footer the blog, its posts and the study planner share)
+components/planner/ StudyPlanner (form + plan, state, localStorage), PlannerSubjectRow,
+                ConfidencePicker, PlannerWeek (blocks per day), PlanView (the week, print)
 components/auth/ AuthForm (login and signup are the same form), Field (a labelled box with its error),
                 VerifyEmail,
                 SetupAccountMenu (avatar menu before a plan: log out, delete account),
@@ -819,6 +826,7 @@ lib/            subjects (model + factories), subjectsStore, profileStore,
                 recordingStore, schedule, subjectColors,
                 plan (Pro/Max, prices, trial length, caps, perks),
                 blog (the list of blog posts), blogPosts (their words),
+                studyPlanner (the free planner's weighting and placement),
                 currency (what a student is charged in, and reading it off a request),
                 currencyServer (resolving it: the account's own, else the request),
                 currencyStore (handing it to client components from a server layout),

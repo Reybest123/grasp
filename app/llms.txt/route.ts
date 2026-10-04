@@ -33,6 +33,7 @@ subjects, timetables and assessments rather than work meetings.
 - [Sign up](${SITE_URL}/signup)
 - [Terms of Service](${SITE_URL}/legal/terms)
 - [Privacy Policy](${SITE_URL}/legal/privacy)
+- [Free study timetable planner](${SITE_URL}/study-planner): subjects, assessment dates and free time in, a printable week of study blocks out; free, no account, runs in the browser
 
 ## Study guides
 

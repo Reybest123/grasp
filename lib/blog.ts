@@ -22,6 +22,8 @@ export type BlogPostMeta = {
    * Unsplash, free to use under the Unsplash License.
    */
   imageAlt: string;
+  /** A free tool the post leads into, shown as a card after the post's text. */
+  tool?: { href: string; title: string; text: string };
 };
 
 /** Newest first. */
@@ -65,6 +67,11 @@ export const BLOG_POSTS: BlogPostMeta[] = [
       "Most study timetables fail in the first week because they are too full. A simple way to plan around your classes, your assessments and your real free time.",
     date: "2026-09-30",
     imageAlt: "A cup of coffee on an open monthly planner",
+    tool: {
+      href: "/study-planner",
+      title: "Make yours with the free planner",
+      text: "Add your subjects, assessment dates and free time, and it lays out a week of study blocks following the steps above. No sign-up.",
+    },
   },
   {
     slug: "ai-note-taking-for-students",
