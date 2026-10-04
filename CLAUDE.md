@@ -684,6 +684,8 @@ The database grew a `users.currency` column with the multi-currency work above; 
   - **A failed segment no longer leaves a phantom in-flight segment**: `release` can take the claim count to 0, and `segdone` is counted before the seconds are written. Verified against the database with a throwaway account.
   - **Not changed, by the user's decision:** two Checkout tabs paid within a day get the second refunded as a duplicate, so up to a day of the first could be free (`DUPLICATE_WINDOW_SECONDS`). In the user's own test, Stripe refused the second tab outright, saying the payment was already complete.
 
+- **Weekly renewal tested end to end (2026-10-04)** with `scripts/renewal-test.mjs` (`setup`, `advance [days]`, `decline`, `status`, `cleanup`): a throwaway account and a Pro subscription on a Stripe test clock, test mode only, synced by staging's webhook. A week on, the US$5.99 renewal was paid and `current_period_end` moved a week in the database. With a declining card the renewal went `past_due` (the app's lock); after Stripe's retries ran out, about three weeks, it went `canceled` ("Your plan has ended"). **Found:** while past due Stripe kept raising each week's invoice, so three unpaid US$5.99 invoices are left open on the cancelled subscription. Stripe stops retrying them, but the dashboard's revenue-recovery setting should mark them uncollectible (or void them) when retries end, so nobody is later charged for weeks they were locked out of. A test clock only moves two billing periods (two weeks) per advance.
+
 - **iOS no longer turns text into links** (2026-10-03): `formatDetection` in `app/layout.tsx` switches off Safari's email, phone and address detection, which made the student's own address in the phone drawer open a mail to themselves.
 
 **Recording behaviour is finished, not outstanding — never list it as a next step.** One recording at a time, surviving in-app navigation behind the `guard` warning, and ending on a real page reload (the browser's `beforeunload` prompt covers that) is the settled design. The user has confirmed it more than once; do not propose persisting a recording across reloads, removing the warning, or reworking any of it unless they raise it themselves.
@@ -718,6 +720,7 @@ proxy.ts        route protection (Next 16's middleware) — cookie presence
 db/             schema.sql (the schema), setup.mjs (npm run db:setup)
 scripts/        check-scoping.mjs (npm run check:scoping — fails on a query
                       against a student-owned table with no ownership scope)
+                renewal-test.mjs (weekly renewal on a Stripe test clock, test mode only)
                 stripe-setup.mjs (npm run billing:setup — creates the two
                       weekly Stripe Prices, prints the env lines for them)
 app/            page.tsx (landing), blog/ + blog/[slug]/ (static study guides), login/, signup/, onboarding/, legal/,
