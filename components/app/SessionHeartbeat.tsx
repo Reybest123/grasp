@@ -6,14 +6,35 @@
 // Pings every five minutes, which stays well inside that window even when a
 // background tab's timers are throttled, and again whenever the tab comes back
 // into view. A laptop that slept overnight wakes to a 401, and the student is
-// sent to log in rather than left on a dashboard whose requests all fail. A
-// plan that ends while the tab is open reloads, so the shell shows the plans.
+// sent to log in rather than left on a dashboard whose requests all fail.
+//
+// A plan that ends while the tab is open refreshes the server layout, which
+// re-reads the account and swaps the page for the plans screen without a
+// reload (so the providers, and anything typed, stay put). Any route refusing
+// with the plan-ended 403 triggers it at once (lib/planEnded.ts); the ping is
+// the fallback for a tab that sends nothing.
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { subscribePlanEnded } from "@/lib/planEnded";
 
 const PING_MS = 5 * 60 * 1000;
 
 export function SessionHeartbeat({ expired }: { expired: boolean }) {
+  const router = useRouter();
+  // Once per ending: every request in flight can be refused at the same moment.
+  const refreshed = useRef(false);
+
+  useEffect(() => {
+    if (expired) return;
+    refreshed.current = false;
+    return subscribePlanEnded(() => {
+      if (refreshed.current) return;
+      refreshed.current = true;
+      router.refresh();
+    });
+  }, [expired, router]);
+
   useEffect(() => {
     let gone = false;
 
@@ -27,9 +48,9 @@ export function SessionHeartbeat({ expired }: { expired: boolean }) {
           return;
         }
         const data = await res.json().catch(() => ({}));
-        if (data.expired === true && !expired) {
-          gone = true;
-          window.location.reload();
+        if (data.expired === true && !expired && !refreshed.current) {
+          refreshed.current = true;
+          router.refresh();
         }
       } catch {
         // Offline for a moment; the next ping tries again.
@@ -46,7 +67,7 @@ export function SessionHeartbeat({ expired }: { expired: boolean }) {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [expired]);
+  }, [expired, router]);
 
   return null;
 }

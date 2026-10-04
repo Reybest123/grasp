@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { noticePlanEnded, noticePlanEndedResponse } from "@/lib/planEnded";
 import { createSubject, type Subject } from "@/lib/subjects";
 import { autoColorKey } from "@/lib/subjectColors";
 import type { ClassSlot } from "@/lib/schedule";
@@ -87,7 +88,7 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json().catch(() => ({}));
         if (res.ok && Array.isArray(data.subjects)) {
           if (!cancelled) setSubjects(data.subjects);
-        } else if (res.status !== 401) {
+        } else if (res.status !== 401 && !noticePlanEnded(res.status, data)) {
           // A 401 means signed out; proxy.ts will have redirected already, and
           // an empty list is the right thing to render in the meantime. Any
           // other failure is said out loud rather than shown as no subjects.
@@ -143,6 +144,7 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ subject }),
           });
+          await noticePlanEndedResponse(res);
           // A 400, 403 or 404 will never succeed however often it is sent (a
           // malformed subject, one past the free trial's subject cap, or an id
           // that is not this account's), so only a server-side failure is

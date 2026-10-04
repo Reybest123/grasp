@@ -10,6 +10,7 @@
 //
 
 import { makeSlot } from "@/lib/subjects";
+import { noticePlanEnded, noticePlanEndedResponse } from "@/lib/planEnded";
 import type { QuizKind, QuizQuestion } from "@/lib/subjects";
 import type { ClassSlot } from "@/lib/schedule";
 import {
@@ -69,6 +70,10 @@ async function readReply<T>(res: Response): Promise<T & { error?: string }> {
     publishLimit({ kind: data.limitKind, freesUp: data.freesUp ?? null });
     return { ...(data as T), error: LIMIT_NOTICE };
   }
+  // A plan that ended while the tab was open: the shell swaps the page for the
+  // plans screen (lib/planEnded.ts), so the feature shows no error of its own.
+  // LIMIT_NOTICE is the "said elsewhere" sentinel ErrorNote draws nothing for.
+  if (noticePlanEnded(res.status, data)) return { ...(data as T), error: LIMIT_NOTICE };
   return { ...(data ?? ({} as T)), error: data?.error ?? failureFor(res.status) };
 }
 
@@ -168,6 +173,7 @@ export type Usage = {
 export async function fetchUsage(): Promise<Usage | null> {
   try {
     const res = await fetch("/api/usage");
+    if (!res.ok) await noticePlanEndedResponse(res);
     return res.ok ? ((await res.json()) as Usage) : null;
   } catch {
     return null;
