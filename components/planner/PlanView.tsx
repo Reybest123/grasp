@@ -6,6 +6,7 @@ import {
   CONFIDENCE_LABEL,
   DAYS,
   daysUntil,
+  dueLabel,
   hoursLabel,
   type Plan,
   type PlannerSubject,
@@ -102,14 +103,10 @@ export function PlanView({
         ))}
       </ol>
 
-      {/* In print, Coming up is left out when there is nothing coming up, and
-          the reasons card takes the full width. */}
-      <div
-        className={`mt-6 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 ${
-          upcoming.length ? "print:grid-cols-2" : "print:grid-cols-1"
-        }`}
-      >
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 print:p-3">
+      {/* The printout is the week plus the dates coming up, if there are any:
+          the reasons are for choosing the week on screen, not for the wall. */}
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 print:block">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 print:hidden">
           <h3 className="text-base font-bold text-ink">Why each subject got its blocks</h3>
           <ul className="mt-3 space-y-2.5">
             {subjects.map((s) => {
@@ -144,7 +141,10 @@ export function PlanView({
                 <li key={s.id} className="flex items-center gap-3 text-sm text-slate-700">
                   <CalendarIcon className="h-4 w-4 shrink-0 text-slate-500" />
                   <span>
-                    <span className="font-semibold text-ink">{s.name.trim()}</span> {untilLabel(days)}
+                    <span className="font-semibold text-ink">{s.name.trim()}</span>{" "}
+                    {/* A count of days goes stale on paper, so the printout gives the date. */}
+                    <span className="print:hidden">{untilLabel(days)}</span>
+                    <span className="hidden print:inline">is due on {dueLabel(s.examDate)}</span>
                   </span>
                 </li>
               ))}
@@ -154,10 +154,6 @@ export function PlanView({
               Add an assessment date to a subject and it will show here, and get more blocks as it gets close.
             </p>
           )}
-          <p className="mt-5 border-t border-slate-100 pt-4 text-sm text-slate-600">
-            Give every block a job before you start it. &ldquo;Ten questions on quadratics, then mark
-            them&rdquo; is easier to finish than &ldquo;Maths&rdquo;.
-          </p>
         </div>
       </div>
     </section>

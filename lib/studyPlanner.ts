@@ -156,6 +156,20 @@ export function buildPlan(input: PlannerInput, today: Date): Plan {
   return { days, counts, totalBlocks };
 }
 
+/** "Thursday 12 March 2026", built from the parts so no timezone moves the day. */
+export function dueLabel(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return "";
+  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const DAY_NAMES = ["Sunday", ...DAYS.slice(0, 6)];
+  const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  return `${DAY_NAMES[weekday]} ${day} ${MONTHS[month - 1]} ${year}`;
+}
+
 /** "1h 30m", "45m", "2h". */
 export function hoursLabel(minutes: number): string {
   const h = Math.floor(minutes / 60);
