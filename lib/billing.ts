@@ -419,6 +419,27 @@ export async function cancelImmediately(userId: string): Promise<boolean> {
 }
 
 /**
+ * Clears every unpaid bill a cancelled subscription leaves behind, run from
+ * the webhook on `customer.subscription.deleted`. Stripe keeps a failed
+ * renewal open after it gives up on the subscription, and one a week can be
+ * raised while it is still retrying, and it goes on trying to collect them:
+ * measured on a test clock (2026-10-04), the bill for a week after the plan
+ * was cancelled still had a payment attempt scheduled. Every one of those is a
+ * week the student was locked out of, so none of them may ever be charged.
+ * Open and uncollectible bills are voided, drafts deleted. Throws on a Stripe
+ * failure, so the webhook answers 500 and Stripe retries; a retry only finds
+ * whatever is still unpaid.
+ */
+export async function voidUnpaidInvoices(subscriptionId: string): Promise<void> {
+  for (const status of ["draft", "open", "uncollectible"] as const) {
+    for await (const invoice of stripe().invoices.list({ subscription: subscriptionId, status, limit: 100 })) {
+      if (status === "draft") await stripe().invoices.del(invoice.id);
+      else await stripe().invoices.voidInvoice(invoice.id);
+    }
+  }
+}
+
+/**
  * The one place a Stripe Subscription object is turned into what `users`
  * stores. Idempotent by construction — it only ever writes the subscription's
  * own current fields — so calling it twice for the same event (a retried

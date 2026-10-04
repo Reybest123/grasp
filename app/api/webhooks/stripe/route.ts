@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { settleSubscriptions, planForPrice, retrieveSubscription, stripeClient, syncSubscription, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
+import { settleSubscriptions, planForPrice, retrieveSubscription, stripeClient, syncSubscription, voidUnpaidInvoices, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
 import { sendRenewedMail, sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
 
 const planOf = (subscription: Stripe.Subscription) =>
@@ -103,6 +103,8 @@ export async function POST(req: NextRequest) {
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         await syncSubscription(await retrieveSubscription(subscription.id));
+        // A cancelled plan must never be charged again (lib/billing.ts).
+        if (event.type === "customer.subscription.deleted") await voidUnpaidInvoices(subscription.id);
         break;
       }
       default:
