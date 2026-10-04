@@ -102,7 +102,13 @@ export function PlanView({
         ))}
       </ol>
 
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 print:grid-cols-2">
+      {/* In print, Coming up is left out when there is nothing coming up, and
+          the reasons card takes the full width. */}
+      <div
+        className={`mt-6 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 ${
+          upcoming.length ? "print:grid-cols-2" : "print:grid-cols-1"
+        }`}
+      >
         <div className="rounded-2xl border border-slate-200 bg-white p-5 print:p-3">
           <h3 className="text-base font-bold text-ink">Why each subject got its blocks</h3>
           <ul className="mt-3 space-y-2.5">
@@ -128,7 +134,9 @@ export function PlanView({
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 print:p-3">
+        <div
+          className={`rounded-2xl border border-slate-200 bg-white p-5 print:p-3 ${upcoming.length ? "" : "print:hidden"}`}
+        >
           <h3 className="text-base font-bold text-ink">Coming up</h3>
           {upcoming.length ? (
             <ul className="mt-3 space-y-2.5">

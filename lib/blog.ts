@@ -69,7 +69,7 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     imageAlt: "A cup of coffee on an open monthly planner",
     tool: {
       href: "/study-planner",
-      title: "Make yours with the free planner",
+      title: "Make yours with the study planner",
       text: "Add your subjects, assessment dates and free time, and it lays out a week of study blocks following the steps above. No sign-up.",
     },
   },

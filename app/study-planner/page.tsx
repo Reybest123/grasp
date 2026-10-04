@@ -9,9 +9,9 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 // sites are asked to link to (BACKLINKS.md). Like the landing page and the
 // blog, it says nothing about price. It runs entirely in the browser.
 
-const TITLE = "Free study timetable planner";
+const TITLE = "Study timetable planner";
 const DESCRIPTION =
-  "Add your subjects, your assessment dates and the time you have, and get a week of study blocks to print. Free, with no sign-up.";
+  "Add your subjects, your assessment dates and the time you have, and get a week of study blocks to print.";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -50,15 +50,17 @@ export default function StudyPlannerPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }}
       />
-      {/* Seven day columns fit a page on its side. */}
-      <style>{"@media print { @page { size: landscape; margin: 12mm; } }"}</style>
-      <div className="mx-auto max-w-6xl px-6 pb-24 pt-14 sm:pt-20 print:p-0">
+      {/* Seven day columns fit a page on its side. A zero page margin also
+          drops the browser's own header and footer (the tab title and the
+          address), so the printed week carries no Grasp branding; the padding
+          below stands in for the margin. */}
+      <style>{"@media print { @page { size: landscape; margin: 0; } }"}</style>
+      <div className="mx-auto max-w-6xl px-6 pb-24 pt-14 sm:pt-20 print:max-w-none print:px-[12mm] print:py-[10mm]">
         <h1 className="max-w-3xl text-[2.4rem] font-extrabold leading-[1.05] tracking-[-0.025em] text-ink sm:text-[3.2rem] print:text-2xl">
           {TITLE}
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-600 print:hidden">
-          Add your subjects and how much time you have, and get a week of study blocks to print. Free,
-          with no sign-up, and nothing you type leaves your browser.
+          Add your subjects and how much time you have, and get a week of study blocks to print.
         </p>
 
         <div className="mt-12 print:mt-4">
