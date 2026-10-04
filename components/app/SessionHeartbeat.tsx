@@ -16,7 +16,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { subscribePlanEnded } from "@/lib/planEnded";
+import { publishPlanEnded, subscribePlanEnded } from "@/lib/planEnded";
 
 const PING_MS = 5 * 60 * 1000;
 
@@ -32,6 +32,11 @@ export function SessionHeartbeat({ expired }: { expired: boolean }) {
       if (refreshed.current) return;
       refreshed.current = true;
       router.refresh();
+      // A refresh that did not land (offline at that moment) must not stop
+      // every later one: if the page is still here, the next refusal tries again.
+      window.setTimeout(() => {
+        refreshed.current = false;
+      }, 10_000);
     });
   }, [expired, router]);
 
@@ -48,10 +53,7 @@ export function SessionHeartbeat({ expired }: { expired: boolean }) {
           return;
         }
         const data = await res.json().catch(() => ({}));
-        if (data.expired === true && !expired && !refreshed.current) {
-          refreshed.current = true;
-          router.refresh();
-        }
+        if (data.expired === true && !expired) publishPlanEnded();
       } catch {
         // Offline for a moment; the next ping tries again.
       }
@@ -67,7 +69,7 @@ export function SessionHeartbeat({ expired }: { expired: boolean }) {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [expired, router]);
+  }, [expired]);
 
   return null;
 }

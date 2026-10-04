@@ -426,17 +426,31 @@ export async function cancelImmediately(userId: string): Promise<boolean> {
  * measured on a test clock (2026-10-04), the bill for a week after the plan
  * was cancelled still had a payment attempt scheduled. Every one of those is a
  * week the student was locked out of, so none of them may ever be charged.
- * Open and uncollectible bills are voided, drafts deleted. Throws on a Stripe
- * failure, so the webhook answers 500 and Stripe retries; a retry only finds
- * whatever is still unpaid.
+ * Open and uncollectible bills are voided. A subscription's draft cannot be
+ * deleted (Stripe only deletes one-off drafts), so it is finalised without
+ * collection and then voided. Every id is gathered before anything changes,
+ * since voiding a bill moves it out of the list being paged through. Throws
+ * after trying them all if any failed, so the webhook answers 500 and Stripe
+ * retries; a retry only finds whatever is still unpaid.
  */
 export async function voidUnpaidInvoices(subscriptionId: string): Promise<void> {
+  const unpaid: { id: string; draft: boolean }[] = [];
   for (const status of ["draft", "open", "uncollectible"] as const) {
     for await (const invoice of stripe().invoices.list({ subscription: subscriptionId, status, limit: 100 })) {
-      if (status === "draft") await stripe().invoices.del(invoice.id);
-      else await stripe().invoices.voidInvoice(invoice.id);
+      if (invoice.id) unpaid.push({ id: invoice.id, draft: status === "draft" });
     }
   }
+  let failed = 0;
+  for (const invoice of unpaid) {
+    try {
+      if (invoice.draft) await stripe().invoices.finalizeInvoice(invoice.id, { auto_advance: false });
+      await stripe().invoices.voidInvoice(invoice.id);
+    } catch (err) {
+      failed++;
+      console.error("[grasp] voiding an unpaid invoice failed:", invoice.id, err);
+    }
+  }
+  if (failed) throw new Error(`${failed} unpaid invoice(s) on ${subscriptionId} could not be voided`);
 }
 
 /**

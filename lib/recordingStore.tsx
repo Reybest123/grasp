@@ -22,6 +22,7 @@ import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/l
 import { useSubjects } from "@/lib/subjectsStore";
 import { useProfile } from "@/lib/profileStore";
 import { freesUpLabel, publishLimit } from "@/lib/limitNotice";
+import { subscribePlanEnded } from "@/lib/planEnded";
 import { DEFAULT_PLAN, RECORDING_SEGMENT_MS } from "@/lib/plan";
 import { LIMITS } from "@/lib/costModel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -452,6 +453,11 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     stopRef.current = stop;
   }, [stop]);
+
+  // A plan that ends mid-lecture: the plans screen covers the Record tab and
+  // every segment would be refused, so the microphone is released rather than
+  // left running out of sight. Nothing can be saved once the plan has ended.
+  useEffect(() => subscribePlanEnded(() => discard()), [discard]);
 
   // The week's recording time, enforced rather than just printed.
   useEffect(() => {

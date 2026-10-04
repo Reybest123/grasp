@@ -14,10 +14,15 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
+/** Tells the app the plan has ended: the shell shows the plans, a live recording stops. */
+export function publishPlanEnded(): void {
+  for (const listener of listeners) listener();
+}
+
 /** True when this reply is the plan-ended refusal; tells the app shell if so. */
 export function noticePlanEnded(status: number, body: unknown): boolean {
   if (status !== 403 || !body || (body as { expired?: unknown }).expired !== true) return false;
-  for (const listener of listeners) listener();
+  publishPlanEnded();
   return true;
 }
 
