@@ -41,6 +41,13 @@ function sitePasswordOk(req: NextRequest, password: string): boolean {
 /** Stripe cannot send a password, so its webhook stays reachable. */
 const GATE_EXEMPT = ["/api/webhooks/"];
 
+/**
+ * The blog's cover photos. next/image fetches the original through this proxy
+ * without the browser's password, so gated they came back 401 and every cover
+ * on staging was broken. They are stock photos, public on graspstudy.com anyway.
+ */
+const GATE_EXEMPT_FILE = /^\/blog\/[a-z0-9-]+\.jpg$/;
+
 /** Everything inside the logged-in route group, plus onboarding's later steps. */
 const PROTECTED = [
   "/home",
@@ -76,6 +83,7 @@ export function proxy(req: NextRequest) {
   if (
     sitePassword &&
     !GATE_EXEMPT.some((p) => pathname.startsWith(p)) &&
+    !GATE_EXEMPT_FILE.test(pathname) &&
     !sitePasswordOk(req, sitePassword)
   ) {
     return new NextResponse("This is Grasp's staging site. A password is needed to see it.", {

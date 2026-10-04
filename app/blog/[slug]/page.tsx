@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/blog/BlogShell";
 import { ArrowRightIcon, BackIcon } from "@/components/icons";
-import { BLOG_POSTS, blogDateLabel, blogPath } from "@/lib/blog";
+import { BLOG_IMAGE_SIZE, BLOG_POSTS, blogDateLabel, blogImage, blogPath } from "@/lib/blog";
 import { BLOG_BODIES, readingMinutes, type BlogBlock } from "@/lib/blogPosts";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -20,6 +21,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = BLOG_POSTS.find((p) => p.slug === slug);
   if (!post) return {};
+  // The cover photo is the share card, in place of the site-wide one.
+  const images = [{ url: blogImage(post.slug), ...BLOG_IMAGE_SIZE, alt: post.imageAlt }];
   return {
     title: post.title,
     description: post.description,
@@ -31,7 +34,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: blogPath(post.slug),
       publishedTime: post.date,
       modifiedTime: post.updated ?? post.date,
+      images,
     },
+    twitter: { card: "summary_large_image", title: post.title, description: post.description, images },
   };
 }
 
@@ -75,7 +80,7 @@ export default async function BlogPost({ params }: Props) {
         mainEntityOfPage: url,
         datePublished: post.date,
         dateModified: post.updated ?? post.date,
-        image: `${SITE_URL}/opengraph-image`,
+        image: `${SITE_URL}${blogImage(post.slug)}`,
         author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
         publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL, logo: `${SITE_URL}/apple-icon` },
       },
@@ -115,7 +120,17 @@ export default async function BlogPost({ params }: Props) {
           {readingMinutes(body)} min read
         </p>
 
-        <div className="mt-8 space-y-5 text-[17px] leading-8 text-slate-700">
+        <Image
+          src={blogImage(post.slug)}
+          alt={post.imageAlt}
+          {...BLOG_IMAGE_SIZE}
+          sizes="(min-width: 768px) 720px, 100vw"
+          // The largest thing on the page when it opens.
+          preload
+          className="mt-8 aspect-[1200/630] w-full rounded-2xl bg-slate-100 object-cover"
+        />
+
+        <div className="mt-10 space-y-5 text-[17px] leading-8 text-slate-700">
           {body.intro.map((text) => (
             <p key={text}>{text}</p>
           ))}

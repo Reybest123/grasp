@@ -16,6 +16,12 @@ export type BlogPostMeta = {
   date: string;
   /** Set when a post is meaningfully rewritten. */
   updated?: string;
+  /**
+   * Alt text for the post's cover photo, which lives at public/blog/<slug>.jpg
+   * (1200x630, so it doubles as the post's share card). The photos are from
+   * Unsplash, free to use under the Unsplash License.
+   */
+  imageAlt: string;
 };
 
 /** Newest first. */
@@ -26,6 +32,7 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     description:
       "The Cornell method splits a page into notes, cues and a summary. Here is how to set it up, what goes in each part, and how to study from it afterwards.",
     date: "2026-09-30",
+    imageAlt: "A student writing notes in an open notebook on a wooden desk",
   },
   {
     slug: "how-to-quiz-yourself-from-your-notes",
@@ -33,6 +40,7 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     description:
       "Re-reading feels like studying but mostly is not. How to turn your notes into questions, mark yourself honestly, and find what you do not know yet.",
     date: "2026-09-30",
+    imageAlt: "A pencil filling in a multiple choice answer sheet",
   },
   {
     slug: "how-to-take-notes-in-class",
@@ -40,6 +48,7 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     description:
       "You cannot write down everything a teacher says, and you should not try. What to write, what to skip, and what to do in the ten minutes after the lesson.",
     date: "2026-09-30",
+    imageAlt: "A student writing at a desk in a classroom",
   },
   {
     slug: "how-to-read-a-marking-rubric",
@@ -47,6 +56,7 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     description:
       "A rubric tells you what the marker is looking for. How to read the criteria, spot the words that separate the top band, and check your draft against it.",
     date: "2026-09-30",
+    imageAlt: "A hand writing on a sheet of paper beside a closed book",
   },
   {
     slug: "how-to-make-a-study-timetable",
@@ -54,6 +64,7 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     description:
       "Most study timetables fail in the first week because they are too full. A simple way to plan around your classes, your assessments and your real free time.",
     date: "2026-09-30",
+    imageAlt: "A cup of coffee on an open monthly planner",
   },
   {
     slug: "ai-note-taking-for-students",
@@ -61,12 +72,20 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     description:
       "AI can tidy notes, explain a confusing line and write practice questions. It can also be wrong. How to use it for school so you still learn the material.",
     date: "2026-09-30",
+    imageAlt: "A student writing in a notebook beside a laptop",
   },
 ];
 
 export function blogPath(slug: string): string {
   return `/blog/${slug}`;
 }
+
+/** The cover photo's address. */
+export function blogImage(slug: string): string {
+  return `/blog/${slug}.jpg`;
+}
+
+export const BLOG_IMAGE_SIZE = { width: 1200, height: 630 };
 
 /** "30 September 2026". Built from the parts so no timezone can move the day. */
 export function blogDateLabel(iso: string): string {
