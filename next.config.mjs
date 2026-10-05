@@ -43,6 +43,16 @@ const nextConfig = {
   // and makes those controls untestable in development.
   devIndicators: false,
   poweredByHeader: false,
+  async redirects() {
+    return [
+      // A blog post renamed on the day it was published.
+      {
+        source: "/blog/jee-neet-board-exam-study-workflow",
+        destination: "/blog/ai-note-taking-workflow-for-indian-students",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

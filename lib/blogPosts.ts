@@ -16,7 +16,7 @@ export type BlogSection = { heading: string; blocks: BlogBlock[] };
 export type BlogBody = { intro: string[]; sections: BlogSection[] };
 
 export const BLOG_BODIES: Record<string, BlogBody> = {
-  "jee-neet-board-exam-study-workflow": {
+  "ai-note-taking-workflow-for-indian-students": {
     intro: [
       "Class 11 and 12 ask a lot at once. Board exams test the school syllabus in written answers, JEE or NEET test much of the same material through fast multiple choice and numericals, and school classes and coaching both keep moving whether you have kept up or not.",
       "When exams get close, the searching starts: the best app to record college lectures, free Notion templates for BTech students, free mock tests, an MCQ generator for textbook chapters, the previous year questions (PYQs) for your board or university. Stitching five tools together takes time you do not have.",

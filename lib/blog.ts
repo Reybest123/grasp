@@ -33,7 +33,7 @@ export type BlogPostMeta = {
  */
 export const BLOG_POSTS: BlogPostMeta[] = ([
   {
-    slug: "jee-neet-board-exam-study-workflow",
+    slug: "ai-note-taking-workflow-for-indian-students",
     title: "The ultimate AI note-taking workflow for Indian students: JEE, NEET, boards and college exams",
     description:
       "For Class 11 and 12 and for engineering and medical college students: record and transcribe lectures, organise notes, make MCQ tests and use PYQs with AI.",
