@@ -26,7 +26,7 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
       {
         heading: "1. The Nightmare of Fast-Paced Lectures",
         blocks: [
-          "Go to any Indian engineering college or coaching institute, and you will see students frantically writing while the professor rapidly flips through slides. It is no wonder that “how to transcribe long YouTube lectures” or “best app to record college lectures secretly” are such common search trends.",
+          "Go to any Indian engineering college or coaching institute, and you will see students frantically writing while the professor rapidly flips through slides. It is no wonder that “how to transcribe long YouTube lectures” or “best app to record college lectures” are such common search trends.",
           "Students try using generic audio-to-text converters, but they constantly trip over technical jargon or Hinglish phrases.",
           "The Grasp Solution: With Grasp’s Live Notes feature, you don’t need to hack together messy recorder apps. Just hit record during class, and your notes write themselves in real-time. The AI handles the fast pace, transcribes accurately, and immediately categorises the content so you can actually sit back and listen to your professor.",
         ],
