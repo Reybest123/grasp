@@ -36,14 +36,9 @@ export const BLOG_POSTS: BlogPostMeta[] = ([
     slug: "jee-neet-board-exam-study-workflow",
     title: "How to study for JEE, NEET and board exams in Class 11 and 12 without burning out",
     description:
-      "Class 11 and 12 means boards and an entrance exam at the same time. A weekly workflow for keeping up in class, organising every subject and testing yourself.",
+      "Class 11 and 12 means boards and JEE or NEET at once. How to record and transcribe lectures, organise notes, make MCQ tests from your chapters and use PYQs.",
     date: "2026-10-05",
     imageAlt: "A student bent over a desk writing, seen through a classroom window",
-    tool: {
-      href: "/study-planner",
-      title: "Plan your week with the study planner",
-      text: "Add your subjects, how confident you feel in each and your next test dates, and it lays out a week of study blocks. No sign-up.",
-    },
   },
   {
     slug: "how-to-take-cornell-notes",

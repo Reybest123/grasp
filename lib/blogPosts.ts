@@ -19,7 +19,8 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
   "jee-neet-board-exam-study-workflow": {
     intro: [
       "Class 11 and 12 ask a lot at once. Board exams test the school syllabus in written answers, JEE or NEET test much of the same material through fast multiple choice and numericals, and school classes and coaching both keep moving whether you have kept up or not.",
-      "Burning out usually comes from the same few problems: falling behind in class, losing track of where your notes are, and studying for hours without checking what has actually gone in. This guide is a weekly workflow for each of those.",
+      "When exams get close, the searching starts: the best app to record college lectures, free Notion templates for BTech students, free mock tests, an MCQ generator for textbook chapters, the previous year questions (PYQs) for your board or university. Stitching five tools together takes time you do not have.",
+      "Burning out usually comes from the same few problems: falling behind in class, losing track of where your notes are, and studying for hours without checking what has actually gone in. This guide is a weekly workflow for each of those. It is written for Class 11 and 12, and most of it works just as well for BTech, BSc or MBBS students facing semester exams.",
     ],
     sections: [
       {
@@ -34,13 +35,14 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
         blocks: [
           "When a teacher moves quickly, trying to write everything down means you stop listening. Write the structure instead: the topic, each main point, and any formula or reaction exactly as given. Leave space under each point and fill it in the same evening, while you still remember the explanation.",
           "Those ten minutes after class matter more than the hour you might spend later. A topic tidied the same day takes minutes; a topic left for a week has to be relearned.",
-          "If you record lessons, ask your teacher first. Many schools and coaching centres require permission, and some do not allow it at all.",
+          "Recording helps too. Plenty of students look for a way to transcribe long lectures, or a YouTube class, into text. Generic voice-to-text apps tend to trip over technical terms, formulas and lessons taught in Hinglish, so treat any transcript as a first draft and check the key terms against your textbook.",
+          "If you record lessons, ask your teacher first. Many schools, colleges and coaching centres require permission, and some do not allow it at all.",
         ],
       },
       {
         heading: "Organise every subject the same way",
         blocks: [
-          "With five or six subjects across school and coaching, notes end up in different notebooks, apps and photos of the board. Pick one place and one layout, and use it for every subject:",
+          "With five or six subjects across school and coaching, notes end up in different notebooks, apps and photos of the board. Many students spend days building the perfect Notion template, or comparing note-taking apps for an iPad and stylus, and the setup becomes a way of not studying. Pick one place and one layout, and use it for every subject:",
           {
             list: [
               "One notebook per subject, each note titled with the chapter and the date.",
@@ -54,13 +56,13 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
       {
         heading: "Get unstuck on the line, not the whole chapter",
         blocks: [
-          "When one step of a derivation or one mechanism does not make sense, it is tempting to watch a full lecture on the topic. Often you only needed that one step explained. Write down the exact line you are stuck on, ask about that line, and once it makes sense, rewrite it in your notes in your own words so it stays fixed.",
+          "When one step of a derivation or one organic chemistry mechanism does not make sense at night, it is tempting to search YouTube for a twenty-minute explainer on the whole topic. Often you only needed that one step explained. Write down the exact line you are stuck on, ask about that line, and once it makes sense, rewrite it in your notes in your own words so it stays fixed.",
         ],
       },
       {
         heading: "Test yourself every week",
         blocks: [
-          "Re-reading notes feels productive but mostly is not. Answering questions from memory is what shows you what you know. Once a week, for each subject:",
+          "Re-reading notes feels productive but mostly is not. Answering questions from memory, which is called active recall, is what shows you what you know. That is why students hunt for free mock tests, MCQ generators for textbook chapters and ways to make flashcards from a PDF. The best questions, though, come from what you were actually taught. Once a week, for each subject:",
           {
             steps: [
               "Pick the chapters you covered that week.",
@@ -75,8 +77,8 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
       {
         heading: "Aim at what is actually marked",
         blocks: [
-          "Past papers and marking schemes tell you how answers are marked: which steps carry marks, which words examiners look for, and how long an answer should be. Look at a few before you write practice answers, and check your answers against them.",
-          "For JEE and NEET, past papers also show which chapters come up most often, which helps you decide where an extra hour goes.",
+          "Previous year questions (PYQs) and marking schemes tell you how answers are marked: which steps carry marks, which words examiners look for, and how long an answer should be. Look at a few before you write practice answers, and check your answers against them. A generic study guide cannot tell you this, because every board and university marks a little differently.",
+          "For JEE and NEET, PYQs also show which chapters come up most often, which helps you decide where an extra hour goes. In college, your own university's PYQs and question bank for each semester matter more than any international textbook.",
         ],
       },
       {
@@ -89,7 +91,7 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
         heading: "How Grasp helps",
         blocks: [
           "Grasp is an AI notebook built for school. You upload a screenshot of your timetable and it creates a notebook for every subject, with your class times and teachers. You can record a lesson, where your school allows it, and Grasp drafts notes while it listens and saves them to that subject when you stop.",
-          "Inside a note you can highlight any line to have it explained, ask follow-up questions, and have the note corrected if something is wrong. Quizzes are written from your own notes, with the mix of multiple choice, short and long answers you choose, and written answers are marked, with half marks for partly right ones. In the Resource Bank you can add a page of a marking scheme or a past paper, and Grasp takes it into account when it writes and marks quizzes. AI can make mistakes, so every answer has a way to flag it as wrong.",
+          "Inside a note you can highlight any line to have it explained, ask follow-up questions, and have the note corrected if something is wrong. Quizzes are written from your own notes, with the mix of multiple choice, short and long answers you choose, and written answers are marked, with half marks for partly right ones. In the Resource Bank you can add a page of your syllabus, a marking scheme or a PYQ paper, and Grasp takes it into account when it writes and marks quizzes, so your practice leans towards what is actually assessed.",
         ],
       },
     ],
