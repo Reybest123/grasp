@@ -22,6 +22,8 @@ export type BlogPostMeta = {
    * Unsplash, free to use under the Unsplash License.
    */
   imageAlt: string;
+  /** Written into the keywords meta tag. Optional; Google ignores the tag, but some other engines read it. */
+  keywords?: string[];
   /** A free tool the post leads into, shown as a card after the post's text. */
   tool?: { href: string; title: string; text: string };
 };
@@ -39,6 +41,15 @@ export const BLOG_POSTS: BlogPostMeta[] = ([
       "Struggling with fast-paced engineering lectures or vast JEE/NEET prep? Discover how to use AI to automatically transcribe lectures, organize notes, generate quizzes from PDFs, and align your study guides with your university PYQs.",
     date: "2026-10-05",
     imageAlt: "A student bent over a desk writing, seen through a classroom window",
+    keywords: [
+      "how to transcribe long YouTube lectures",
+      "best app to record college lectures",
+      "BTech PYQs",
+      "RGPV engineering physics question bank",
+      "Notion templates for BTech students",
+      "best note-taking apps for iPad",
+      "free MCQ generator from textbook chapters",
+    ],
   },
   {
     slug: "how-to-take-cornell-notes",
