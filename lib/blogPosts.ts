@@ -18,80 +18,56 @@ export type BlogBody = { intro: string[]; sections: BlogSection[] };
 export const BLOG_BODIES: Record<string, BlogBody> = {
   "ai-note-taking-workflow-for-indian-students": {
     intro: [
-      "Class 11 and 12 ask a lot at once. Board exams test the school syllabus in written answers, JEE or NEET test much of the same material through fast multiple choice and numericals, and school classes and coaching both keep moving whether you have kept up or not.",
-      "When exams get close, the searching starts: the best app to record college lectures, free Notion templates for BTech students, free mock tests, an MCQ generator for textbook chapters, the previous year questions (PYQs) for your board or university. Stitching five tools together takes time you do not have.",
-      "Burning out usually comes from the same few problems: falling behind in class, losing track of where your notes are, and studying for hours without checking what has actually gone in. This guide is a weekly workflow for each of those. It starts with Class 11 and 12, and the same workflow works for students in engineering and medical colleges, whether that is BTech, BE, MBBS, BDS or BPharm, and for BSc students facing semester exams.",
+      "Between cracking competitive exams like JEE/NEET, managing massive syllabus loads in B.Tech, B.Sc, or MBBS, and keeping up with professors who teach at lightning speed, being a student in India is a massive juggling act.",
+      "When exams approach, the internet becomes a frantic rescue mission. Students fill search engines looking for the best app to record college lectures, hunting down free Notion templates for BTech students, or desperately searching for free mock tests and MCQ generators from textbook chapters.",
+      "But stitching together five different tools to survive your semester is exhausting. Here is how Indian students are currently trying to solve their biggest academic headaches online—and how Grasp solves all of them in a single click.",
     ],
     sections: [
       {
-        heading: "Treat boards and the entrance exam as one syllabus",
+        heading: "1. The Nightmare of Fast-Paced Lectures",
         blocks: [
-          "Most of what JEE and NEET test is the Class 11 and 12 syllabus in physics, chemistry and maths or biology. That means one set of notes per subject can serve both exams. What differs is how you practise: boards reward complete written answers in the expected structure, while JEE and NEET reward speed and accuracy on objective questions.",
-          "So keep one notebook per subject, and practise in both styles from it, rather than keeping separate notes for school and coaching that slowly drift apart.",
+          "Go to any Indian engineering college or coaching institute, and you will see students frantically writing while the professor rapidly flips through slides. It is no wonder that “how to transcribe long YouTube lectures” or “best app to record college lectures secretly” are such common search trends.",
+          "Students try using generic audio-to-text converters, but they constantly trip over technical jargon or Hinglish phrases.",
+          "The Grasp Solution: With Grasp’s Live Notes feature, you don’t need to hack together messy recorder apps. Just hit record during class, and your notes write themselves in real-time. The AI handles the fast pace, transcribes accurately, and immediately categorises the content so you can actually sit back and listen to your professor.",
         ],
       },
       {
-        heading: "Keep up with fast lessons",
+        heading: "2. Ditching the Messy Notebook Organisation",
         blocks: [
-          "When a teacher moves quickly, trying to write everything down means you stop listening. Write the structure instead: the topic, each main point, and any formula or reaction exactly as given. Leave space under each point and fill it in the same evening, while you still remember the explanation.",
-          "Those ten minutes after class matter more than the hour you might spend later. A topic tidied the same day takes minutes; a topic left for a week has to be relearned.",
-          "Recording helps too. Plenty of students look for a way to transcribe long lectures, or a YouTube class, into text. Generic voice-to-text apps tend to trip over technical terms, formulas and lessons taught in Hinglish, so treat any transcript as a first draft and check the key terms against your textbook.",
-          "If you record lessons, ask your teacher first. Many schools, colleges and coaching centres require permission, and some do not allow it at all.",
+          "Staying organised across six different engineering or science subjects takes hours. Many students spend days looking for complex Notion templates for BTech students or trying to figure out the best note-taking apps for iPad with stylus.",
+          "The problem? You waste more time setting up your digital notebooks than actually studying the material.",
+          "The Grasp Solution: Grasp eliminates manual setup entirely. All you have to do is upload a single screenshot of your timetable. Grasp automatically reads it, extracts your subjects, class times, and teachers, and instantly builds a dedicated notebook for every single subject. Zero typing, zero effort.",
         ],
       },
       {
-        heading: "Organise every subject the same way",
+        heading: "3. Getting Unstuck Instantly (Without Endless YouTube Scrolling)",
         blocks: [
-          "With five or six subjects across school and coaching, notes end up in different notebooks, apps and photos of the board. Many students spend days building the perfect Notion template, or comparing note-taking apps for an iPad and stylus, and the setup becomes a way of not studying. Pick one place and one layout, and use it for every subject:",
-          {
-            list: [
-              "One notebook per subject, each note titled with the chapter and the date.",
-              "A note per lesson or chapter, not one long running document.",
-              "Formulas, reactions and definitions written exactly, since these are where small mistakes cost marks.",
-            ],
-          },
-          "The aim is that in December, when you revise a chapter from July, you can find it in seconds.",
+          "When you are stuck on a complex engineering theorem or an organic chemistry mechanism at 2 AM, what do you do? Most students type exact conceptual queries like “Fourier transform explained simply” or “superposition theorem gate smashers” into YouTube, hoping to find a 20-minute video that makes sense.",
+          "The Grasp Solution: Instead of losing hours down a YouTube rabbit hole, you can use Grasp’s contextual AI. Just highlight any confusing line or equation in your notes, and an AI explanation pops up right next to it. You can ask follow-up questions in the exact same thread until it clicks, acting as your personal, 24/7 engineering or board-exam tutor.",
         ],
       },
       {
-        heading: "Get unstuck on the line, not the whole chapter",
+        heading: "4. Sourcing Active Recall Quizzes That Actually Match Your Syllabus",
         blocks: [
-          "When one step of a derivation or one organic chemistry mechanism does not make sense at night, it is tempting to search YouTube for a twenty-minute explainer on the whole topic. Often you only needed that one step explained. Write down the exact line you are stuck on, ask about that line, and once it makes sense, rewrite it in your notes in your own words so it stays fixed.",
+          "You cannot clear exams in India by just reading notes; you need rigorous practice. This is why students constantly look for a free MCQ generator from textbook chapters or search for “how to make flashcards from PDF automatically.”",
+          "While some use apps like Knowt or RemNote, copying and pasting text back and forth to create tests is incredibly tedious.",
+          "The Grasp Solution: Grasp features an on-demand Quiz Generator built directly into your notes. You can pick your topics and choose exactly how many multiple-choice, short-answer, or long-answer questions you want. Because every single question is generated straight from your actual class notes, it tests you on exactly what you were taught. It even grades written responses, giving you half-marks for half-right answers.",
         ],
       },
       {
-        heading: "Test yourself every week",
+        heading: "5. Laser-Focusing on University PYQs and Marking Criteria",
         blocks: [
-          "Re-reading notes feels productive but mostly is not. Answering questions from memory, which is called active recall, is what shows you what you know. That is why students hunt for free mock tests, MCQ generators for textbook chapters and ways to make flashcards from a PDF. The best questions, though, come from what you were actually taught. Once a week, for each subject:",
-          {
-            steps: [
-              "Pick the chapters you covered that week.",
-              "Answer some multiple choice questions, which is JEE and NEET practice.",
-              "Write out one or two full answers, which is board practice.",
-              "Mark yourself honestly, and give half credit for half an answer rather than calling it right.",
-              "Write down what you got wrong, and start next week's revision there.",
-            ],
-          },
+          "Let’s be honest: clearing university exams requires studying the right material. Studying international textbooks won't help if your university demands a specific answer structure. That is why the most frantic searches every semester are for \"PYQs\" (Previous Year Questions) alongside specific university names—like “AKTU BTech 3rd sem PYQs” or “RGPV engineering physics question bank.”",
+          "Students try to feed these PDFs into tools like Google NotebookLM to generate generic study guides.",
+          "The Grasp Solution: Grasp takes this a step further with its Resource Bank. You can upload your official university syllabus, term planners, and past marking criteria just once. Grasp thoroughly analyzes them and automatically targets your notes, explanations, and practice quizzes toward exactly what your specific university rubrics reward. You stop wasting time on irrelevant material and study precisely what will get you top marks.",
         ],
       },
       {
-        heading: "Aim at what is actually marked",
+        heading: "Stop Searching, Start Scoring",
         blocks: [
-          "Previous year questions (PYQs) and marking schemes tell you how answers are marked: which steps carry marks, which words examiners look for, and how long an answer should be. Look at a few before you write practice answers, and check your answers against them. A generic study guide cannot tell you this, because every board and university marks a little differently.",
-          "For JEE and NEET, PYQs also show which chapters come up most often, which helps you decide where an extra hour goes. In college, your own university's PYQs and question bank for each semester matter more than any international textbook.",
-        ],
-      },
-      {
-        heading: "Protect your sleep and one rest day",
-        blocks: [
-          "Two years is a long time to keep up a pace that only works for a fortnight. Plan study blocks around your classes and coaching rather than on top of everything, keep one evening or half day a week free, and do not cut sleep to fit more in. Tired study before a test feels like effort, but very little of it is remembered.",
-        ],
-      },
-      {
-        heading: "How Grasp helps",
-        blocks: [
-          "Grasp is an AI notebook built for school. You upload a screenshot of your timetable and it creates a notebook for every subject, with your class times and teachers. You can record a lesson, where your school allows it, and Grasp drafts notes while it listens and saves them to that subject when you stop.",
-          "Inside a note you can highlight any line to have it explained, ask follow-up questions, and have the note corrected if something is wrong. Quizzes are written from your own notes, with the mix of multiple choice, short and long answers you choose, and written answers are marked, with half marks for partly right ones. In the Resource Bank you can add a page of your syllabus, a marking scheme or a PYQ paper, and Grasp takes it into account when it writes and marks quizzes, so your practice leans towards what is actually assessed.",
+          "You don’t need an overlapping web of transcription tools, flashcard apps, and PDF readers to pass your semesters.",
+          "Bring your chaotic timetable and messy lecture recordings over to Grasp. Let the AI build your notebooks, generate your practice tests, and align your studies with your university criteria automatically.",
+          "Set up your automated digital notebooks on Grasp today!",
         ],
       },
     ],

@@ -34,9 +34,9 @@ export type BlogPostMeta = {
 export const BLOG_POSTS: BlogPostMeta[] = ([
   {
     slug: "ai-note-taking-workflow-for-indian-students",
-    title: "The ultimate AI note-taking workflow for Indian students: JEE, NEET, boards and college exams",
+    title: "Best AI note taking tool for engineering and medical students whether NEET/JEE aspirants or studying in universities",
     description:
-      "For Class 11 and 12 and for engineering and medical college students: record and transcribe lectures, organise notes, make MCQ tests and use PYQs with AI.",
+      "Struggling with fast-paced engineering lectures or vast JEE/NEET prep? Discover how to use AI to automatically transcribe lectures, organize notes, generate quizzes from PDFs, and align your study guides with your university PYQs.",
     date: "2026-10-05",
     imageAlt: "A student bent over a desk writing, seen through a classroom window",
   },
