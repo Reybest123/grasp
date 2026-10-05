@@ -34,9 +34,9 @@ export type BlogPostMeta = {
 export const BLOG_POSTS: BlogPostMeta[] = ([
   {
     slug: "jee-neet-board-exam-study-workflow",
-    title: "How to study for JEE, NEET and board exams in Class 11 and 12 without burning out",
+    title: "The ultimate AI note-taking workflow for Indian students: JEE, NEET, boards and college exams",
     description:
-      "Class 11 and 12 means boards and JEE or NEET at once. How to record and transcribe lectures, organise notes, make MCQ tests from your chapters and use PYQs.",
+      "For Class 11 and 12 and for engineering and medical college students: record and transcribe lectures, organise notes, make MCQ tests and use PYQs with AI.",
     date: "2026-10-05",
     imageAlt: "A student bent over a desk writing, seen through a classroom window",
   },

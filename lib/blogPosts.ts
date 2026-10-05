@@ -20,7 +20,7 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
     intro: [
       "Class 11 and 12 ask a lot at once. Board exams test the school syllabus in written answers, JEE or NEET test much of the same material through fast multiple choice and numericals, and school classes and coaching both keep moving whether you have kept up or not.",
       "When exams get close, the searching starts: the best app to record college lectures, free Notion templates for BTech students, free mock tests, an MCQ generator for textbook chapters, the previous year questions (PYQs) for your board or university. Stitching five tools together takes time you do not have.",
-      "Burning out usually comes from the same few problems: falling behind in class, losing track of where your notes are, and studying for hours without checking what has actually gone in. This guide is a weekly workflow for each of those. It is written for Class 11 and 12, and most of it works just as well for BTech, BSc or MBBS students facing semester exams.",
+      "Burning out usually comes from the same few problems: falling behind in class, losing track of where your notes are, and studying for hours without checking what has actually gone in. This guide is a weekly workflow for each of those. It starts with Class 11 and 12, and the same workflow works for students in engineering and medical colleges, whether that is BTech, BE, MBBS, BDS or BPharm, and for BSc students facing semester exams.",
     ],
     sections: [
       {
