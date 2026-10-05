@@ -16,6 +16,85 @@ export type BlogSection = { heading: string; blocks: BlogBlock[] };
 export type BlogBody = { intro: string[]; sections: BlogSection[] };
 
 export const BLOG_BODIES: Record<string, BlogBody> = {
+  "jee-neet-board-exam-study-workflow": {
+    intro: [
+      "Class 11 and 12 ask a lot at once. Board exams test the school syllabus in written answers, JEE or NEET test much of the same material through fast multiple choice and numericals, and school classes and coaching both keep moving whether you have kept up or not.",
+      "Burning out usually comes from the same few problems: falling behind in class, losing track of where your notes are, and studying for hours without checking what has actually gone in. This guide is a weekly workflow for each of those.",
+    ],
+    sections: [
+      {
+        heading: "Treat boards and the entrance exam as one syllabus",
+        blocks: [
+          "Most of what JEE and NEET test is the Class 11 and 12 syllabus in physics, chemistry and maths or biology. That means one set of notes per subject can serve both exams. What differs is how you practise: boards reward complete written answers in the expected structure, while JEE and NEET reward speed and accuracy on objective questions.",
+          "So keep one notebook per subject, and practise in both styles from it, rather than keeping separate notes for school and coaching that slowly drift apart.",
+        ],
+      },
+      {
+        heading: "Keep up with fast lessons",
+        blocks: [
+          "When a teacher moves quickly, trying to write everything down means you stop listening. Write the structure instead: the topic, each main point, and any formula or reaction exactly as given. Leave space under each point and fill it in the same evening, while you still remember the explanation.",
+          "Those ten minutes after class matter more than the hour you might spend later. A topic tidied the same day takes minutes; a topic left for a week has to be relearned.",
+          "If you record lessons, ask your teacher first. Many schools and coaching centres require permission, and some do not allow it at all.",
+        ],
+      },
+      {
+        heading: "Organise every subject the same way",
+        blocks: [
+          "With five or six subjects across school and coaching, notes end up in different notebooks, apps and photos of the board. Pick one place and one layout, and use it for every subject:",
+          {
+            list: [
+              "One notebook per subject, each note titled with the chapter and the date.",
+              "A note per lesson or chapter, not one long running document.",
+              "Formulas, reactions and definitions written exactly, since these are where small mistakes cost marks.",
+            ],
+          },
+          "The aim is that in December, when you revise a chapter from July, you can find it in seconds.",
+        ],
+      },
+      {
+        heading: "Get unstuck on the line, not the whole chapter",
+        blocks: [
+          "When one step of a derivation or one mechanism does not make sense, it is tempting to watch a full lecture on the topic. Often you only needed that one step explained. Write down the exact line you are stuck on, ask about that line, and once it makes sense, rewrite it in your notes in your own words so it stays fixed.",
+        ],
+      },
+      {
+        heading: "Test yourself every week",
+        blocks: [
+          "Re-reading notes feels productive but mostly is not. Answering questions from memory is what shows you what you know. Once a week, for each subject:",
+          {
+            steps: [
+              "Pick the chapters you covered that week.",
+              "Answer some multiple choice questions, which is JEE and NEET practice.",
+              "Write out one or two full answers, which is board practice.",
+              "Mark yourself honestly, and give half credit for half an answer rather than calling it right.",
+              "Write down what you got wrong, and start next week's revision there.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Aim at what is actually marked",
+        blocks: [
+          "Past papers and marking schemes tell you how answers are marked: which steps carry marks, which words examiners look for, and how long an answer should be. Look at a few before you write practice answers, and check your answers against them.",
+          "For JEE and NEET, past papers also show which chapters come up most often, which helps you decide where an extra hour goes.",
+        ],
+      },
+      {
+        heading: "Protect your sleep and one rest day",
+        blocks: [
+          "Two years is a long time to keep up a pace that only works for a fortnight. Plan study blocks around your classes and coaching rather than on top of everything, keep one evening or half day a week free, and do not cut sleep to fit more in. Tired study before a test feels like effort, but very little of it is remembered.",
+        ],
+      },
+      {
+        heading: "How Grasp helps",
+        blocks: [
+          "Grasp is an AI notebook built for school. You upload a screenshot of your timetable and it creates a notebook for every subject, with your class times and teachers. You can record a lesson, where your school allows it, and Grasp drafts notes while it listens and saves them to that subject when you stop.",
+          "Inside a note you can highlight any line to have it explained, ask follow-up questions, and have the note corrected if something is wrong. Quizzes are written from your own notes, with the mix of multiple choice, short and long answers you choose, and written answers are marked, with half marks for partly right ones. In the Resource Bank you can add a page of a marking scheme or a past paper, and Grasp takes it into account when it writes and marks quizzes. AI can make mistakes, so every answer has a way to flag it as wrong.",
+        ],
+      },
+    ],
+  },
+
   "how-to-take-cornell-notes": {
     intro: [
       "The Cornell method is a way of laying out a page so that the notes you take in class are already set up for revision. It was developed at Cornell University in the 1950s and it is still used because it is simple: one page, three parts.",
