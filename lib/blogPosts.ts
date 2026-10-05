@@ -47,15 +47,7 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
         ],
       },
       {
-        heading: "4. Sourcing Active Recall Quizzes That Actually Match Your Syllabus",
-        blocks: [
-          "You cannot clear exams in India by just reading notes; you need rigorous practice. This is why students constantly look for a free MCQ generator from textbook chapters or search for “how to make flashcards from PDF automatically.”",
-          "While some use apps like Knowt or RemNote, copying and pasting text back and forth to create tests is incredibly tedious.",
-          "The Grasp Solution: Grasp features an on-demand Quiz Generator built directly into your notes. You can pick your topics and choose exactly how many multiple-choice, short-answer, or long-answer questions you want. Because every single question is generated straight from your actual class notes, it tests you on exactly what you were taught. It even grades written responses, giving you half-marks for half-right answers.",
-        ],
-      },
-      {
-        heading: "5. Laser-Focusing on University PYQs and Marking Criteria",
+        heading: "4. Laser-Focusing on University PYQs and Marking Criteria",
         blocks: [
           "Let’s be honest: clearing university exams requires studying the right material. Studying international textbooks won't help if your university demands a specific answer structure. That is why the most frantic searches every semester are for \"PYQs\" (Previous Year Questions) alongside specific university names—like “AKTU BTech 3rd sem PYQs” or “RGPV engineering physics question bank.”",
           "Students try to feed these PDFs into tools like Google NotebookLM to generate generic study guides.",
