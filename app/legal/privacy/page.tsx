@@ -75,8 +75,8 @@ export default function Privacy() {
             automatically within 24 hours.
           </li>
           <li>
-            <b>Visits and sign-up steps:</b> when you open the home, sign-up, log-in or legal pages,
-            Grasp records which page it was, the site that linked you there and any campaign tag in
+            <b>Visits and sign-up steps:</b> when you open the home, blog, study planner, sign-up,
+            log-in or legal pages, Grasp records which page it was, the site that linked you there and any campaign tag in
             the link. Your network address and browser are combined into a one-way scrambled code
             that changes every day, so visits can be counted without following anyone from one day
             to the next. Grasp also records when you make an account, confirm your email, go to
@@ -167,8 +167,13 @@ export default function Privacy() {
           your own currency. It holds nothing else and lasts a year.
         </p>
         <p>
-          Grasp also stores one setting in your browser: whether you have hidden the tip at the
-          bottom of the notes editor. It never leaves your device.
+          Grasp also stores a few things in your browser that never leave your device: whether you
+          have hidden the tip at the bottom of the notes editor; the subjects, dates and settings
+          you enter in the free study planner, so your plan is still there when you come back
+          (the planner works without an account and sends none of what you type to Grasp, and
+          clearing your browser&apos;s site data removes it); and, for as long as a tab stays open,
+          the campaign tag of the link you arrived with, so a visit and a later sign-up can be
+          credited to the same advert.
         </p>
       </LegalSection>
 
