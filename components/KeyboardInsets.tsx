@@ -40,19 +40,35 @@ export function KeyboardInsets() {
       }
     };
 
+    // Set when a text field gives up focus, so the shift below is folded once,
+    // after its keyboard has gone, and never while the student is scrolling.
+    // Run on every viewport resize it fought iOS's own scrolling: the browser
+    // bar collapsing mid-scroll moves `offsetTop` too, and each correction made
+    // the landing page's sticky header shake.
+    let foldPending = false;
+    let foldTimer: ReturnType<typeof setTimeout>;
+
     const update = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const typing = isTextField(document.activeElement);
-        const kb = typing ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+        const el = document.activeElement;
+        const typing = isTextField(el);
+        // A popup sits on the keyboard itself (components/Popup.tsx); padding
+        // the page behind it only reflows the page and jolts the popup.
+        const inPopup = typing && !!el.closest('[role="dialog"], [role="alertdialog"]');
+        const kb = typing && !inPopup ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
         // Under 80px is browser chrome moving, not a keyboard.
         root.style.setProperty("--kb", `${kb > 80 ? Math.round(kb) : 0}px`);
         // iOS can leave the visible area shifted down inside the page once its
         // keyboard has gone, and taps on fixed popups then land that far off
         // their target: a field that worked the first time could not be tapped
         // again. Folding the shift into a real scroll puts the two back in line.
-        if (!typing && vv.offsetTop > 1 && Math.abs(vv.scale - 1) < 0.01) {
-          window.scrollTo(window.scrollX, window.scrollY + vv.offsetTop);
+        const keyboardGone = window.innerHeight - vv.height < 80;
+        if (foldPending && !typing && keyboardGone) {
+          foldPending = false;
+          if (vv.offsetTop > 1 && Math.abs(vv.scale - 1) < 0.01) {
+            window.scrollTo(window.scrollX, window.scrollY + vv.offsetTop);
+          }
         }
         reveal();
       });
@@ -61,7 +77,14 @@ export function KeyboardInsets() {
     // The keyboard is still opening when focus lands, so reveal again once it
     // has settled; `resize` covers most of that, the timer the rest.
     let timer: ReturnType<typeof setTimeout>;
-    const onFocus = () => {
+    const onFocus = (e: FocusEvent) => {
+      if (e.type === "focusout" && isTextField(e.target as Element)) {
+        foldPending = true;
+        clearTimeout(foldTimer);
+        foldTimer = setTimeout(() => (foldPending = false), 1500);
+      } else if (e.type === "focusin" && isTextField(e.target as Element)) {
+        foldPending = false;
+      }
       update();
       clearTimeout(timer);
       timer = setTimeout(update, 400);
@@ -76,6 +99,7 @@ export function KeyboardInsets() {
       document.removeEventListener("focusout", onFocus);
       cancelAnimationFrame(frame);
       clearTimeout(timer);
+      clearTimeout(foldTimer);
       root.style.removeProperty("--kb");
     };
   }, []);

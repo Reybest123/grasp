@@ -73,6 +73,19 @@ export function Popup({
     return () => clearTimeout(t);
   }, [open]);
 
+  // The page behind stays put on a phone while the popup is open, or iOS
+  // scrolls it to reach a field as the keyboard opens and the sheet shakes
+  // with it (the subject editor does the same).
+  useEffect(() => {
+    if (!open || !compact) return;
+    const root = document.documentElement;
+    const prev = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = prev;
+    };
+  }, [open, compact]);
+
   // Rendered in the same pass as the caller (no wait for a mount effect), so a
   // caller focusing something in the card on open finds it there.
   if (typeof document === "undefined" || !(open || shown)) return null;
