@@ -8,17 +8,18 @@
 // through a portal, pinned to the bottom of the screen from its first frame,
 // and slid up from below. Which of the two it is is decided here in code, not
 // by CSS swapping layouts, so nothing on the page can make it start anywhere
-// else. When a keyboard is up, the sheet sits on it (the Explain sheet's
-// approach) and the box being typed in is kept in view inside it.
+// else. When a keyboard opens, the sheet does not move itself: iOS scrolls
+// the screen to the box being typed in, smoothly, and the sheet lifting and
+// shrinking at the same moment made it shake (measured in the iPhone
+// Simulator). Android resizes the page for its keyboard, which carries the
+// sheet up with it.
 //
 // The caller supplies the card itself (`SHEET_CARD` gives it the right shape
 // for both) and still owns its own focus and Escape handling.
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useEnterTransition } from "@/lib/useEnterTransition";
-import { useVisualViewport } from "@/lib/useVisualViewport";
-import { useRevealFocused } from "@/lib/useRevealFocused";
 
 const COMPACT = "(max-width: 767px), (max-height: 500px)";
 
@@ -58,9 +59,6 @@ export function Popup({
 }) {
   const compact = useCompact();
   const visible = useEnterTransition(open);
-  const area = useVisualViewport();
-  const panelRef = useRef<HTMLDivElement>(null);
-  useRevealFocused(panelRef, area, open);
 
   // Kept on screen for the length of the slide out after `open` goes false.
   const [shown, setShown] = useState(open);
@@ -73,9 +71,7 @@ export function Popup({
     return () => clearTimeout(t);
   }, [open]);
 
-  // The page behind stays put on a phone while the popup is open, or iOS
-  // scrolls it to reach a field as the keyboard opens and the sheet shakes
-  // with it (the subject editor does the same).
+  // The page behind stays put on a phone while the popup is open.
   useEffect(() => {
     if (!open || !compact) return;
     const root = document.documentElement;
@@ -89,8 +85,6 @@ export function Popup({
   // Rendered in the same pass as the caller (no wait for a mount effect), so a
   // caller focusing something in the card on open finds it there.
   if (typeof document === "undefined" || !(open || shown)) return null;
-
-  const lifted = compact && area && area.bottomInset > 0;
 
   return createPortal(
     <div
@@ -107,8 +101,6 @@ export function Popup({
       />
       {compact ? (
         <div
-          ref={panelRef}
-          style={lifted ? { bottom: area.bottomInset, maxHeight: area.height - 12 } : undefined}
           className={`absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
             visible ? "translate-y-0" : "translate-y-full"
           }`}
@@ -123,7 +115,6 @@ export function Popup({
           className="absolute inset-0 grid place-items-center overflow-y-auto p-4"
         >
           <div
-            ref={panelRef}
             className={`pointer-events-none flex w-full justify-center transition duration-200 ease-out motion-reduce:transition-none [&>*]:pointer-events-auto ${
               visible ? "scale-100 opacity-100" : "scale-[0.96] opacity-0"
             }`}

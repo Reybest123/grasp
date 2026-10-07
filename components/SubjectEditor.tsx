@@ -5,7 +5,7 @@
 // the app still works. Whatever they do fill in becomes AI context (lib/schedule).
 
 import { ColorSwatches } from "@/components/ColorSwatches";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Subject } from "@/lib/subjects";
 import { makeSlot, makeExam } from "@/lib/subjects";
 import { getColor } from "@/lib/subjectColors";
@@ -15,9 +15,6 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DateSelect } from "@/components/DateSelect";
 import { DaySelect, TimeSelect } from "@/components/ClassTimeSelects";
 import { useEnterTransition } from "@/lib/useEnterTransition";
-import { useVisualViewport } from "@/lib/useVisualViewport";
-import { useRevealFocused } from "@/lib/useRevealFocused";
-import { useCompact } from "@/components/Popup";
 
 export function SubjectEditor({
   subject: subjectProp,
@@ -51,28 +48,12 @@ export function SubjectEditor({
   const [classes, setClasses] = useState<ClassSlot[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  // On a phone the sheet takes over the whole screen, sized to the part left
-  // visible by the keyboard, so the field being typed in has room above the
-  // keys and nothing has to guess where the middle of the screen is.
-  const area = useVisualViewport();
-  const compact = useCompact();
-  // The box being typed in is kept in view inside the form, above the keys.
-  const bodyRef = useRef<HTMLDivElement>(null);
-  useRevealFocused(bodyRef, area, open);
-  // While the keyboard is up on a phone, Cancel and Save are hidden so the
-  // form gets that room; they come back when typing stops. Tracked by focus
-  // rather than by measuring the keyboard, since Android shrinks the page for
-  // its keyboard and leaves nothing to measure.
-  const [typing, setTyping] = useState(false);
-  function settleTyping() {
-    setTimeout(() => {
-      const el = document.activeElement;
-      setTyping(!!el && !!bodyRef.current?.contains(el) && isTextBox(el));
-    }, 0);
-  }
-
-  // ...and the page behind stays put while it is open, or iOS scrolls it to
-  // reach a field and the sheet's header goes with it.
+  // On a phone the sheet takes over the whole screen. It is not resized to
+  // the part the keyboard leaves visible, and nothing scrolls the field into
+  // view or hides the buttons while typing: iOS scrolls the screen to the
+  // field smoothly on its own, and each of those moving the sheet at the same
+  // time made it shake (measured in the iPhone Simulator). The page behind
+  // stays put while it is open.
   useEffect(() => {
     if (!open || !window.matchMedia("(max-width: 767px), (max-height: 500px)").matches) return;
     const root = document.documentElement;
@@ -143,7 +124,6 @@ export function SubjectEditor({
         aria-modal="true"
         aria-label="Edit subject"
         inert={!open}
-        style={area ? { top: area.top, height: area.height } : undefined}
         className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out compact:z-[56] compact:max-w-none compact:border-l-0 compact:shadow-none ${
           visible ? "translate-x-0" : "translate-x-full"
         }`}
@@ -167,14 +147,7 @@ export function SubjectEditor({
           </button>
         </div>
 
-        <div
-          ref={bodyRef}
-          // Read once focus has settled, so moving between two boxes does
-          // not flash the buttons back for a frame.
-          onFocus={settleTyping}
-          onBlur={settleTyping}
-          className="flex-1 space-y-7 overflow-y-auto px-5 py-6"
-        >
+        <div className="flex-1 space-y-7 overflow-y-auto px-5 py-6">
           {/* Name + teacher */}
           <section className="space-y-3">
             <Field label="Subject name">
@@ -328,9 +301,7 @@ export function SubjectEditor({
         </div>
 
         {/* Footer */}
-        <div
-          className={`justify-end gap-2 border-t border-slate-200 px-5 py-4 ${compact && typing ? "hidden" : "flex"}`}
-        >
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
           <button
             onClick={onClose}
             className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
@@ -363,13 +334,6 @@ export function SubjectEditor({
         onCancel={() => setConfirmDelete(false)}
       />
     </>
-  );
-}
-
-function isTextBox(el: EventTarget): boolean {
-  return (
-    el instanceof HTMLTextAreaElement ||
-    (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit"].includes(el.type))
   );
 }
 

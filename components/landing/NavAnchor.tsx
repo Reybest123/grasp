@@ -25,7 +25,7 @@ import { scrollToElement } from "@/lib/scrollTo";
  * scroll animation) while it is evaluating. Don't "fix" this back to instant
  * without re-measuring in a real browser window.
  *
- * The sections carry `scroll-mt-20` so the sticky header does not sit over the
+ * The sections carry `scroll-mt-20` so the fixed header does not sit over the
  * heading we land on.
  */
 export function NavAnchor({ href, children }: { href: string; children: React.ReactNode }) {

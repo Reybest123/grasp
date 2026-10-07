@@ -18,8 +18,11 @@ export function BlogShell({ children }: { children: React.ReactNode }) {
   return (
     <RouteFade>
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 print:hidden border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+        {/* Fixed with a spacer, not sticky: iOS Safari shakes a sticky header
+            while the page scrolls (see app/page.tsx). */}
+        <div aria-hidden="true" className="h-[65px] shrink-0 print:hidden" />
+        <header className="fixed inset-x-0 top-0 z-50 print:hidden border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
+          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
             <Logo />
             <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
               {NAV.map(([label, href]) => (

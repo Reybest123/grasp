@@ -11,8 +11,8 @@
 //
 // It follows the real measurement only. It used to guess the keyboard's height
 // the moment a field took focus and correct it when iOS reported the real one,
-// which made popups jump up and back down. Popups now follow the keyboard
-// themselves (components/Popup.tsx) and keep their own fields in view.
+// which made popups jump up and back down. Popups are left to iOS's own
+// scroll to the field (components/Popup.tsx).
 
 import { useEffect } from "react";
 
@@ -32,7 +32,7 @@ export function KeyboardInsets() {
     let frame = 0;
     const reveal = () => {
       const el = document.activeElement;
-      // Popups and panels keep their own fields in view (lib/useRevealFocused).
+      // In a popup iOS scrolls to the field itself; moving it as well shakes it.
       if (!isTextField(el) || el.closest('[role="dialog"], [role="alertdialog"]')) return;
       const rect = el.getBoundingClientRect();
       if (rect.top < vv.offsetTop || rect.bottom > vv.offsetTop + vv.height - 8) {
@@ -53,8 +53,7 @@ export function KeyboardInsets() {
       frame = requestAnimationFrame(() => {
         const el = document.activeElement;
         const typing = isTextField(el);
-        // A popup sits on the keyboard itself (components/Popup.tsx); padding
-        // the page behind it only reflows the page and jolts the popup.
+        // Padding the page behind a popup only reflows it and jolts the popup.
         const inPopup = typing && !!el.closest('[role="dialog"], [role="alertdialog"]');
         const kb = typing && !inPopup ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
         // Under 80px is browser chrome moving, not a keyboard.

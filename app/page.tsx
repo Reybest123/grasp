@@ -102,8 +102,13 @@ export default function Home() {
             way down. The orange glow behind it is AmbientGlow, in the root layout. */}
         <div aria-hidden="true" className="ruled pointer-events-none absolute inset-0 -z-10 opacity-50" />
 
-        <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+        {/* Fixed, not sticky, with a spacer holding its place: iOS Safari
+            shakes a sticky header by a pixel or two while the page scrolls
+            (measured in the iPhone Simulator; a fixed one holds still, which is
+            why the app's own header never did it). */}
+        <div aria-hidden="true" className="h-[65px]" />
+        <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
+          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
             <Logo />
             <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
               {[
