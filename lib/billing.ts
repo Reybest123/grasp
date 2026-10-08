@@ -419,6 +419,35 @@ export async function cancelImmediately(userId: string): Promise<boolean> {
 }
 
 /**
+ * Ends a subscription whose weekly renewal has just been declined, run from the
+ * webhook on `invoice.payment_failed`. A declined renewal already locks the
+ * student out (`needsRenewal`), and with card retries off nothing else would
+ * act on it until the next billing date, a week later. Cancelling now means
+ * Stripe never tries that card again; `customer.subscription.deleted` then
+ * syncs the account and voids the unpaid bill. Only acts when this bill is the
+ * subscription's newest and still unpaid (read off the bill, not the
+ * subscription's status, which can lag the event), so a late event for an old
+ * bill cannot end a plan the student has since paid for. A subscription that is
+ * already gone is left alone. Throws on any other Stripe failure so the webhook
+ * answers 500 and Stripe retries.
+ */
+export async function cancelDeclinedRenewal(subscriptionId: string, invoiceId: string): Promise<void> {
+  const subscription = await retrieveSubscription(subscriptionId);
+  if (subscription.status === "canceled") return;
+  const latest = typeof subscription.latest_invoice === "string" ? subscription.latest_invoice : subscription.latest_invoice?.id;
+  if (latest !== invoiceId) return;
+  if ((await stripe().invoices.retrieve(invoiceId)).status !== "open") return;
+  try {
+    await stripe().subscriptions.cancel(subscriptionId);
+  } catch (err) {
+    // Cancelled by another path (a new plan being chosen, account deletion)
+    // between the read and the cancel: nothing left to do.
+    if ((err as { code?: string }).code === "resource_missing") return;
+    throw err;
+  }
+}
+
+/**
  * Clears every unpaid bill a cancelled subscription leaves behind, run from
  * the webhook on `customer.subscription.deleted`. Stripe keeps a failed
  * renewal open after it gives up on the subscription, and one a week can be
