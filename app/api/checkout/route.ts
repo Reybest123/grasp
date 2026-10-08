@@ -20,17 +20,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { track } from "@/lib/events";
-import { query, sql, transaction } from "@/lib/db";
+import { query, sql } from "@/lib/db";
 import { claimFreeTrial } from "@/lib/trialClaims";
-import { normalizeEmail } from "@/lib/accounts";
 import { requireUser } from "@/lib/session";
 import { parseAnswers } from "@/lib/onboarding";
 import { isPastDue, needsRenewal, cancelImmediately, createCheckoutSession, readBillingRow } from "@/lib/billing";
 import { appOrigin } from "@/lib/verification";
 import { isBilledPlan } from "@/lib/plan";
 import { resolveCurrency } from "@/lib/currencyServer";
-
-class TrialTaken extends Error {}
 
 export async function POST(req: NextRequest) {
   const guard = await requireUser({ allowNoPlan: true });
@@ -66,30 +63,30 @@ export async function POST(req: NextRequest) {
     if (guard.user.plan) {
       return NextResponse.json({ error: "The free trial is only for new accounts." }, { status: 409 });
     }
-    // The email is claimed in the same transaction, so a refused claim rolls
-    // the plan back. That claim outlives the account, which is what stops a
-    // student deleting it and signing up again under the same address.
-    const userId = guard.user.id;
-    const email = normalizeEmail(guard.user.email);
-    const started = await query(() =>
-      transaction(async (sql) => {
-        const rows = await sql`
-          update users set plan = 'free', free_trial_started_at = now()
-          where id = ${userId} and plan is null and free_trial_started_at is null
-            and stripe_subscription_id is null
-          returning id
-        `;
-        if (!rows.length) return false;
-        if (!(await claimFreeTrial(sql, email, userId))) throw new TrialTaken();
-        return true;
-      }).catch((err) => {
-        if (err instanceof TrialTaken) return false;
-        throw err;
-      })
+    // The inbox is claimed first, and the claim outlives the account, which is
+    // what stops a student deleting it and signing up again under the same
+    // address. A claim left behind by an update that then matches nothing is
+    // harmless: it belongs to this account, which cannot have the trial anyway,
+    // and a retry finds it as its own.
+    const claimed = await claimFreeTrial(guard.user.email, guard.user.id);
+    if (!claimed.ok) return NextResponse.json({ error: claimed.error }, { status: claimed.status });
+    if (!claimed.data) {
+      return NextResponse.json(
+        { error: "This email address has already had a free trial. Choose Pro or Max to carry on." },
+        { status: 409 }
+      );
+    }
+    const started = await query(
+      () => sql`
+        update users set plan = 'free', free_trial_started_at = now()
+        where id = ${guard.user.id} and plan is null and free_trial_started_at is null
+          and stripe_subscription_id is null
+        returning id
+      `
     );
     if (!started.ok) return NextResponse.json({ error: started.error }, { status: started.status });
-    if (!started.data) {
-      return NextResponse.json({ error: "This email address has already had a free trial. Choose Pro or Max to carry on." }, { status: 409 });
+    if (!started.data.length) {
+      return NextResponse.json({ error: "The free trial is only for new accounts." }, { status: 409 });
     }
     await track("free_trial_started", { userId: guard.user.id });
     return NextResponse.json({ ok: true });

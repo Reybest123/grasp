@@ -15,7 +15,8 @@
 // fingerprint in the clear and a dumped table then names no card.
 
 import { createHash } from "node:crypto";
-import { query, sql, type Sql } from "@/lib/db";
+import { query, sql } from "@/lib/db";
+import { normalizeEmail } from "@/lib/accounts";
 
 function fingerprintHash(fingerprint: string): string {
   return createHash("sha256").update(`trial:${fingerprint}`).digest("hex");
@@ -42,33 +43,51 @@ function fingerprintHash(fingerprint: string): string {
  * that created it.
  */
 export async function claimOrOwnTrial(fingerprint: string, userId: string) {
-  return query(async () => {
-    const hash = fingerprintHash(fingerprint);
-    const inserted = await sql`
-      insert into trial_claims (fingerprint_hash, user_id)
-      values (${hash}, ${userId})
-      on conflict (fingerprint_hash) do nothing
-      returning fingerprint_hash
-    `;
-    if (inserted.length > 0) return true;
-    const existing = (await sql`
-      select user_id from trial_claims where fingerprint_hash = ${hash}
-    `) as { user_id: string | null }[];
-    return existing[0]?.user_id === userId;
-  });
+  return query(() => claim(fingerprintHash(fingerprint), userId));
 }
 
 /**
- * Claims the cardless free trial (§6) for this email address, inside the
- * caller's transaction. The trial's own record, `users.free_trial_started_at`,
+ * Claims the cardless free trial (§6) for this email address. The trial's own record, `users.free_trial_started_at`,
  * goes with the account, so without this a student could delete their account
  * and sign up again under the same address for another week. The claim lives
  * in `trial_claims`, which does not cascade from `users`, under a key that
- * cannot collide with a card's. `false` means the address has had the trial
- * before, under an account that is now deleted or is not this one.
+ * cannot collide with a card's. `false` means the address (or another spelling
+ * of the same inbox, see `inboxOf`) has had the trial before, under an account
+ * that is now deleted or is not this one.
  */
-export async function claimFreeTrial(sql: Sql, email: string, userId: string): Promise<boolean> {
-  const hash = fingerprintHash(`free-email:${email}`);
+export async function claimFreeTrial(email: string, userId: string) {
+  return query(() => claim(fingerprintHash(`free-email:${inboxOf(email)}`), userId));
+}
+
+/**
+ * The inbox an address delivers to, so spellings of one inbox share one
+ * trial: case always; a `+tag` after the name only on the big providers known
+ * to deliver it to the same inbox (elsewhere, a school's own domain say, `+`
+ * may be part of a different person's name); and for Gmail the dots in the
+ * name and the googlemail.com domain. Only used for the trial claim; the
+ * account keeps the address as typed.
+ */
+export function inboxOf(email: string): string {
+  const address = normalizeEmail(email);
+  const at = address.lastIndexOf("@");
+  if (at < 1) return address;
+  let name = address.slice(0, at);
+  let domain = address.slice(at + 1);
+  if (domain === "googlemail.com") domain = "gmail.com";
+  if (PLUS_TAG_DOMAINS.has(domain)) name = name.split("+")[0];
+  if (domain === "gmail.com") name = name.replace(/\./g, "");
+  // An address that is all tag ("+x@...") has no name left to share.
+  return name ? `${name}@${domain}` : address;
+}
+
+const PLUS_TAG_DOMAINS = new Set([
+  "gmail.com", "outlook.com", "hotmail.com", "live.com", "msn.com",
+  "icloud.com", "me.com", "mac.com", "proton.me", "protonmail.com",
+  "fastmail.com", "zoho.com",
+]);
+
+/** True when this call made the claim, or this same account already holds it. */
+async function claim(hash: string, userId: string): Promise<boolean> {
   const inserted = await sql`
     insert into trial_claims (fingerprint_hash, user_id)
     values (${hash}, ${userId})

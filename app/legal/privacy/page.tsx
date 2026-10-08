@@ -60,10 +60,13 @@ export default function Privacy() {
           </li>
           <li>
             <b>Free trial records:</b> when you start a free trial, Grasp keeps a one-way scrambled
-            form of your email address (and, for a trial taken with a card, of a reference to that
-            card), so that the same address or card cannot be used to claim a second free trial,
-            including after the account is deleted. It cannot be turned back into your email
-            address or card details.
+            form of your email address, so that the same inbox cannot claim a second free trial,
+            including after the account is deleted. Other spellings of one inbox count as the same
+            address (capital letters, a &quot;+&quot; tag on providers such as Gmail and Outlook,
+            and the dots in a Gmail address). The scrambled form cannot be turned back into your
+            address, though someone who already knew your address could check whether it had had a
+            trial. Plans started before the free trial existed, when a card was needed, kept a
+            scrambled reference to that card in the same way.
           </li>
           <li>
             <b>Sessions:</b> a record of each device you are logged in on, so you stay logged in.
