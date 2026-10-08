@@ -865,7 +865,7 @@ Keep one component per file. `app/globals.css` holds app-wide base and keyframes
 
 ## 12. Workflow
 
-**Always push changes to GitHub after committing, to both branches.** This repo is the source of truth for deployments. After creating a commit, push it to **both** `main` and `staging`: `git push origin main main:staging`. If there are uncommitted changes at the start of a session, commit and push them as well.
+**Always push changes to GitHub after committing, to both branches.** This repo is the source of truth for deployments. After creating a commit, push it to **both** `main` and `staging`, **staging first, then main** (2026-10-08, at the user's request): `git push origin main:staging && git push origin main`. Staging deploys first, so a broken build shows up there before it reaches graspstudy.com. Stop and report if the staging push fails rather than pushing to main. If there are uncommitted changes at the start of a session, commit and push them as well.
 
 **Two branches, two Railway services, one database (2026-09-24).**
 - **`main` → the `grasp` service → `graspstudy.com`** (the user-facing site). `ADMIN_PASSWORD` and `SITE_PASSWORD` are both unset there, so `/admin` and its API routes return 404 and there is no password gate. It no longer has a `*.up.railway.app` address; `grasp-production-f6f7.up.railway.app` was removed.
