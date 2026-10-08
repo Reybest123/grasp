@@ -15,7 +15,7 @@
 // fingerprint in the clear and a dumped table then names no card.
 
 import { createHash } from "node:crypto";
-import { query, sql } from "@/lib/db";
+import { query, sql, type Sql } from "@/lib/db";
 
 function fingerprintHash(fingerprint: string): string {
   return createHash("sha256").update(`trial:${fingerprint}`).digest("hex");
@@ -56,4 +56,28 @@ export async function claimOrOwnTrial(fingerprint: string, userId: string) {
     `) as { user_id: string | null }[];
     return existing[0]?.user_id === userId;
   });
+}
+
+/**
+ * Claims the cardless free trial (§6) for this email address, inside the
+ * caller's transaction. The trial's own record, `users.free_trial_started_at`,
+ * goes with the account, so without this a student could delete their account
+ * and sign up again under the same address for another week. The claim lives
+ * in `trial_claims`, which does not cascade from `users`, under a key that
+ * cannot collide with a card's. `false` means the address has had the trial
+ * before, under an account that is now deleted or is not this one.
+ */
+export async function claimFreeTrial(sql: Sql, email: string, userId: string): Promise<boolean> {
+  const hash = fingerprintHash(`free-email:${email}`);
+  const inserted = await sql`
+    insert into trial_claims (fingerprint_hash, user_id)
+    values (${hash}, ${userId})
+    on conflict (fingerprint_hash) do nothing
+    returning fingerprint_hash
+  `;
+  if (inserted.length > 0) return true;
+  const existing = (await sql`
+    select user_id from trial_claims where fingerprint_hash = ${hash}
+  `) as { user_id: string | null }[];
+  return existing[0]?.user_id === userId;
 }

@@ -60,9 +60,10 @@ export default function Privacy() {
           </li>
           <li>
             <b>Free trial records:</b> when you start a free trial, Grasp keeps a one-way scrambled
-            form of a reference to the card used, so that the same card cannot be used to claim a
-            second free trial under a different account. It cannot be turned back into your card
-            details.
+            form of your email address (and, for a trial taken with a card, of a reference to that
+            card), so that the same address or card cannot be used to claim a second free trial,
+            including after the account is deleted. It cannot be turned back into your email
+            address or card details.
           </li>
           <li>
             <b>Sessions:</b> a record of each device you are logged in on, so you stay logged in.
@@ -192,8 +193,8 @@ export default function Privacy() {
         </p>
         <p>
           One thing outlives a deleted account, on purpose: the scrambled free trial record
-          described above. It has to, or deleting an account would let the same card claim another
-          free trial. What is left behind is that scrambled reference and the date, with your name
+          described above. It has to, or deleting an account would let the same email address or
+          card claim another free trial. What is left behind is that scrambled reference and the date, with your name
           removed from it, so it no longer identifies you.
         </p>
       </LegalSection>
