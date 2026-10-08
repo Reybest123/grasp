@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { cancelDeclinedRenewal, settleSubscriptions, planForPrice, retrieveSubscription, stripeClient, syncSubscription, voidUnpaidInvoices, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
-import { sendRenewedMail, sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
+import { sendRenewalFailedMail, sendRenewedMail, sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
 
 const planOf = (subscription: Stripe.Subscription) =>
   planForPrice(subscription.items.data[0]?.price?.id) ?? undefined;
@@ -106,7 +106,10 @@ export async function POST(req: NextRequest) {
         const ref = invoice.parent?.subscription_details?.subscription;
         const subscriptionId = typeof ref === "string" ? ref : ref?.id;
         if (!subscriptionId || !invoice.id || invoice.billing_reason !== "subscription_cycle") break;
-        await cancelDeclinedRenewal(subscriptionId, invoice.id);
+        const ended = await cancelDeclinedRenewal(subscriptionId, invoice.id);
+        if (ended && !(await sendRenewalFailedMail(ended, planOf(ended)))) {
+          console.error("[grasp] payment failed email not sent for", ended.id);
+        }
         break;
       }
       case "customer.subscription.updated":

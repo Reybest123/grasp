@@ -4,7 +4,7 @@
 //   node scripts/renewal-test.mjs setup [email]     throwaway account + Pro subscription on a test clock
 //                                                   (give an inbox you own to receive the renewal email)
 //   node scripts/renewal-test.mjs advance [days]    moves the clock on (default 7 days + 1 hour)
-//   node scripts/renewal-test.mjs decline           swaps the card for one that declines
+//   node scripts/renewal-test.mjs decline [auth]    swaps the card for one that declines (auth: one that needs bank approval)
 //   node scripts/renewal-test.mjs status            prints Stripe and the database side by side
 //   node scripts/renewal-test.mjs cleanup           deletes the clock (and its customer) and the account
 //
@@ -129,7 +129,9 @@ if (cmd === "setup") {
   await sleep(15000);
   await status();
 } else if (cmd === "decline") {
-  const pm = await stripe.paymentMethods.attach("pm_card_chargeCustomerFail", { customer: state.customerId });
+  // `decline auth` swaps in a card whose bank asks for approval (3D Secure) on every charge.
+  const card = arg === "auth" ? "pm_card_authenticationRequired" : "pm_card_chargeCustomerFail";
+  const pm = await stripe.paymentMethods.attach(card, { customer: state.customerId });
   await stripe.customers.update(state.customerId, { invoice_settings: { default_payment_method: pm.id } });
   await stripe.subscriptions.update(state.subscriptionId, { default_payment_method: pm.id });
   console.log("card swapped for one that declines");

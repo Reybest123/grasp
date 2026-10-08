@@ -139,9 +139,11 @@ export function isExpired(status: string | null): boolean {
  * to Grasp is the same, a plan running for free — but unlike a cancelled
  * subscription this one is not gone, so /api/checkout cancels it outright
  * before a fresh one can start, rather than leaving two on the same customer.
+ * `incomplete` (a first payment still waiting on the bank's approval) is
+ * locked the same way, so the wait is never free use.
  */
 export function isPastDue(status: string | null): boolean {
-  return status === "past_due" || status === "unpaid";
+  return status === "past_due" || status === "unpaid" || status === "incomplete";
 }
 
 /** Locks the account out (lib/session.ts's `expired`) until this is put right. */
@@ -428,21 +430,25 @@ export async function cancelImmediately(userId: string): Promise<boolean> {
  * subscription's newest and still unpaid (read off the bill, not the
  * subscription's status, which can lag the event), so a late event for an old
  * bill cannot end a plan the student has since paid for. A subscription that is
- * already gone is left alone. Throws on any other Stripe failure so the webhook
- * answers 500 and Stripe retries.
+ * already gone is left alone. A renewal the bank wants approved (3D Secure)
+ * raises the same event and is ended the same way (measured on a test clock,
+ * 2026-10-08), so a returning student always starts a new week from the day
+ * they pay. Returns the subscription when this call ended it, so the webhook
+ * emails only then. Throws on any other Stripe failure so the webhook answers
+ * 500 and Stripe retries.
  */
-export async function cancelDeclinedRenewal(subscriptionId: string, invoiceId: string): Promise<void> {
+export async function cancelDeclinedRenewal(subscriptionId: string, invoiceId: string): Promise<Stripe.Subscription | null> {
   const subscription = await retrieveSubscription(subscriptionId);
-  if (subscription.status === "canceled") return;
+  if (subscription.status === "canceled") return null;
   const latest = typeof subscription.latest_invoice === "string" ? subscription.latest_invoice : subscription.latest_invoice?.id;
-  if (latest !== invoiceId) return;
-  if ((await stripe().invoices.retrieve(invoiceId)).status !== "open") return;
+  if (latest !== invoiceId) return null;
+  if ((await stripe().invoices.retrieve(invoiceId)).status !== "open") return null;
   try {
-    await stripe().subscriptions.cancel(subscriptionId);
+    return await stripe().subscriptions.cancel(subscriptionId);
   } catch (err) {
     // Cancelled by another path (a new plan being chosen, account deletion)
     // between the read and the cancel: nothing left to do.
-    if ((err as { code?: string }).code === "resource_missing") return;
+    if ((err as { code?: string }).code === "resource_missing") return null;
     throw err;
   }
 }

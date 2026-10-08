@@ -1,4 +1,4 @@
-// The three emails Grasp sends about billing, server-side only. Both are sent
+// The emails Grasp sends about billing, server-side only. All are sent
 // from the Stripe webhook (app/api/webhooks/stripe), never from the Checkout
 // return route, so each goes out once per event rather than once per path.
 //
@@ -56,16 +56,16 @@ function greetingFor(name: string): string {
   return first ? `Hi ${first},` : "Hi,";
 }
 
-async function send(userId: string, subject: string, paragraphs: string[]): Promise<boolean> {
+async function send(userId: string, subject: string, paragraphs: string[], buttonLabel = "Manage your plan"): Promise<boolean> {
   const to = await recipient(userId);
   if (!to) return true; // the account is gone; there is nobody to tell
   const greeting = greetingFor(to.name);
-  const button = { label: "Manage your plan", href: PLANS_URL };
+  const button = { label: buttonLabel, href: PLANS_URL };
   return sendEmail({
     to: to.email,
     subject,
     html: layout(greeting, paragraphs, button),
-    text: [greeting, "", ...paragraphs.flatMap((p) => [p, ""]), `Manage your plan: ${PLANS_URL}`, "", `Refunds and cancelling: ${REFUNDS_URL}`].join("\n"),
+    text: [greeting, "", ...paragraphs.flatMap((p) => [p, ""]), `${buttonLabel}: ${PLANS_URL}`, "", `Refunds and cancelling: ${REFUNDS_URL}`].join("\n"),
   });
 }
 
@@ -126,8 +126,7 @@ export async function sendTrialEndingMail(subscription: Stripe.Subscription, pla
 /**
  * Sent when a week's renewal is paid (`invoice.paid` with billing_reason
  * `subscription_cycle`). Only the paid renewals: the first week has its own
- * email above, and a declined renewal is said on the screen the student is
- * locked into. No date, since the account has no stored time zone and a date
+ * email above, and a declined renewal has its own below. No date, since the account has no stored time zone and a date
  * in the wrong one reads as a day out.
  */
 export async function sendRenewedMail(invoice: Stripe.Invoice, subscription: Stripe.Subscription, plan: BilledPlan | undefined): Promise<boolean> {
@@ -141,4 +140,28 @@ export async function sendRenewedMail(invoice: Stripe.Invoice, subscription: Str
     `You have been charged ${price} for another week of ${label}.`,
     `Your plan renews every week at ${price} until you cancel. You can cancel at any time on the Plans page, and your plan keeps working until the end of the week you have paid for.`,
   ]);
+}
+
+/**
+ * Sent when a week's renewal was declined (or needed the bank's approval) and
+ * the webhook ended the plan for it (`cancelDeclinedRenewal`). Says nothing was
+ * charged, that the student's work is still there, and sends them to the Plans
+ * page, where choosing a plan starts a new week from the day they pay.
+ */
+export async function sendRenewalFailedMail(subscription: Stripe.Subscription, plan: BilledPlan | undefined): Promise<boolean> {
+  const userId = subscription.metadata?.userId;
+  const currency = billedIn(subscription);
+  if (!userId || !plan || !currency) return true;
+  const price = chargeLabel(plan, currency);
+  const label = `Grasp ${PLAN_LABEL[plan]}`;
+  return send(
+    userId,
+    `Your ${label} payment did not go through`,
+    [
+      `We tried to charge your card ${price} for another week of ${label}, but the payment did not go through, so your plan has stopped.`,
+      "Nothing has been charged. Your notes, quizzes and documents are all still in your account.",
+      "To keep using Grasp, choose a plan and pay with a card that works. If you think this card should have worked, your bank can tell you why it was declined.",
+    ],
+    "Choose a plan"
+  );
 }
