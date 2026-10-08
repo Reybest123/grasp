@@ -18,6 +18,8 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 
 - [x] TFN
 - [x] ABN 25 427 279 360 (2026-09-29), on the Terms and Privacy Policy
+- [x] Business name "Grasp Study" registered with ASIC (2026-10-08, renews 2027-10-08), on the Terms and Privacy Policy as "trading as Grasp Study"
+- [ ] Use "Grasp Study" as the business name on the Stripe account (its public business name and statement descriptor)
 - [x] Talk to your dad about being the business representative on the Stripe account. As understood (not confirmed): you open the account with your own email and invite him in during setup as the representative, so he does not need his own Stripe account. If Stripe blocks you on age during signup, ask their support. Whoever is the representative is who Stripe's identity checks are about.
 
 ## Stripe live mode (this is the launch blocker)

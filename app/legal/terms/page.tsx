@@ -227,7 +227,7 @@ export default function Terms() {
 
       <LegalSection title="About Grasp">
         <p>
-          Grasp is operated by Reyansh Ahuja, ABN 25 427 279 360.
+          Grasp is operated by Reyansh Ahuja, trading as Grasp Study, ABN 25 427 279 360.
         </p>
       </LegalSection>
     </LegalPage>

@@ -203,7 +203,7 @@ export default function Privacy() {
       </LegalSection>
 
       <LegalSection title="Getting a copy of your information">
-        <p>Grasp is operated by Reyansh Ahuja, ABN 25 427 279 360.</p>
+        <p>Grasp is operated by Reyansh Ahuja, trading as Grasp Study, ABN 25 427 279 360.</p>
         <p>
           Grasp does not have a download or export feature yet. To ask for a copy of your
           information, to correct something, or to ask anything else about your privacy, email{" "}
