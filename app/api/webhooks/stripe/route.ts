@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { cancelDeclinedRenewal, settleSubscriptions, planForPrice, retrieveSubscription, stripeClient, syncSubscription, voidUnpaidInvoices, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
+import { cancelDeclinedRenewal, chargeRenewalNow,settleSubscriptions, planForPrice, retrieveSubscription, stripeClient, syncSubscription, voidUnpaidInvoices, STRIPE_WEBHOOK_SECRET } from "@/lib/billing";
 import { sendRenewalFailedMail, sendRenewedMail, sendSubscribedMail, sendTrialEndingMail } from "@/lib/billingMail";
 
 const planOf = (subscription: Stripe.Subscription) =>
@@ -96,6 +96,14 @@ export async function POST(req: NextRequest) {
         const subscription = await retrieveSubscription(subscriptionId);
         if (!(await sendRenewedMail(invoice, subscription, planOf(subscription)))) {
           console.error("[grasp] renewal email not sent for", subscription.id);
+        }
+        break;
+      }
+      case "invoice.created": {
+        // A new week's bill: charge it now rather than in an hour (lib/billing.ts).
+        const invoice = event.data.object as Stripe.Invoice;
+        if (invoice.id && invoice.billing_reason === "subscription_cycle" && invoice.status === "draft") {
+          await chargeRenewalNow(invoice.id);
         }
         break;
       }

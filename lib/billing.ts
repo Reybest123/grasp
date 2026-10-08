@@ -427,6 +427,23 @@ export async function cancelImmediately(userId: string): Promise<boolean> {
 }
 
 /**
+ * Charges a weekly renewal the moment Stripe raises its bill (`invoice.created`),
+ * rather than the hour later Stripe would otherwise wait. The new week starts
+ * with the bill, so that hour was a week's access running before anyone knew
+ * whether the card would pay. A decline here is expected and only logged:
+ * `invoice.payment_failed` follows and ends the plan. Any other failure is
+ * logged too, since Stripe still makes its own attempt an hour later.
+ */
+export async function chargeRenewalNow(invoiceId: string): Promise<void> {
+  try {
+    await stripe().invoices.pay(invoiceId);
+  } catch (err) {
+    const e = err as { type?: string; code?: string; message?: string };
+    if (e.type !== "StripeCardError") console.error("[grasp] early renewal charge failed:", invoiceId, e.code ?? e.message);
+  }
+}
+
+/**
  * Ends a subscription whose weekly renewal has just been declined, run from the
  * webhook on `invoice.payment_failed`. A declined renewal already locks the
  * student out (`needsRenewal`), and with card retries off nothing else would
