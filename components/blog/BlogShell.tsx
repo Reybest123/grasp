@@ -7,6 +7,7 @@ const NAV: [string, string][] = [
   ["Features", "/#features"],
   ["Blog", "/blog"],
   ["Study planner", "/study-planner"],
+  ["Social", "/social"],
 ];
 
 /**
@@ -64,6 +65,9 @@ export function BlogShell({ children }: { children: React.ReactNode }) {
               </Link>
               <Link href="/study-planner" className="transition hover:text-ink">
                 Study planner
+              </Link>
+              <Link href="/social" className="transition hover:text-ink">
+                Social
               </Link>
               <Link href="/legal/terms" className="transition hover:text-ink">
                 Terms

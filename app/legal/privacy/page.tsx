@@ -79,7 +79,7 @@ export default function Privacy() {
             automatically within 24 hours.
           </li>
           <li>
-            <b>Visits and sign-up steps:</b> when you open the home, blog, study planner, sign-up,
+            <b>Visits and sign-up steps:</b> when you open the home, blog, study planner, social, sign-up,
             log-in or legal pages, Grasp records which page it was, the site that linked you there and any campaign tag in
             the link. Your network address and browser are combined into a one-way scrambled code
             that changes every day, so visits can be counted without following anyone from one day
