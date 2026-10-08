@@ -79,6 +79,15 @@ out that a "personal" email was from the business behind the link would trust
 it less, not more. The press pitch (4) is the founder's own story, so the
 founder sends that one.
 
+**Every outreach email goes out from the liamspencer549 mailbox** (2026-10-08),
+and replies land there too, so check it for answers. Log each send and reply in
+`outreach/schools.csv`.
+
+**Follow up 3 days after sending, if there is no reply** (2026-10-08, the
+user's decision, replacing the old "a week later"). One follow-up only, using
+template 3 below, then leave it. Set the follow-up date in the sheet to the
+send date plus 3 days.
+
 The school list itself (names, addresses, which page would link) is kept in
 `outreach/schools.csv`, which is not committed, since the repo is public.
 
@@ -148,12 +157,24 @@ The school list itself (names, addresses, which page would link) is kept in
 >
 > If you would rather not hear from me again, just reply and say so.
 
-### 3. One follow-up, a week later
+### 3. One follow-up, 3 days later, if there has been no reply
 
 > **Subject:** Re: [original subject]
 >
-> Hi [name], just checking this reached you. No worries at all if it is not a
-> fit. Thanks, Liam
+> Hi [name],
+>
+> Just checking in on my email from a few days ago about the free study
+> planner. Is it something you would be happy to link to, or not a fit for
+> [school]? A quick yes or no is all I need, and either answer is completely
+> fine.
+>
+> Thanks,
+> Liam
+> Grasp, graspstudy.com
+
+Send it as a reply in the same thread, so they see the original underneath.
+For the QSLA secretariat, ask whether they can pass it to the district
+networks (that is the yes or no that matters there).
 
 ### 4. Local press (Brisbane Times, ABC Brisbane, local news sites)
 
@@ -286,7 +307,7 @@ Worth an afternoon, not more. List on each with the kit above:
 ## Tracking
 
 Keep a sheet with: school or site, contact name, email, page that would link,
-date sent, follow-up date, reply, link live (yes/no). Check Google Search
+date sent, follow-up date (sent + 3 days), reply, link live (yes/no). Check Google Search
 Console's **Links** report each month to see which links Google has found;
 new ones take a few weeks to show.
 
