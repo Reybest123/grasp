@@ -126,8 +126,8 @@ export async function sendTrialEndingMail(subscription: Stripe.Subscription, pla
 /**
  * Sent when a week's renewal is paid (`invoice.paid` with billing_reason
  * `subscription_cycle`). Only the paid renewals: the first week has its own
- * email above, and a declined renewal has its own below. No date, since the account has no stored time zone and a date
- * in the wrong one reads as a day out.
+ * email above, and a declined renewal has its own below. No date, since the
+ * account has no stored time zone and a date in the wrong one reads as a day out.
  */
 export async function sendRenewedMail(invoice: Stripe.Invoice, subscription: Stripe.Subscription, plan: BilledPlan | undefined): Promise<boolean> {
   if (invoice.billing_reason !== "subscription_cycle" || invoice.amount_paid <= 0) return true;
@@ -160,7 +160,7 @@ export async function sendRenewalFailedMail(subscription: Stripe.Subscription, p
     [
       `We tried to charge your card ${price} for another week of ${label}, but the payment did not go through, so your plan has stopped.`,
       "Nothing has been charged. Your notes, quizzes and documents are all still in your account.",
-      "To keep using Grasp, choose a plan and pay with a card that works. If you think this card should have worked, your bank can tell you why it was declined.",
+      "To keep using Grasp, choose a plan and pay again. If you think this card should have worked, your bank can tell you what happened: it may have declined the payment, or wanted you to approve it.",
     ],
     "Choose a plan"
   );

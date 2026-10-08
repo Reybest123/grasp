@@ -107,9 +107,14 @@ export async function POST(req: NextRequest) {
         const subscriptionId = typeof ref === "string" ? ref : ref?.id;
         if (!subscriptionId || !invoice.id || invoice.billing_reason !== "subscription_cycle") break;
         const ended = await cancelDeclinedRenewal(subscriptionId, invoice.id);
-        if (ended && !(await sendRenewalFailedMail(ended, planOf(ended)))) {
-          console.error("[grasp] payment failed email not sent for", ended.id);
-        }
+        if (!ended) break;
+        // Caught here: a retry would find the plan already ended and never
+        // send, so a throw (a database blip reading the address) only logs.
+        const sent = await sendRenewalFailedMail(ended, planOf(ended)).catch((err) => {
+          console.error("[grasp] payment failed email threw:", err);
+          return false;
+        });
+        if (!sent) console.error("[grasp] payment failed email not sent for", ended.id);
         break;
       }
       case "customer.subscription.updated":

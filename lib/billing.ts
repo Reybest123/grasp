@@ -126,9 +126,15 @@ async function readBillingRow(userId: string) {
 
 export { readBillingRow };
 
-/** Stripe's terminal "this subscription is over" status. */
+/**
+ * A subscription that is over, or was never paid for: `canceled`, plus a first
+ * payment still waiting on the bank (`incomplete`) and one that never arrived
+ * (`incomplete_expired`, about a day later). Checkout only makes a subscription
+ * once a card has paid, so the last two should not reach an account; if one
+ * does, it is locked rather than used for free.
+ */
 export function isExpired(status: string | null): boolean {
-  return status === "canceled";
+  return status === "canceled" || status === "incomplete" || status === "incomplete_expired";
 }
 
 /**
@@ -139,11 +145,9 @@ export function isExpired(status: string | null): boolean {
  * to Grasp is the same, a plan running for free — but unlike a cancelled
  * subscription this one is not gone, so /api/checkout cancels it outright
  * before a fresh one can start, rather than leaving two on the same customer.
- * `incomplete` (a first payment still waiting on the bank's approval) is
- * locked the same way, so the wait is never free use.
  */
 export function isPastDue(status: string | null): boolean {
-  return status === "past_due" || status === "unpaid" || status === "incomplete";
+  return status === "past_due" || status === "unpaid";
 }
 
 /** Locks the account out (lib/session.ts's `expired`) until this is put right. */
@@ -286,7 +290,9 @@ function checkoutDisclosure(plan: BilledPlan, currency: Currency, switching = fa
 /** A purchase made within this long of another counts as a duplicate and is refunded. */
 const DUPLICATE_WINDOW_SECONDS = 24 * 60 * 60;
 
-const LIVE = new Set(["active", "trialing", "past_due", "unpaid"]);
+// `incomplete` too: one left unpaid would otherwise start billing beside the
+// new plan if its payment cleared later.
+const LIVE = new Set(["active", "trialing", "past_due", "unpaid", "incomplete"]);
 
 /**
  * After any paid Checkout, leaves the customer with exactly one live
@@ -578,7 +584,7 @@ async function writeUser(
           plan_cancelled_at = coalesce(plan_cancelled_at, now()),
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
-        and (${subscription.status} not in ('canceled', 'past_due', 'unpaid')
+        and (${subscription.status} not in ('canceled', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired')
              or stripe_subscription_id is null
              or stripe_subscription_id = ${subscription.id})
     `;
@@ -592,7 +598,7 @@ async function writeUser(
           plan_cancelled_at = null,
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
-        and (${subscription.status} not in ('canceled', 'past_due', 'unpaid')
+        and (${subscription.status} not in ('canceled', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired')
              or stripe_subscription_id is null
              or stripe_subscription_id = ${subscription.id})
     `;
