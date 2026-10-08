@@ -6,8 +6,8 @@ Grasp turns a screenshot of your school timetable into a notebook for every subj
 live while you record a lecture, explains anything you highlight right inside your notes, and
 quizzes you from your own notes and assessment criteria rather than a generic question bank.
 
-**Still being built — Grasp has not launched and has no users yet.** It deploys to Railway for
-testing, Stripe runs in test mode, and no real card has been charged. The full product spec, design
+**Grasp is in production at [graspstudy.com](https://graspstudy.com).** It deploys to Railway, with a
+password-protected staging site for testing, and Stripe runs live on production. The full product spec, design
 conventions and a detailed changelog of how everything is built live in [`CLAUDE.md`](./CLAUDE.md).
 
 ---

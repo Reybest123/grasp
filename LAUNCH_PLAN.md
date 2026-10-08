@@ -31,7 +31,7 @@ Last updated 2026-10-03. Prices were written on 2026-09-26 from memory, not read
 4. **OpenAI.** Done. Auto-reload is on, the monthly spend limit is US$120 with alerts at 80% and 100%, and the account reached Tier 2 on 2026-09-26 after a US$50 top-up. The US$120 limit is a hard stop that switches the AI off for everyone, so raise it as students grow.
 5. **Legal pass.** Done 2026-09-26: Queensland law, the Australian Consumer Law wording, fairer change and closure terms, and Cloudflare and overseas processing in the Privacy Policy. Extended 2026-09-28 for selling abroad: the EU and UK 14-day cancellation right in the Terms and a GDPR section in the Privacy Policy (see "Selling outside Australia"). ABN 25 427 279 360 and the operator's name added to both pages 2026-09-29.
 6. **`www.graspstudy.com`.** Done 2026-09-26: it redirects to `graspstudy.com` through a Cloudflare Page Rule.
-7. **Delete the "Grasp has not launched" block** at the top of `CLAUDE.md` §11, and say so there.
+7. **Delete the "Grasp has not launched" block** at the top of `CLAUDE.md` §11, and say so there. Done 2026-10-08.
 
 **Fixed cost at launch: about A$50–60/month.** That is Claude Pro, Railway Hobby and the domain.
 

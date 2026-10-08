@@ -41,7 +41,7 @@ Live since 2026-09-29: live Prices in all nine currencies (SGD, INR and JPY adde
 
 ## Launch day
 
-- [ ] Delete the "Grasp has not launched" block at the top of CLAUDE.md section 11 and say so there
+- [x] Delete the "Grasp has not launched" block at the top of CLAUDE.md section 11 and say so there (2026-10-08)
 - [ ] Look at `/admin/analytics` (staging site) to make sure signups and payments are showing
 - [ ] Tag every ad link with UTM parameters before it goes live, so `/admin/analytics` can credit signups to the right ad. Use `utm_source` (tiktok, instagram, youtube, snapchat), `utm_medium` (paid or organic), `utm_campaign` (the video's name) and `utm_content` (which variant). Example: `https://graspstudy.com/?utm_source=tiktok&utm_medium=paid&utm_campaign=promo1`. The QR code in the video needs its own tagged link (`utm_medium=qr`), because it is scanned rather than clicked. Open each tagged link once and check the visit shows up.
 - [ ] Post the video free on Instagram and TikTok first (organic, `utm_medium=organic` in the bio link)
