@@ -8,6 +8,7 @@ import { query, sql } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { destroySession, requireUser } from "@/lib/session";
 import { cancelImmediately, needsRenewal } from "@/lib/billing";
+import { claimFreeTrial } from "@/lib/trialClaims";
 
 export async function DELETE(req: NextRequest) {
   // A confirmed account that has not chosen a plan can delete itself from the
@@ -20,10 +21,12 @@ export async function DELETE(req: NextRequest) {
 
   const found = await query(async () => {
     const rows = (await sql`
-      select password_hash, plan, plan_cancelled_at, subscription_status
+      select password_hash, email, free_trial_started_at, plan, plan_cancelled_at, subscription_status
       from users where id = ${guard.user.id}
     `) as {
       password_hash: string;
+      email: string;
+      free_trial_started_at: string | Date | null;
       plan: string | null;
       plan_cancelled_at: string | Date | null;
       subscription_status: string | null;
@@ -55,6 +58,15 @@ export async function DELETE(req: NextRequest) {
   // so the subscription is ended in Stripe right now rather than left running
   // — billed to a card nobody signed in to Grasp can see or stop any more.
   await cancelImmediately(guard.user.id);
+
+  // An account that took the free trial leaves its claim on the inbox behind,
+  // so deleting it does not hand the trial back. Checkout claims it when the
+  // trial starts; this covers accounts that took it before that claim existed,
+  // and is a repeat of the same write for the rest.
+  if (found.data.free_trial_started_at) {
+    const claimed = await claimFreeTrial(found.data.email, guard.user.id);
+    if (!claimed.ok) return NextResponse.json({ error: claimed.error }, { status: claimed.status });
+  }
 
   // Every table in db/schema.sql hangs off users with `on delete cascade`, so
   // this one row takes the sessions, subjects, notes, quizzes and resources.
