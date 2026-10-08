@@ -33,7 +33,6 @@ Live since 2026-09-29: live Prices in all nine currencies (SGD, INR and JPY adde
 - [x] Buy Pro yourself with a real card. Check the plan shows on the Plans page.
 - [x] Buy Max yourself. Then switch between the two once. Then cancel and resume. (Done 2026-10-01.)
 - [x] Test charges kept on purpose (2026-10-03, A$56.95 across five charges), to see the first payout arrive. No refund needed.
-- [ ] Optional, not a launch blocker: failed-payment emails: Stripe dashboard, Settings, Billing, Subscriptions and emails. Turn on "Send emails when card payments fail" and "Send emails about expiring cards". Set what happens when every retry fails to "cancel the subscription". (Menu names are from memory; use the dashboard search if they have moved.) Grasp locks the app and says the card was declined, but only when the student opens it; these emails reach them when they are not using Grasp.
 - [x] Statement descriptor: Settings, Business, Public details. Set it to `GRASPSTUDY` so the weekly charge is recognised on a bank statement instead of disputed.
 - [x] Terms of Service URL: not needed. Public details in the current dashboard has no field for it, and Checkout already links the Terms beside the pay button (`checkoutDisclosure` in `lib/billing.ts`).
 - [ ] Can be done now that there is an ABN (after launch is fine): activate Stripe Tax, then set `STRIPE_TAX=on` on both Railway services. The rest of selling abroad (EU and UK VAT, US sales tax, a GDPR representative) is in `LAUNCH_PLAN.md`'s "Selling outside Australia", with when to do each.
