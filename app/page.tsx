@@ -131,12 +131,6 @@ export default function Home() {
               >
                 Study planner
               </Link>
-              <Link
-                href="/social"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
-              >
-                Social
-              </Link>
             </nav>
             <div className="flex items-center gap-1 sm:gap-2">
               <Link
@@ -261,9 +255,6 @@ export default function Home() {
               </Link>
               <Link href="/study-planner" className="transition hover:text-ink">
                 Study planner
-              </Link>
-              <Link href="/social" className="transition hover:text-ink">
-                Social
               </Link>
               <Link href="/legal/terms" className="transition hover:text-ink">
                 Terms

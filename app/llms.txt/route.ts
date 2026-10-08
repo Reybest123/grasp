@@ -34,7 +34,6 @@ subjects, timetables and assessments rather than work meetings.
 - [Terms of Service](${SITE_URL}/legal/terms)
 - [Privacy Policy](${SITE_URL}/legal/privacy)
 - [Study timetable planner](${SITE_URL}/study-planner): subjects, assessment dates and free time in, a printable week of study blocks out; free, no account, runs in the browser
-- [Social](${SITE_URL}/social): Grasp on Instagram and TikTok
 
 ## Study guides
 

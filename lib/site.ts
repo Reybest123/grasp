@@ -40,7 +40,6 @@ export const PUBLIC_PAGES: {
   { path: "/legal/privacy", changeFrequency: "yearly", priority: 0.2 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.7 },
   { path: "/study-planner", changeFrequency: "monthly", priority: 0.7 },
-  { path: "/social", changeFrequency: "yearly", priority: 0.4 },
   ...BLOG_POSTS.map((post) => ({
     path: blogPath(post.slug),
     changeFrequency: "monthly" as const,
