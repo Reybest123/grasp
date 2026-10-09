@@ -62,11 +62,12 @@ const PROTECTED = [
 ];
 
 /**
- * Signed in, logging in again is pointless, so /login goes to the app. /signup
- * deliberately stays reachable: someone on a shared or family device has to be
- * able to make their own account. Signing up ends the previous session.
+ * Signed in, logging in again is pointless, so /login goes to the app, and so
+ * does the landing page. /signup deliberately stays reachable: someone on a
+ * shared or family device has to be able to make their own account. Signing up
+ * ends the previous session.
  */
-const AUTH_PAGES = ["/login"];
+const AUTH_PAGES = ["/login", "/"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
