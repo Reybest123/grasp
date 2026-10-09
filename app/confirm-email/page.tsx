@@ -62,7 +62,7 @@ export default async function ConfirmEmailPage({
             </form>
 
             <p className="mt-4 text-sm leading-6 text-slate-500">
-              If it was not you, close this page and nothing will happen.
+              If this was not you, simply close this page.
             </p>
           </div>
         </section>
