@@ -32,7 +32,7 @@ const SESSION_DAYS = 30;
  * one pings /api/auth/heartbeat (components/app/SessionHeartbeat.tsx) well
  * inside this window, so a student who stays on the site is never signed out.
  */
-const IDLE_MS = 30 * 60 * 1000;
+const IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Writing last_seen_at on every request would be a write per debounced save. */
 const TOUCH_EVERY_MS = 60 * 1000;
@@ -134,7 +134,7 @@ export async function endOtherSessions(userId: string): Promise<void> {
  *
  * An expired row is treated as absent and deleted on sight, so the table does
  * not accumulate dead sessions without a separate sweep. So is one unused for
- * 30 minutes, which is what signs out a student who closed Grasp and came back
+ * 7 days, which is what signs out a student who closed Grasp and came back
  * later.
  */
 export async function currentUser(): Promise<SessionUser | null> {

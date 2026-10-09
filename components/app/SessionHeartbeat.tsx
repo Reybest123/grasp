@@ -1,6 +1,6 @@
 "use client";
 
-// Keeps the session alive while a Grasp tab is open, so the 30-minute away
+// Keeps the session alive while a Grasp tab is open, so the 7-day away
 // timeout (lib/session.ts) only starts once the student has actually left.
 //
 // Pings every five minutes, which stays well inside that window even when a
