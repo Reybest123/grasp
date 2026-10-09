@@ -1,21 +1,34 @@
-// Where the link in a confirmation email lands.
+// Confirms an email address once a person presses "Confirm my email" on
+// /confirm-email, the page the email's link opens.
 //
-// A GET that changes state, which is unusual but is what a link in an email has
-// to be. Mail scanners that open links before the student does will confirm the
-// account on their behalf; that is harmless here (the address did receive the
-// mail), and the second, real click still works, since a link stays valid until
-// it expires rather than being spent on first use.
+// Opening the link confirms nothing. School and work mail systems open every
+// link in a message before delivering it, and when opening the link was enough,
+// that scanner confirmed the account: someone who signed up with another
+// person's address got in within seconds, before the mail had even arrived.
+// Scanners open links; they do not submit forms.
 
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { createSession, currentUser, destroySession } from "@/lib/session";
 import { appOrigin, redeemVerification } from "@/lib/verification";
 
-export async function GET(req: NextRequest) {
+/**
+ * Emails sent before the confirm page existed link straight here. Send them to
+ * the page, which asks first, rather than confirming on the visit.
+ */
+export function GET(req: NextRequest) {
   const origin = appOrigin(req.nextUrl.origin);
-  const to = (path: string) => NextResponse.redirect(`${origin}${path}`);
-
   const token = req.nextUrl.searchParams.get("token") ?? "";
+  return NextResponse.redirect(`${origin}/confirm-email?token=${encodeURIComponent(token)}`);
+}
+
+export async function POST(req: NextRequest) {
+  const origin = appOrigin(req.nextUrl.origin);
+  // 303, so the browser follows a form post's redirect with a GET.
+  const to = (path: string) => NextResponse.redirect(`${origin}${path}`, 303);
+
+  const form = await req.formData().catch(() => null);
+  const token = String(form?.get("token") ?? "");
   const redeemed = await query(() => redeemVerification(token));
   if (!redeemed.ok) return to("/verify-email?status=error");
 
@@ -24,11 +37,11 @@ export async function GET(req: NextRequest) {
 
   const user = await currentUser();
 
-  // Opened on another device, or in a browser signed in to a different account
-  // (a second account made in a private window, say). The link proves the
-  // inbox, which is what a password reset trusts too, so while it is fresh it
-  // signs this browser into the account it just confirmed. Any other account is
-  // signed out first, or proxy.ts would send the student back into it.
+  // Pressed on another device, or in a browser signed in to a different
+  // account (a second account made in a private window, say). The link proves
+  // the inbox, which is what a password reset trusts too, so while it is fresh
+  // it signs this browser into the account it just confirmed. Any other account
+  // is signed out first, or proxy.ts would send the student back into it.
   if (!user || user.id !== userId) {
     // A link too old to sign in with only confirms; whoever is signed in here
     // stays signed in, rather than being logged out for nothing.

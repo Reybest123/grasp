@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
         "/subject/",
         "/verify-email",
         "/email-confirmed",
+        "/confirm-email",
         "/reset-password",
       ],
     },

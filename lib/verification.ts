@@ -1,6 +1,6 @@
 // Email confirmation: minting the link, sending it, and redeeming it.
-// Server-side only. The routes are app/api/auth/verify (the link lands there)
-// and app/api/auth/verify/resend.
+// Server-side only. The link lands on app/confirm-email, whose button posts to
+// app/api/auth/verify; app/api/auth/verify/resend sends another.
 
 import { randomBytes } from "node:crypto";
 import { sql } from "@/lib/db";
@@ -53,7 +53,7 @@ export async function sendVerification(
     values (${tokenHash}, ${user.id}, ${expiresAt.toISOString()})
   `;
 
-  const link = `${appOrigin(origin)}/api/auth/verify?token=${token}`;
+  const link = `${appOrigin(origin)}/confirm-email?token=${token}`;
   const sent = await sendEmail({ to: user.email, ...confirmationMail(user.name, link) });
 
   if (!sent) {
@@ -66,14 +66,31 @@ export async function sendVerification(
 }
 
 /**
- * Redeems a link. Returns the account it confirmed, or null for a link that is
- * unknown or expired.
+ * Whether a link is live, and the address it confirms, without confirming
+ * anything. Opening the link only reaches this: school and work mail systems
+ * open every link in a message before delivering it, so a link that confirmed
+ * on opening was confirmed by the scanner, and someone who signed up with an
+ * address that was not theirs got in without its owner doing anything.
+ */
+export async function peekVerification(token: string): Promise<{ email: string } | null> {
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+  const rows = (await sql`
+    select u.email from email_verifications v
+    join users u on u.id = v.user_id
+    where v.token_hash = ${hashToken(token)} and v.expires_at > now()
+  `) as { email: string }[];
+  return rows[0] ?? null;
+}
+
+/**
+ * Redeems a link, once a person has pressed the button on /confirm-email.
+ * Returns the account it confirmed, or null for a link that is unknown or
+ * expired.
  *
  * `canSignIn` is true while the account was confirmed within the last
- * `SIGN_IN_MINUTES`, which is how long the link may also sign its account in. A
- * mail scanner usually opens the link seconds before the student does, so the
- * student's own click has to count too; after that the link only confirms, so
- * an old one lying in an inbox is not a way into the account.
+ * `SIGN_IN_MINUTES`, which is how long the link may also sign its account in
+ * (pressed twice, or on a second device); after that the link only confirms,
+ * so an old one lying in an inbox is not a way into the account.
  */
 const SIGN_IN_MINUTES = 30;
 
@@ -95,10 +112,8 @@ export async function redeemVerification(
 
   const userId = rows[0]?.id ?? null;
   if (userId) {
-    // The link stays valid until it expires, so a second click (a mail scanner
-    // usually gets there first) still says which account it belongs to. It can
-    // only ever confirm an address that is already confirmed, and it never signs
-    // anyone in. Only expired links are cleared.
+    // The link stays valid until it expires, so a second press still says
+    // which account it belongs to. Only expired links are cleared.
     await sql`delete from email_verifications where user_id = ${userId} and expires_at <= now()`;
     await track("email_confirmed", { userId });
   }
