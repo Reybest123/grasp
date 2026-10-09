@@ -44,12 +44,11 @@ export default async function ConfirmEmailPage({
               <MailIcon className="h-6 w-6" />
             </span>
 
-            <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-ink">
-              Confirm your email
-            </h1>
+            <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-ink">Is this you?</h1>
             <p className="mt-3 leading-7 text-slate-600">
-              Confirm that <span className="font-semibold text-ink">{found.data.email}</span> is your
-              email address to start using Grasp.
+              Someone signed up for Grasp with{" "}
+              <span className="font-semibold text-ink">{found.data.email}</span>. If it was you,
+              confirm below to start using Grasp.
             </p>
 
             <form method="post" action="/api/auth/verify" className="mt-8">
@@ -58,12 +57,12 @@ export default async function ConfirmEmailPage({
                 type="submit"
                 className="flex w-full items-center justify-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
               >
-                Confirm my email
+                Yes, this is me
               </button>
             </form>
 
             <p className="mt-4 text-sm leading-6 text-slate-500">
-              If you did not make a Grasp account, close this page and nothing will happen.
+              If it was not you, close this page and nothing will happen.
             </p>
           </div>
         </section>

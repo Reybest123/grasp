@@ -45,16 +45,16 @@ export async function POST(req: NextRequest) {
   if (!user || user.id !== userId) {
     // A link too old to sign in with only confirms; whoever is signed in here
     // stays signed in, rather than being logged out for nothing.
-    if (!canSignIn) return to(user ? (user.plan ? "/home" : "/email-confirmed") : "/login?verified=1");
+    if (!canSignIn) return to(user ? (user.plan ? "/home" : "/email-confirmed?from=link") : "/login?verified=1");
     if (user) await destroySession();
     const signedIn = await query(() => createSession(userId));
     if (!signedIn.ok) return to("/login?verified=1");
     // /email-confirmed itself sends an account that already has a plan on to
     // /home, so there is no need to look the plan up here.
-    return to("/email-confirmed");
+    return to("/email-confirmed?from=link");
   }
 
   // A new account gets a thank-you screen before onboarding; one that has
   // already finished it goes to its dashboard.
-  return to(user.plan ? "/home" : "/email-confirmed");
+  return to(user.plan ? "/home" : "/email-confirmed?from=link");
 }

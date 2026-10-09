@@ -14,7 +14,15 @@ export const metadata = { title: "Email confirmed" };
  * worked" before the onboarding questions start rather than being dropped
  * into question one mid-thought.
  */
-export default async function EmailConfirmedPage() {
+export default async function EmailConfirmedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  // "link": reached by pressing "Yes, this is me", usually in a new tab the
+  // email opened, so it can say this tab may be closed. Without it, this is the
+  // tab the student signed up in, which moved on by itself.
+  const fromLink = (await searchParams).from === "link";
   const user = await currentUser();
   if (!user) redirect(EXPIRED_PATH);
   if (!user.verified) redirect("/verify-email");
@@ -40,19 +48,20 @@ export default async function EmailConfirmedPage() {
             </span>
 
             <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-ink">
-              Thanks for confirming your email
+              Thanks for signing up to Grasp
             </h1>
             <p className="mt-3 leading-7 text-slate-600">
-              Your account is ready. Next, three quick questions so Grasp can fit itself to how you
-              study.
+              {fromLink
+                ? "Your email is confirmed. You can close this tab and carry on in the one you signed up in, or continue here."
+                : "Your email is confirmed. Next, three quick questions so Grasp can fit itself to how you study."}
             </p>
-            <ConfirmedTabNote />
+            {fromLink && <ConfirmedTabNote />}
 
             <Link
               href="/onboarding"
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-soft transition hover:bg-brand-700"
             >
-              Continue <ArrowRightIcon className="h-5 w-5" />
+              {fromLink ? "Continue here" : "Continue"} <ArrowRightIcon className="h-5 w-5" />
             </Link>
           </div>
         </section>
