@@ -24,8 +24,12 @@ import { needsRenewal, isPastDue } from "@/lib/billing";
 
 export { SESSION_COOKIE };
 
-/** Long enough that a student is not logged out mid-term. */
-const SESSION_DAYS = 30;
+/**
+ * No real cap: the 7-day idle limit below is what signs a student out. 400 days
+ * is the longest a browser keeps a cookie (Chrome caps it there), so the row is
+ * given the same lifetime as the cookie it backs.
+ */
+const SESSION_DAYS = 400;
 
 /**
  * Away this long and the session ends. "Away" means no open Grasp tab: an open
