@@ -14,6 +14,7 @@ import { sql } from "@/lib/db";
 import { pruneOldViews } from "@/lib/events";
 import { LIMITS as COST_LIMITS } from "@/lib/costModel";
 import {
+  FREE_TRIAL_DAYS,
   PLAN_PRICE_BY_CURRENCY,
   aiTokenLimit,
   isBilledPlan,
@@ -44,21 +45,22 @@ export type Analytics = {
     daily: { day: string; views: number; visitors: number }[];
     pages: Count[];
     referrers: Count[];
-    campaigns: { label: string; visitors: number; signups: number }[];
+    campaigns: Campaign[];
   };
   funnel: {
     landingVisitors: number;
     signedUp: number;
     confirmed: number;
     answered: number;
+    freeTrial: number;
     checkoutStarted: number;
-    subscribed: number;
+    bought: number;
     payingNow: number;
   };
+  /** Cardless free trials (CLAUDE.md §6) started in the range. */
   trials: {
     started: number;
     running: number;
-    cancelledInTrial: number;
     converted: number;
     endedUnpaid: number;
   };
@@ -73,6 +75,16 @@ export type Analytics = {
     heaviest: { email: string; plan: Plan; shares: Record<UsageKey, number> }[];
   };
   recent: { email: string; createdAt: string; stage: string }[];
+};
+
+/** One campaign tag, and how far the accounts it brought in have got. */
+export type Campaign = {
+  label: string;
+  visitors: number;
+  signups: number;
+  trials: number;
+  bought: number;
+  payingNow: number;
 };
 
 export type UsageKey = "quiz" | "recording" | "resource" | "ai";
@@ -119,6 +131,7 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
   await pruneOldViews();
   const days = RANGES[range];
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const trialEnded = new Date(Date.now() - FREE_TRIAL_DAYS * 86_400_000).toISOString();
 
   const [
     trafficRows,
@@ -148,24 +161,51 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       where name = 'pageview' and created_at > ${since} and referrer is not null
       group by 1 order by 2 desc limit 8
     `,
-    // A signup is credited to a campaign when its visitor hash matches a page
-    // view that carried the campaign. The hash changes daily, so this only
-    // catches a signup made on the day of the visit, which is most of them.
+    // A signup is credited to the campaign it carries itself (the tab's tag,
+    // sent with the signup form), or failing that to a tagged page view by the
+    // same visitor on the same day, which is how signups made before the form
+    // sent it were matched. Then each account is followed to whether it took
+    // the free trial, bought a plan at any point, and is paying now.
+    // "Bought" is any subscription that is not a Stripe trial: Checkout only
+    // makes one once a card has paid.
     sql`
       with tagged as (
         select distinct visitor, date_trunc('day', created_at) as day,
-               concat_ws(' / ', utm_source, utm_medium, utm_campaign) as label
+               concat_ws(' / ', utm_source, utm_medium, utm_campaign, utm_content) as label
         from events
         where name = 'pageview' and created_at > ${since} and visitor is not null
           and (utm_source is not null or utm_campaign is not null)
+      ),
+      visits as (
+        select label, count(distinct (visitor, day))::int as visitors from tagged group by 1
+      ),
+      credited as (
+        select s.user_id, coalesce(
+          case when s.utm_source is not null or s.utm_campaign is not null
+            then concat_ws(' / ', s.utm_source, s.utm_medium, s.utm_campaign, s.utm_content) end,
+          (select min(t.label) from tagged t
+            where t.visitor = s.visitor and t.day = date_trunc('day', s.created_at))
+        ) as label
+        from events s
+        where s.name = 'signup' and s.created_at > ${since} and s.user_id is not null
+      ),
+      outcomes as (
+        select c.label, count(*)::int as signups,
+               count(u.free_trial_started_at)::int as trials,
+               count(*) filter (where u.stripe_subscription_id is not null
+                 and u.subscription_status is distinct from 'trialing')::int as bought,
+               count(*) filter (where u.subscription_status = 'active')::int as paying_now
+        from credited c
+        join users u on u.id = c.user_id -- scope-ok: analytics reads every account, admin only
+        where c.label is not null
+        group by 1
       )
-      select t.label,
-             count(distinct (t.visitor, t.day))::int as visitors,
-             count(distinct s.user_id)::int as signups
-      from tagged t
-      left join events s
-        on s.name = 'signup' and s.visitor = t.visitor and date_trunc('day', s.created_at) = t.day
-      group by 1 order by 2 desc limit 10
+      select coalesce(v.label, o.label) as label,
+             coalesce(v.visitors, 0)::int as visitors, coalesce(o.signups, 0)::int as signups,
+             coalesce(o.trials, 0)::int as trials, coalesce(o.bought, 0)::int as bought,
+             coalesce(o.paying_now, 0)::int as paying_now
+      from visits v full join outcomes o on o.label = v.label
+      order by 3 desc, 2 desc limit 15
     `,
     sql`
       select
@@ -174,28 +214,28 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
         count(*)::int as signed_up,
         count(u.email_verified_at)::int as confirmed,
         count(u.onboarding)::int as answered,
+        count(u.free_trial_started_at)::int as free_trial,
         count(*) filter (where exists (
           select 1 from events e where e.user_id = u.id and e.name = 'checkout_started'))::int as checkout_started,
-        count(u.stripe_subscription_id)::int as subscribed,
+        count(*) filter (where u.stripe_subscription_id is not null
+          and u.subscription_status is distinct from 'trialing')::int as bought,
         count(*) filter (where u.subscription_status = 'active')::int as paying_now
       from users u
       where u.created_at > ${since} -- scope-ok: analytics reads every account, admin only
     `,
+    // The cardless free trial. It has ended once FREE_TRIAL_DAYS have passed
+    // (lookupSession locks the account then); "converted" is an account that
+    // bought Pro or Max, during the week or after it locked.
     sql`
       select
         count(*)::int as started,
-        count(*) filter (where subscription_status = 'trialing')::int as running,
-        count(*) filter (where subscription_status = 'trialing' and plan_cancelled_at is not null)::int as cancelled_in_trial,
-        count(*) filter (where trial_ends_at <= now() and subscription_status in ('active', 'past_due'))::int as converted,
-        count(*) filter (where trial_ends_at <= now() and subscription_status in ('canceled', 'unpaid', 'incomplete_expired'))::int as ended_unpaid
+        count(*) filter (where u.stripe_subscription_id is null
+          and u.free_trial_started_at > ${trialEnded})::int as running,
+        count(u.stripe_subscription_id)::int as converted,
+        count(*) filter (where u.stripe_subscription_id is null
+          and u.free_trial_started_at <= ${trialEnded})::int as ended_unpaid
       from users u
-      -- A card that already had a trial has its trial ended the moment it is
-      -- seen (lib/billing.ts), which still sets trial_ends_at. Only an account
-      -- holding the card's claim, or whose first subscription began trialing,
-      -- really had a trial.
-      where u.stripe_subscription_id is not null and u.trial_ends_at is not null -- scope-ok: analytics reads every account, admin only
-        and (exists (select 1 from trial_claims c where c.user_id = u.id)
-             or exists (select 1 from events e where e.user_id = u.id and e.name = 'subscribed' and e.detail like '%:trialing'))
+      where u.free_trial_started_at > ${since} -- scope-ok: analytics reads every account, admin only
     `,
     sql`
       select plan, coalesce(currency, 'usd') as currency, subscription_status as status, count(*)::int as n
@@ -293,21 +333,28 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       daily,
       pages: pageRows.map((r) => ({ label: r.label, n: num(r.n) })),
       referrers: referrerRows.map((r) => ({ label: r.label, n: num(r.n) })),
-      campaigns: campaignRows.map((r) => ({ label: r.label, visitors: num(r.visitors), signups: num(r.signups) })),
+      campaigns: campaignRows.map((r) => ({
+        label: r.label,
+        visitors: num(r.visitors),
+        signups: num(r.signups),
+        trials: num(r.trials),
+        bought: num(r.bought),
+        payingNow: num(r.paying_now),
+      })),
     },
     funnel: {
       landingVisitors: num(f.landing_visitors),
       signedUp: num(f.signed_up),
       confirmed: num(f.confirmed),
       answered: num(f.answered),
+      freeTrial: num(f.free_trial),
       checkoutStarted: num(f.checkout_started),
-      subscribed: num(f.subscribed),
+      bought: num(f.bought),
       payingNow: num(f.paying_now),
     },
     trials: {
       started: num(t.started),
       running: num(t.running),
-      cancelledInTrial: num(t.cancelled_in_trial),
       converted: num(t.converted),
       endedUnpaid: num(t.ended_unpaid),
     },

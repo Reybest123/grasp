@@ -59,17 +59,30 @@ export type Page = {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
+  utm_content: string | null;
 };
 
 /** A page view's fields from a request body, every one length-capped. */
 export function pageFrom(body: Record<string, unknown>, host: string | null): Page {
   return {
+    ...campaignFrom(body),
     host: clip(host, 100),
     path: clip(body.path, 200),
     referrer: clip(body.referrer, 100),
-    utm_source: clip(body.utm_source, 100),
-    utm_medium: clip(body.utm_medium, 100),
-    utm_campaign: clip(body.utm_campaign, 100),
+  };
+}
+
+/** Only the campaign tag, for an event that is not a page view (a signup). */
+export function campaignFrom(body: unknown): Page {
+  const b = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  return {
+    host: null,
+    path: null,
+    referrer: null,
+    utm_source: clip(b.utm_source, 100),
+    utm_medium: clip(b.utm_medium, 100),
+    utm_campaign: clip(b.utm_campaign, 100),
+    utm_content: clip(b.utm_content, 100),
   };
 }
 
@@ -83,10 +96,11 @@ export async function track(
     // `on conflict do nothing`: signup, email_confirmed and subscribed are
     // once per account (events_once_idx), so a repeat is dropped here.
     await sql`
-      insert into events (name, visitor, user_id, host, path, referrer, utm_source, utm_medium, utm_campaign, detail)
+      insert into events (name, visitor, user_id, host, path, referrer, utm_source, utm_medium, utm_campaign,
+                          utm_content, detail)
       values (${name}, ${visitor}, ${userId}, ${page?.host ?? null}, ${page?.path ?? null},
               ${page?.referrer ?? null}, ${page?.utm_source ?? null}, ${page?.utm_medium ?? null},
-              ${page?.utm_campaign ?? null}, ${clip(detail, 100)})
+              ${page?.utm_campaign ?? null}, ${page?.utm_content ?? null}, ${clip(detail, 100)})
       on conflict do nothing
     `;
     if (name === "pageview") await pruneOldViews();

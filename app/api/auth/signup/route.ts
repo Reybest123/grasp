@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, sql } from "@/lib/db";
 import { hashPassword, passwordProblem } from "@/lib/password";
 import { createSession, destroySession } from "@/lib/session";
-import { track } from "@/lib/events";
+import { campaignFrom, track } from "@/lib/events";
 import { normalizeEmail, emailProblem } from "@/lib/accounts";
 import { sendVerification } from "@/lib/verification";
 import { authRateLimit } from "@/lib/rateLimit";
@@ -86,7 +86,9 @@ export async function POST(req: NextRequest) {
   // account's session is ended properly rather than left valid behind the new one.
   await destroySession();
   await createSession(result.data.id);
-  await track("signup", { userId: result.data.id, req });
+  // The campaign the signup tab arrived with, so the account is credited to its
+  // ad even when the visit and the signup fall on different days.
+  await track("signup", { userId: result.data.id, req, page: campaignFrom(body.campaign) });
 
   // A mail that fails to send does not fail the signup: the account exists
   // either way, and the check-your-email page can send it again.

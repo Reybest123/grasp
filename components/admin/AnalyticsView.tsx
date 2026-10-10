@@ -103,8 +103,9 @@ function Report({ data }: { data: Analytics }) {
     { label: "Made an account", n: funnel.signedUp },
     { label: "Confirmed their email", n: funnel.confirmed },
     { label: "Answered the questions", n: funnel.answered },
+    { label: "Started the free trial", n: funnel.freeTrial },
     { label: "Went to checkout", n: funnel.checkoutStarted },
-    { label: "Started a trial or plan", n: funnel.subscribed },
+    { label: "Bought a plan", n: funnel.bought },
     { label: "Paying now", n: funnel.payingNow },
   ];
   const top = Math.max(...steps.map((s) => s.n), 1);
@@ -124,7 +125,7 @@ function Report({ data }: { data: Analytics }) {
       <Card className="mt-4">
         <DailyChart daily={traffic.daily} />
       </Card>
-      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <CountTable title="Pages" rows={traffic.pages} unit="Views" empty="No page views yet." />
         <CountTable
           title="Sites they came from"
@@ -132,37 +133,56 @@ function Report({ data }: { data: Analytics }) {
           unit="Views"
           empty="No visits from other sites yet."
         />
-        <Card>
-          <h3 className="text-sm font-semibold text-ink">Campaigns</h3>
-          {traffic.campaigns.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">
-              None yet. Add <code className="text-ink">?utm_source=tiktok&amp;utm_campaign=launch</code>{" "}
-              to an ad&apos;s link and its visitors and signups show here.
-            </p>
-          ) : (
-            <table className="mt-3 w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500">
-                  <th className="pb-2 font-medium">Campaign</th>
-                  <th className="pb-2 text-right font-medium">Visitors</th>
-                  <th className="pb-2 text-right font-medium">Signups</th>
-                </tr>
-              </thead>
-              <tbody>
-                {traffic.campaigns.map((c) => (
-                  <tr key={c.label} className="border-t border-slate-100">
-                    <td className="max-w-0 truncate py-2 pr-2 text-ink" title={c.label}>
-                      {c.label}
-                    </td>
-                    <td className="py-2 text-right tabular-nums text-slate-700">{c.visitors}</td>
-                    <td className="py-2 text-right tabular-nums text-slate-700">{c.signups}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
       </div>
+
+      <Card className="mt-4 overflow-x-auto">
+        <h3 className="text-sm font-semibold text-ink">Campaigns</h3>
+        {traffic.campaigns.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">
+            None yet. Add{" "}
+            <code className="text-ink">?utm_source=instagram&amp;utm_medium=paid&amp;utm_campaign=exams&amp;utm_content=quiz</code>{" "}
+            to an ad&apos;s link and its visitors, signups and sales show here.
+          </p>
+        ) : (
+          <table className="mt-3 w-full min-w-[40rem] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500">
+                <th className="pb-2 font-medium">Source / medium / campaign / content</th>
+                <th className="pb-2 text-right font-medium">Visitors</th>
+                <th className="pb-2 text-right font-medium">Signups</th>
+                <th className="pb-2 text-right font-medium">Free trial</th>
+                <th className="pb-2 text-right font-medium">Bought a plan</th>
+                <th className="pb-2 text-right font-medium">Paying now</th>
+              </tr>
+            </thead>
+            <tbody>
+              {traffic.campaigns.map((c) => (
+                <tr key={c.label} className="border-t border-slate-100">
+                  <td className="max-w-[20rem] truncate py-2 pr-2 text-ink" title={c.label}>
+                    {c.label}
+                  </td>
+                  <td className="py-2 text-right tabular-nums text-slate-700">{c.visitors}</td>
+                  <td className="py-2 text-right tabular-nums text-slate-700">
+                    {c.signups}
+                    <span className="ml-2 text-xs text-slate-500">{pct(c.signups, c.visitors)}</span>
+                  </td>
+                  <td className="py-2 text-right tabular-nums text-slate-700">{c.trials}</td>
+                  <td className="py-2 text-right tabular-nums text-slate-700">
+                    {c.bought}
+                    <span className="ml-2 text-xs text-slate-500">{pct(c.bought, c.signups)}</span>
+                  </td>
+                  <td className="py-2 text-right tabular-nums text-slate-700">{c.payingNow}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="mt-3 text-xs text-slate-500">
+          Signups made in the last {data.days} days, followed to today. The percentage beside
+          Signups is of visitors, and beside Bought a plan is of signups. Divide what an ad cost by
+          its signups for cost per signup, and by Bought a plan for cost per paying student.
+        </p>
+      </Card>
 
       <Heading>Signup funnel, accounts made in the last {data.days} days</Heading>
       <Card>
@@ -188,16 +208,16 @@ function Report({ data }: { data: Analytics }) {
         </p>
       </Card>
 
-      <Heading>Free trials, every account</Heading>
+      <Heading>Free trials started in the last {data.days} days</Heading>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat label="Trials started" value={trials.started} />
-        <Stat label="Still on trial" value={trials.running} hint={`${trials.cancelledInTrial} of them set to cancel`} />
-        <Stat label="Kept paying after it" value={trials.converted} />
-        <Stat label="Left when it ended" value={trials.endedUnpaid} />
+        <Stat label="Still in their week" value={trials.running} />
+        <Stat label="Bought Pro or Max" value={trials.converted} hint="During the week or after it" />
+        <Stat label="Ended without buying" value={trials.endedUnpaid} />
         <Stat
-          label="Trial to paid"
+          label="Free trial to paid"
           value={pct(trials.converted, trialsEnded)}
-          hint={`Of the ${trialsEnded} trials that have ended`}
+          hint={`Of the ${trialsEnded} that have bought or run out`}
         />
       </div>
 

@@ -359,3 +359,8 @@ create index if not exists events_age_idx on events (created_at);
 -- webhook retried or the checkout return landing beside it is then harmless.
 create unique index if not exists events_once_idx on events (user_id, name)
   where user_id is not null and name in ('signup', 'email_confirmed', 'subscribed');
+
+-- Which ad variant a visit came from (utm_content), added 2026-10-10. A signup
+-- also carries the campaign its tab arrived with, so it is credited without
+-- depending on the day's visitor code matching.
+alter table events add column if not exists utm_content text;

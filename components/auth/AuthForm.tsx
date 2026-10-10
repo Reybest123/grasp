@@ -29,6 +29,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { emailProblem, normalizeEmail, passwordProblem } from "@/lib/accounts";
 import { Field } from "@/components/auth/Field";
+import { currentCampaign } from "@/lib/campaign";
 
 type FieldKey = "name" | "email" | "password" | "confirm";
 type Values = Record<FieldKey, string>;
@@ -151,7 +152,9 @@ export function AuthForm({
       const res = await fetch(`/api/auth/${mode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(signup ? { name, email, password } : { email, password }),
+        body: JSON.stringify(
+          signup ? { name, email, password, campaign: currentCampaign() } : { email, password }
+        ),
       });
       const data = await res.json().catch(() => ({}));
 
