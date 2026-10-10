@@ -22,7 +22,7 @@ import { track } from "@/lib/events";
 import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/currency";
 import { chargeLabel } from "@/lib/billingMail";
 import { SITE_URL } from "@/lib/site";
-import { resetWeeklyUsage } from "@/lib/usage";
+import { startNewWeek } from "@/lib/usage";
 
 /**
  * Stripe Tax, switched on with STRIPE_TAX=on once it is activated in the
@@ -294,6 +294,10 @@ const DUPLICATE_WINDOW_SECONDS = 24 * 60 * 60;
 // new plan if its payment cleared later.
 const LIVE = new Set(["active", "trialing", "past_due", "unpaid", "incomplete"]);
 
+// A purchase that gave the student a week: paid and running, or since cancelled
+// (a refunded duplicate). Unpaid ones never did.
+const TWIN_STATUS = new Set(["active", "trialing", "canceled"]);
+
 /**
  * After any paid Checkout, leaves the customer with exactly one live
  * subscription: the newest. Every other one is cancelled. Called from the
@@ -303,10 +307,12 @@ const LIVE = new Set(["active", "trialing", "past_due", "unpaid", "incomplete"])
  * because "newest" is read off Stripe rather than off whichever call is running.
  *
  * - The plan a switch replaced (`replaces`) is cancelled with no refund for its
- *   unused days (Terms, #refunds), and the week's allowances start afresh.
+ *   unused days (Terms, #refunds).
  * - Any other one bought within a day is a duplicate purchase (two checkout
  *   tabs, an old checkout link, onboarding paid twice), so it is refunded too.
  * - Anything older is a plan that was already in use, and is only cancelled.
+ *
+ * Every new plan is a whole paid week, so its allowances start afresh (`startNewWeek`).
  */
 export async function settleSubscriptions(session: Stripe.Checkout.Session): Promise<string | null> {
   const userId = session.client_reference_id;
@@ -323,17 +329,34 @@ export async function settleSubscriptions(session: Stripe.Checkout.Session): Pro
   const replacedIds = new Set(
     [keep.metadata?.replaces, session.metadata?.replaces].filter((id): id is string => Boolean(id))
   );
+  const isDuplicate = (sub: Stripe.Subscription) =>
+    !replacedIds.has(sub.id) && keep.created - sub.created < DUPLICATE_WINDOW_SECONDS;
+
+  // Before anything is cancelled, and thrown on failure so the webhook answers
+  // 500 and Stripe retries. Counted from the first purchase of a duplicate set,
+  // so buying twice and having one refunded never starts a second week. Read
+  // from every subscription, not only the live ones, because a later run (a
+  // retry, the return route landing second) finds the refunded twin already
+  // cancelled. A plan some switch replaced is not a twin.
+  const replacedEver = new Set(all.data.map((sub) => sub.metadata?.replaces));
+  const boughtAt = all.data
+    .filter(
+      (sub) =>
+        sub.id !== keep.id &&
+        !replacedEver.has(sub.id) &&
+        TWIN_STATUS.has(sub.status) &&
+        sub.created <= keep.created &&
+        keep.created - sub.created < DUPLICATE_WINDOW_SECONDS
+    )
+    .reduce((at, sub) => Math.min(at, sub.created), keep.created);
+  if (!(await startNewWeek(userId, new Date(boughtAt * 1000)))) {
+    throw new Error("starting the new week's allowances failed");
+  }
+
   for (const sub of rest) {
-    const replaced = replacedIds.has(sub.id);
-    // Refund and reset before cancelling: a cancelled subscription drops out
-    // of `live`, so a retry after a failure would never come back to it.
-    if (replaced) {
-      // Thrown so the webhook answers 500 and Stripe retries before the
-      // replaced plan is cancelled and drops out of reach.
-      if (!(await resetWeeklyUsage(userId))) throw new Error("weekly usage reset failed");
-    } else if (keep.created - sub.created < DUPLICATE_WINDOW_SECONDS) {
-      await refundLatest(sub);
-    }
+    // Refund before cancelling: a cancelled subscription drops out of `live`,
+    // so a retry after a failure would never come back to it.
+    if (isDuplicate(sub)) await refundLatest(sub);
     await stripe().subscriptions.cancel(sub.id);
   }
   // Always, even with nothing to cancel: a sync of a subscription another call

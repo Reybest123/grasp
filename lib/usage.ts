@@ -316,8 +316,8 @@ export async function recordAudioSeconds(
       on conflict (user_id, kind, ref) do update set units = usage.units + ${units}
       returning created_at < now() - interval '7 days' as stale
     `) as { stale: boolean }[];
-    // A plan switch moves the week's audio rows out of the week
-    // (resetWeeklyUsage), including the row of a lecture still recording, which
+    // A new plan moves the week's audio rows out of the week
+    // (startNewWeek), including the row of a lecture still recording, which
     // keeps growing because its drafts read it for the seconds heard. What it
     // hears after the switch is counted against the new week in a row of its
     // own, or the rest of that lecture would never count at all.
@@ -524,19 +524,30 @@ export async function chargeAiCost(account: Account, costUsd: number): Promise<v
 }
 
 /**
- * Starts the week's allowances afresh. A plan switch charges a full week of the
- * new plan and restarts the billing week from that moment, so the student has
- * paid for a whole new week and gets one, rather than the old plan's spending
- * carried over. Only the weekly pools are cleared: the per-quiz and
- * per-recording caps (`markq`, `recording`, `draft`, `segdone`) bound one object
- * rather than the week and stay as they are.
+ * Starts the week's allowances afresh for a new paid plan (`settleSubscriptions`):
+ * weekly usage from before `since`, the moment it was bought, stops counting. A
+ * new plan (a switch, the first after the free trial, one bought after a plan
+ * ended or was declined) charges a full week and starts the billing week from
+ * that moment, so the student has paid for a whole new week and gets one,
+ * rather than the last week's spending carried over.
+ *
+ * Keyed on the moment rather than on a flag, so it is safe to run any number of
+ * times: the Checkout return, its webhook and the webhook's retries all call it,
+ * and none of them can touch what the student has done with the new week since.
+ * Capped at now, since a Stripe test clock can date a subscription ahead of the
+ * real time.
+ *
+ * Only the weekly pools are cleared: the per-quiz and per-recording caps
+ * (`markq`, `recording`, `draft`, `segdone`) bound one object rather than the
+ * week and stay as they are.
  */
-export async function resetWeeklyUsage(userId: string): Promise<boolean> {
+export async function startNewWeek(userId: string, since: Date): Promise<boolean> {
   const done = await query(() =>
     transaction(async (sql) => {
       await sql`
         delete from usage
         where user_id = ${userId} and kind in ('quiz', 'resource', 'mark', 'ai')
+          and created_at < least(${since.toISOString()}::timestamptz, now())
       `;
       // Audio rows are moved out of the week rather than deleted: a lecture
       // still recording reads its own row (by ref, with no time window) for the
@@ -544,6 +555,7 @@ export async function resetWeeklyUsage(userId: string): Promise<boolean> {
       await sql`
         update usage set created_at = now() - interval '8 days'
         where user_id = ${userId} and kind = 'audio' and created_at > now() - interval '7 days'
+          and created_at < least(${since.toISOString()}::timestamptz, now())
       `;
     })
   );
