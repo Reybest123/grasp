@@ -295,37 +295,49 @@ function Report({ data }: { data: Analytics }) {
           </Card>
         ))}
       </div>
-      <Card className="mt-4 overflow-x-auto">
-        <h3 className="text-sm font-semibold text-ink">Heaviest users this week</h3>
+      <Card className="mt-4">
+        <h3 className="text-sm font-semibold text-ink">Every account, heaviest first</h3>
+        <p className="mt-1 text-xs text-slate-500">
+          {usage.heaviest.length} {usage.heaviest.length === 1 ? "account" : "accounts"} with a plan or a
+          free trial, including ones that have ended. Each figure is the share of that account&apos;s
+          own allowance used in the last 7 days.
+        </p>
         {usage.heaviest.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Nobody has used anything this week.</p>
+          <p className="mt-3 text-sm text-slate-500">No accounts yet.</p>
         ) : (
-          <table className="mt-3 w-full min-w-[36rem] text-sm">
-            <thead>
-              <tr className="text-left text-xs text-slate-500">
-                <th className="pb-2 font-medium">Account</th>
-                <th className="pb-2 font-medium">Plan</th>
-                {usage.kinds.map((k) => (
-                  <th key={k.kind} className="pb-2 text-right font-medium">
-                    {k.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {usage.heaviest.map((row) => (
-                <tr key={row.email} className="border-t border-slate-100">
-                  <td className="max-w-[16rem] truncate py-2 pr-2 text-ink">{row.email}</td>
-                  <td className="py-2 text-slate-700">{PLAN_LABEL[row.plan]}</td>
+          <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-slate-100">
+            <table className="w-full min-w-[40rem] text-sm">
+              <thead className="sticky top-0 bg-white">
+                <tr className="text-left text-xs text-slate-500">
+                  <th className="px-3 py-2 font-medium">Account</th>
+                  <th className="py-2 font-medium">Plan</th>
                   {usage.kinds.map((k) => (
-                    <td key={k.kind} className="py-2 text-right tabular-nums text-slate-700">
-                      {share(row.shares[k.kind])}
-                    </td>
+                    <th key={k.kind} className="py-2 pr-3 text-right font-medium">
+                      {k.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {usage.heaviest.map((row) => (
+                  <tr key={row.email} className="border-t border-slate-100">
+                    <td className="max-w-[16rem] truncate px-3 py-2 text-ink" title={row.email}>
+                      {row.email}
+                    </td>
+                    <td className="py-2 text-slate-700">
+                      {PLAN_LABEL[row.plan]}
+                      {!row.live && <span className="ml-1 text-xs text-slate-500">(ended)</span>}
+                    </td>
+                    {usage.kinds.map((k) => (
+                      <td key={k.kind} className="py-2 pr-3 text-right tabular-nums text-slate-700">
+                        {share(row.shares[k.kind])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 

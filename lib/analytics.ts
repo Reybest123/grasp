@@ -72,7 +72,8 @@ export type Analytics = {
   usage: {
     accounts: number;
     kinds: { kind: UsageKey; label: string; average: number; median: number; over80: number; maxed: number }[];
-    heaviest: { email: string; plan: Plan; shares: Record<UsageKey, number> }[];
+    /** Every account with a plan, heaviest first, live or not. */
+    heaviest: { email: string; plan: Plan; live: boolean; shares: Record<UsageKey, number> }[];
   };
   recent: { email: string; createdAt: string; stage: string }[];
 };
@@ -243,10 +244,15 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       where stripe_subscription_id is not null -- scope-ok: analytics reads every account, admin only
       group by 1, 2, 3
     `,
-    // Every account that can use the app right now, and what it has spent of
-    // each weekly allowance over the same rolling 7 days lib/usage.ts counts.
+    // Every account with a plan, and what it has spent of each weekly
+    // allowance over the same rolling 7 days lib/usage.ts counts. `live` is an
+    // account that can use the app now (a subscription, or a free trial still
+    // in its week); only those go into the averages.
     sql`
       select u.id, u.email, u.plan,
+        (u.subscription_status in ('trialing', 'active', 'past_due')
+          or (u.plan = 'free' and u.stripe_subscription_id is null
+              and u.free_trial_started_at > ${trialEnded})) as live,
         coalesce((select count(*) from usage x where x.user_id = u.id and x.kind = 'quiz'
           and x.created_at > now() - interval '7 days'), 0)::int as quiz,
         coalesce((select sum(greatest(x.units, ${COST_LIMITS.recordingMinChargeSeconds})) from usage x
@@ -256,7 +262,7 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
         coalesce((select sum(x.units) from usage x where x.user_id = u.id and x.kind = 'ai'
           and x.created_at > now() - interval '7 days'), 0)::int as ai
       from users u
-      where u.subscription_status in ('trialing', 'active', 'past_due') -- scope-ok: analytics reads every account, admin only
+      where u.plan is not null -- scope-ok: analytics reads every account, admin only
     `,
     sql`
       select u.email, u.created_at, u.email_verified_at, u.onboarding, u.plan,
@@ -308,10 +314,11 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       const plan = row.plan as Plan;
       const shares = {} as Record<UsageKey, number>;
       for (const key of keys) shares[key] = Math.min(num(row[key]) / LIMIT_OF[key](plan), 1);
-      return { email: row.email as string, plan, shares };
+      return { email: row.email as string, plan, live: Boolean(row.live), shares };
     });
+  const live = accounts.filter((a) => a.live);
   const kinds = keys.map((kind) => {
-    const values = accounts.map((a) => a.shares[kind]);
+    const values = live.map((a) => a.shares[kind]);
     return {
       kind,
       label: USAGE_LABEL[kind],
@@ -322,8 +329,7 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
     };
   });
   const heaviest = [...accounts]
-    .sort((a, b) => keys.reduce((s, k) => s + b.shares[k], 0) - keys.reduce((s, k) => s + a.shares[k], 0))
-    .slice(0, 10);
+    .sort((a, b) => keys.reduce((s, k) => s + b.shares[k], 0) - keys.reduce((s, k) => s + a.shares[k], 0));
 
   return {
     days,
@@ -363,7 +369,7 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       ended,
       weeklyRevenue: [...revenue.entries()].map(([currency, amount]) => ({ currency, amount })),
     },
-    usage: { accounts: accounts.length, kinds, heaviest },
+    usage: { accounts: live.length, kinds, heaviest },
     recent: recentRows.map((row) => ({
       email: row.email,
       createdAt: new Date(row.created_at).toISOString(),
