@@ -91,6 +91,8 @@ Cloudflare stays free at any size Grasp is likely to reach. Sentry (error alerts
 
 No fixed budget. Post the 9:16 video free on Instagram and TikTok first, then test paid ads with around A$150, see which brings signups, and put more money into whatever works. `CLAUDE.md` §8 has the approach. Added 2026-09-27.
 
+**Revised 2026-10-10:** research changed this plan (under-16 social media ban, adult-owned ad accounts, TikTok's minimum, exam and holiday timing, break-even cost per signup). The current plan is in `CLAUDE.md` §8: a Meta-only test of about A$300, a pause over the holidays, and the main push in late January to March 2027. The original split below is kept for reference.
+
 **The A$150 test (a guess until it runs).** About A$50 on Meta (Instagram and Facebook), A$50 on TikTok Ads, A$50 on YouTube Shorts or Snapchat, each for 5-7 days with the same video. TikTok's minimum is about A$30 a day per campaign, so it may need a shorter run.
 
 | Channel | Typical cost (A$) | Practical minimum |
