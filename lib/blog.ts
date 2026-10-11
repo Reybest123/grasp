@@ -52,6 +52,15 @@ export const BLOG_POSTS: BlogPostMeta[] = ([
     ],
   },
   {
+    slug: "cornell-notes-examples",
+    title: "Cornell notes examples for biology, history, maths and English",
+    description:
+      "Four filled-in Cornell notes pages, one per subject, showing what goes in the notes column, the cue column and the summary, and why each one works.",
+    date: "2026-10-11",
+    imageAlt: "A hand writing maths notes in a spiral notebook beside four highlighters",
+    keywords: ["cornell notes example", "cornell method notes example", "cornell notes template", "cornell notes for maths"],
+  },
+  {
     slug: "how-to-take-cornell-notes",
     title: "How to take Cornell notes, with a worked example",
     description:
@@ -85,10 +94,12 @@ export const BLOG_POSTS: BlogPostMeta[] = ([
   },
   {
     slug: "how-to-make-a-study-timetable",
-    title: "How to make a study timetable you will actually follow",
+    title: "How to make a study timetable (or study schedule) you will actually follow",
     description:
-      "Most study timetables fail in the first week because they are too full. A simple way to plan around your classes, your assessments and your real free time.",
+      "Most study timetables and study schedules fail in the first week because they are too full. A simple way to plan around your classes, your assessments and your real free time.",
     date: "2026-09-30",
+    updated: "2026-10-11",
+    keywords: ["how to make a study schedule", "study schedule", "study timetable", "study plan for exams"],
     imageAlt: "A cup of coffee on an open monthly planner",
     tool: {
       href: "/study-planner",

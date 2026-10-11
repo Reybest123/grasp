@@ -65,6 +65,157 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
     ],
   },
 
+  "cornell-notes-examples": {
+    intro: [
+      "The Cornell method is easy to describe and harder to picture: a wide notes column, a narrow cue column and a summary strip along the bottom. It makes more sense once you see a page filled in.",
+      "Below are four example pages, one each for biology, history, maths and English. Each shows what goes in the notes column during class, the cues added afterwards, and the summary. If you have not set up a Cornell page before, the full method is in our guide to taking Cornell notes.",
+    ],
+    sections: [
+      {
+        heading: "The layout, in one line",
+        blocks: [
+          "Notes on the right, about two thirds of the page. Cues on the left, written after class. A summary of two or three sentences across the bottom. The topic and date go at the top.",
+        ],
+      },
+      {
+        heading: "Biology example: aerobic respiration",
+        blocks: [
+          "Notes column:",
+          {
+            list: [
+              "Aerobic respiration releases energy from glucose using oxygen. Word equation: glucose + oxygen gives carbon dioxide + water, releasing energy as ATP.",
+              "Stage 1, glycolysis: in the cytoplasm. Glucose is split into two pyruvate. Small amount of ATP. No oxygen needed.",
+              "Stage 2, Krebs cycle: in the matrix of the mitochondria. Pyruvate broken down, carbon dioxide released.",
+              "Stage 3, electron transport chain: on the inner membrane of the mitochondria. Oxygen is the final electron acceptor and forms water. Makes most of the ATP.",
+              "Without oxygen (anaerobic), muscle cells turn pyruvate into lactate. Much less ATP.",
+            ],
+          },
+          "Cue column:",
+          {
+            list: [
+              "What are the reactants and products of aerobic respiration?",
+              "Where does each of the three stages happen?",
+              "Which stage makes the most ATP, and what is oxygen's job there?",
+              "What happens in muscles when oxygen runs short?",
+            ],
+          },
+          "Summary: Aerobic respiration breaks glucose down in three stages, glycolysis in the cytoplasm and the Krebs cycle and electron transport chain in the mitochondria. Oxygen is needed at the end, which is why most ATP is lost when cells switch to anaerobic respiration.",
+          "Why it works: every cue is a question, and each one pairs a place with a process. That is exactly how exam questions on respiration tend to be asked.",
+        ],
+      },
+      {
+        heading: "History example: causes of the French Revolution",
+        blocks: [
+          "Notes column:",
+          {
+            list: [
+              "Money: France deeply in debt, partly from the Seven Years' War and from helping the Americans in their War of Independence.",
+              "Society: three estates. Clergy (First), nobles (Second), everyone else (Third). The Third Estate was the great majority of people and paid most of the taxes.",
+              "Ideas: Enlightenment writers such as Rousseau and Montesquieu questioned absolute monarchy.",
+              "Hunger: poor harvest in 1788, bread prices rose sharply.",
+              "Events: Estates-General called, May 1789. Tennis Court Oath, June 1789. Storming of the Bastille, 14 July 1789.",
+            ],
+          },
+          "Cue column:",
+          {
+            list: [
+              "Why was France short of money?",
+              "Who made up each estate, and who paid the taxes?",
+              "Which ideas challenged the king's power?",
+              "Why did 1788 make things worse?",
+              "Put the three events of 1789 in order.",
+            ],
+          },
+          "Summary: Debt, an unfair tax system and new ideas about who should hold power had built up for years. A bad harvest and rising bread prices in 1788 turned that anger into action in 1789.",
+          "Why it works: the notes are grouped into causes (money, society, ideas, hunger) rather than written as one long story. Grouped notes make it easy to answer the common question \"explain the causes of\", because the paragraphs are already there.",
+        ],
+      },
+      {
+        heading: "Maths example: solving quadratic equations",
+        blocks: [
+          "Notes column:",
+          {
+            list: [
+              "A quadratic has the form ax² + bx + c = 0, where a is not 0.",
+              "Method 1, factorising: x² − 5x + 6 = 0 becomes (x − 2)(x − 3) = 0, so x = 2 or x = 3.",
+              "Method 2, the quadratic formula: x = (−b ± √(b² − 4ac)) / 2a. Works for every quadratic.",
+              "The discriminant is b² − 4ac. Greater than 0: two real solutions. Equal to 0: one repeated solution. Less than 0: no real solutions.",
+              "Check: for x² − 5x + 6, the discriminant is 25 − 24 = 1, which is greater than 0, so two solutions, which matches.",
+            ],
+          },
+          "Cue column:",
+          {
+            list: [
+              "What is the general form of a quadratic?",
+              "Solve x² − 5x + 6 = 0 by factorising.",
+              "Write the quadratic formula from memory.",
+              "How can you tell how many solutions there are without solving?",
+            ],
+          },
+          "Summary: Try factorising first because it is quickest. If it will not factorise, use the formula. The discriminant tells you how many real solutions to expect before you start.",
+          "Why it works: in maths the notes column should hold a worked example, not only the rule. The cues then ask you to do the working again, which is the part that has to stick. A cue like \"Solve x² − 5x + 6 = 0\" is better than \"Factorising\", because it cannot be answered by recognising a word.",
+        ],
+      },
+      {
+        heading: "English example: ambition in Macbeth, Act 1",
+        blocks: [
+          "Notes column:",
+          {
+            list: [
+              "Act 1 Scene 3: the witches greet Macbeth as Thane of Glamis, Thane of Cawdor and king hereafter. He becomes Thane of Cawdor soon after, so he starts to believe the rest.",
+              "Act 1 Scene 5: Lady Macbeth reads his letter and fears he is \"too full o' th' milk of human kindness\" to kill Duncan.",
+              "Act 1 Scene 7: Macbeth admits his only motive is \"vaulting ambition, which o'erleaps itself\". The image is a rider jumping so hard he falls off the other side.",
+              "Same scene: Lady Macbeth attacks his manhood, \"When you durst do it, then you were a man\", and he agrees to the murder.",
+            ],
+          },
+          "Cue column:",
+          {
+            list: [
+              "How do the witches' predictions set Macbeth's ambition going?",
+              "What does Lady Macbeth fear about her husband's character?",
+              "What does the \"vaulting ambition\" image suggest will happen to him?",
+              "How does Lady Macbeth persuade him? Give a quotation.",
+            ],
+          },
+          "Summary: In Act 1 Macbeth's ambition is woken by the witches but held back by his conscience. Lady Macbeth pushes him past it by questioning his manhood, and his own image of vaulting ambition already hints at his fall.",
+          "Why it works: each note pairs a moment with a short quotation and what it shows. Essays are marked on analysis backed by evidence, so a page built this way is close to essay paragraphs already.",
+        ],
+      },
+      {
+        heading: "What every good example has in common",
+        blocks: [
+          {
+            list: [
+              "The notes are short phrases, grouped by idea, with space between them.",
+              "Every cue is a question the notes answer, not a heading.",
+              "The summary is in your own words and is no more than three sentences.",
+              "The page has one topic. If a lesson covers two, use two pages.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "How to study from these pages",
+        blocks: [
+          {
+            steps: [
+              "Cover the notes column so only the cues show.",
+              "Answer each cue out loud or on scrap paper.",
+              "Uncover the notes and mark yourself honestly.",
+              "Put a mark beside any cue you missed, and start with those next time.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Doing the same thing in Grasp",
+        blocks: [
+          "If you keep your notes in Grasp, you can skip writing the cue column by hand. Pick the notes you want to be tested on and Grasp writes questions from them, then marks your answers and gives half marks for half-right ones. If a line in your notes does not make sense when you revise it, highlight it and ask for an explanation right there in the note.",
+        ],
+      },
+    ],
+  },
+
   "how-to-take-cornell-notes": {
     intro: [
       "The Cornell method is a way of laying out a page so that the notes you take in class are already set up for revision. It was developed at Cornell University in the 1950s and it is still used because it is simple: one page, three parts.",
@@ -348,8 +499,8 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
 
   "how-to-make-a-study-timetable": {
     intro: [
-      "A study timetable usually gets made on a Sunday night in a burst of motivation. Every hour is filled, it looks great, and by Wednesday it has been abandoned.",
-      "The timetables that last are the ones with less in them. Here is a way to build one around the week you actually have.",
+      "A study timetable, or study schedule as it is called in a lot of places, usually gets made on a Sunday night in a burst of motivation. Every hour is filled, it looks great, and by Wednesday it has been abandoned.",
+      "The schedules that last are the ones with less in them. Here is a way to build one around the week you actually have.",
     ],
     sections: [
       {
@@ -365,7 +516,7 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
         ],
       },
       {
-        heading: "Plan blocks, not hours",
+        heading: "Plan your study schedule in blocks, not hours",
         blocks: [
           "Break your free time into short blocks of 25 to 45 minutes with a break after each one. A short block you start is worth more than a three hour block you put off.",
           "Give each block a job, not just a subject. \"Maths\" is easy to drift through. \"Ten questions on quadratics, then mark them\" has an end, so you know when you are done.",
@@ -390,7 +541,7 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
         ],
       },
       {
-        heading: "Review it every week",
+        heading: "Review your study schedule every week",
         blocks: [
           {
             steps: [
