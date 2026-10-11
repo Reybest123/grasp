@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/blog/BlogShell";
+import { CornellPage } from "@/components/blog/CornellPage";
 import { ArrowRightIcon, BackIcon, CalendarIcon } from "@/components/icons";
 import { BLOG_IMAGE_SIZE, BLOG_POSTS, blogDateLabel, blogImage, blogPath } from "@/lib/blog";
 import { BLOG_BODIES, readingMinutes, type BlogBlock } from "@/lib/blogPosts";
@@ -43,6 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 function Block({ block }: { block: BlogBlock }) {
   if (typeof block === "string") return <p>{block}</p>;
+  if ("cornell" in block) return <CornellPage page={block.cornell} />;
   if ("list" in block) {
     return (
       <ul className="list-disc space-y-2 pl-6 marker:text-brand-500">

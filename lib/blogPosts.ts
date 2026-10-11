@@ -6,10 +6,19 @@
 // run of <h2>s under it. Write plainly and literally, like the landing page.
 // No prices: the blog follows the landing page's rule.
 
+/** A Cornell notes page, drawn as a page rather than listed: each cue sits beside the notes it covers. */
+export type CornellPage = {
+  topic: string;
+  date?: string;
+  rows: { cue: string; notes: string[] }[];
+  summary: string;
+};
+
 export type BlogBlock =
   | string
   | { list: string[] }
-  | { steps: string[] };
+  | { steps: string[] }
+  | { cornell: CornellPage };
 
 export type BlogSection = { heading: string; blocks: BlogBlock[] };
 
@@ -67,117 +76,189 @@ export const BLOG_BODIES: Record<string, BlogBody> = {
 
   "cornell-notes-examples": {
     intro: [
-      "The Cornell method is easy to describe and harder to picture: a wide notes column, a narrow cue column and a summary strip along the bottom. It makes more sense once you see a page filled in.",
-      "Below are four example pages, one each for biology, history, maths and English. Each shows what goes in the notes column during class, the cues added afterwards, and the summary. If you have not set up a Cornell page before, the full method is in our guide to taking Cornell notes.",
+      "The Cornell method is easy to describe and harder to picture: a narrow cue column, a wide notes column and a summary strip along the bottom. It makes more sense once you see a page filled in.",
+      "Below are four example pages, one each for biology, history, maths and English, drawn the way they would look in an exercise book. If you have not set up a Cornell page before, the full method is in our guide to taking Cornell notes.",
     ],
     sections: [
       {
-        heading: "The layout, in one line",
+        heading: "What goes in each part of the page",
         blocks: [
-          "Notes on the right, about two thirds of the page. Cues on the left, written after class. A summary of two or three sentences across the bottom. The topic and date go at the top.",
+          {
+            cornell: {
+              topic: "Subject and topic",
+              date: "Date",
+              rows: [
+                {
+                  cue: "Cues: questions and key words, written after class, each one beside the notes it covers.",
+                  notes: [
+                    "Notes: written during class, about two thirds of the page.",
+                    "Short phrases, not full sentences. One idea at a time, with a gap before the next.",
+                    "The main point, the reason for it, and one example.",
+                  ],
+                },
+                {
+                  cue: "Leave this column empty during the lesson.",
+                  notes: ["If you miss something, leave a space and fill it in after class."],
+                },
+              ],
+              summary: "Two or three sentences across the bottom, in your own words, written after class. If you cannot write it, you have found the page to go back to.",
+            },
+          },
         ],
       },
       {
         heading: "Biology example: aerobic respiration",
         blocks: [
-          "Notes column:",
           {
-            list: [
-              "Aerobic respiration releases energy from glucose using oxygen. Word equation: glucose + oxygen gives carbon dioxide + water, releasing energy as ATP.",
-              "Stage 1, glycolysis: in the cytoplasm. Glucose is split into two pyruvate. Small amount of ATP. No oxygen needed.",
-              "Stage 2, Krebs cycle: in the matrix of the mitochondria. Pyruvate broken down, carbon dioxide released.",
-              "Stage 3, electron transport chain: on the inner membrane of the mitochondria. Oxygen is the final electron acceptor and forms water. Makes most of the ATP.",
-              "Without oxygen (anaerobic), muscle cells turn pyruvate into lactate. Much less ATP.",
-            ],
+            cornell: {
+              topic: "Biology: aerobic respiration",
+              date: "9 March",
+              rows: [
+                {
+                  cue: "What are the reactants and products of aerobic respiration?",
+                  notes: [
+                    "Releases energy from glucose using oxygen.",
+                    "Glucose + oxygen gives carbon dioxide + water. The energy is released as ATP.",
+                  ],
+                },
+                {
+                  cue: "Where does each of the three stages happen?",
+                  notes: [
+                    "1. Glycolysis: in the cytoplasm. Glucose split into two pyruvate. A little ATP. No oxygen needed.",
+                    "2. Krebs cycle: in the matrix of the mitochondria. Pyruvate broken down, carbon dioxide released.",
+                  ],
+                },
+                {
+                  cue: "Which stage makes the most ATP, and what is oxygen's job there?",
+                  notes: [
+                    "3. Electron transport chain: on the inner membrane of the mitochondria. Makes most of the ATP.",
+                    "Oxygen is the final electron acceptor and forms water.",
+                  ],
+                },
+                {
+                  cue: "What happens in muscles when oxygen runs short?",
+                  notes: ["Anaerobic respiration: pyruvate turned into lactate. Much less ATP."],
+                },
+              ],
+              summary: "Aerobic respiration breaks glucose down in three stages: glycolysis in the cytoplasm, then the Krebs cycle and electron transport chain in the mitochondria. Oxygen is needed at the end, which is why most ATP is lost when cells switch to anaerobic respiration.",
+            },
           },
-          "Cue column:",
-          {
-            list: [
-              "What are the reactants and products of aerobic respiration?",
-              "Where does each of the three stages happen?",
-              "Which stage makes the most ATP, and what is oxygen's job there?",
-              "What happens in muscles when oxygen runs short?",
-            ],
-          },
-          "Summary: Aerobic respiration breaks glucose down in three stages, glycolysis in the cytoplasm and the Krebs cycle and electron transport chain in the mitochondria. Oxygen is needed at the end, which is why most ATP is lost when cells switch to anaerobic respiration.",
           "Why it works: every cue is a question, and each one pairs a place with a process. That is exactly how exam questions on respiration tend to be asked.",
         ],
       },
       {
         heading: "History example: causes of the French Revolution",
         blocks: [
-          "Notes column:",
           {
-            list: [
-              "Money: France deeply in debt, partly from the Seven Years' War and from helping the Americans in their War of Independence.",
-              "Society: three estates. Clergy (First), nobles (Second), everyone else (Third). The Third Estate was the great majority of people and paid most of the taxes.",
-              "Ideas: Enlightenment writers such as Rousseau and Montesquieu questioned absolute monarchy.",
-              "Hunger: poor harvest in 1788, bread prices rose sharply.",
-              "Events: Estates-General called, May 1789. Tennis Court Oath, June 1789. Storming of the Bastille, 14 July 1789.",
-            ],
+            cornell: {
+              topic: "History: causes of the French Revolution",
+              date: "11 March",
+              rows: [
+                {
+                  cue: "Why was France short of money?",
+                  notes: ["Deep in debt, partly from the Seven Years' War and from helping the Americans in their War of Independence."],
+                },
+                {
+                  cue: "Who made up each estate, and who paid the taxes?",
+                  notes: [
+                    "First Estate: clergy. Second: nobles. Third: everyone else.",
+                    "The Third Estate was the great majority of people and paid most of the taxes.",
+                  ],
+                },
+                {
+                  cue: "Which ideas challenged the king's power?",
+                  notes: ["Enlightenment writers such as Rousseau and Montesquieu questioned absolute monarchy."],
+                },
+                {
+                  cue: "Why did 1788 make things worse?",
+                  notes: ["Poor harvest, bread prices rose sharply."],
+                },
+                {
+                  cue: "Put the three events of 1789 in order.",
+                  notes: [
+                    "May: Estates-General called.",
+                    "June: Tennis Court Oath.",
+                    "14 July: storming of the Bastille.",
+                  ],
+                },
+              ],
+              summary: "Debt, an unfair tax system and new ideas about who should hold power had built up for years. A bad harvest and rising bread prices in 1788 turned that anger into action in 1789.",
+            },
           },
-          "Cue column:",
-          {
-            list: [
-              "Why was France short of money?",
-              "Who made up each estate, and who paid the taxes?",
-              "Which ideas challenged the king's power?",
-              "Why did 1788 make things worse?",
-              "Put the three events of 1789 in order.",
-            ],
-          },
-          "Summary: Debt, an unfair tax system and new ideas about who should hold power had built up for years. A bad harvest and rising bread prices in 1788 turned that anger into action in 1789.",
           "Why it works: the notes are grouped into causes (money, society, ideas, hunger) rather than written as one long story. Grouped notes make it easy to answer the common question \"explain the causes of\", because the paragraphs are already there.",
         ],
       },
       {
         heading: "Maths example: solving quadratic equations",
         blocks: [
-          "Notes column:",
           {
-            list: [
-              "A quadratic has the form ax² + bx + c = 0, where a is not 0.",
-              "Method 1, factorising: x² − 5x + 6 = 0 becomes (x − 2)(x − 3) = 0, so x = 2 or x = 3.",
-              "Method 2, the quadratic formula: x = (−b ± √(b² − 4ac)) / 2a. Works for every quadratic.",
-              "The discriminant is b² − 4ac. Greater than 0: two real solutions. Equal to 0: one repeated solution. Less than 0: no real solutions.",
-              "Check: for x² − 5x + 6, the discriminant is 25 − 24 = 1, which is greater than 0, so two solutions, which matches.",
-            ],
+            cornell: {
+              topic: "Maths: solving quadratic equations",
+              date: "12 March",
+              rows: [
+                {
+                  cue: "What is the general form of a quadratic?",
+                  notes: ["ax² + bx + c = 0, where a is not 0."],
+                },
+                {
+                  cue: "Solve x² − 5x + 6 = 0 by factorising.",
+                  notes: [
+                    "Method 1, factorising (quickest, try it first):",
+                    "x² − 5x + 6 = 0 becomes (x − 2)(x − 3) = 0, so x = 2 or x = 3.",
+                  ],
+                },
+                {
+                  cue: "Write the quadratic formula from memory.",
+                  notes: ["Method 2, the formula (works every time): x = (−b ± √(b² − 4ac)) / 2a."],
+                },
+                {
+                  cue: "How can you tell how many solutions there are without solving?",
+                  notes: [
+                    "The discriminant, b² − 4ac. More than 0: two solutions. Equal to 0: one. Less than 0: no real solutions.",
+                    "Check: for x² − 5x + 6 it is 25 − 24 = 1, so two solutions, which matches.",
+                  ],
+                },
+              ],
+              summary: "Try factorising first because it is quickest. If it will not factorise, use the formula. The discriminant tells you how many real solutions to expect before you start.",
+            },
           },
-          "Cue column:",
-          {
-            list: [
-              "What is the general form of a quadratic?",
-              "Solve x² − 5x + 6 = 0 by factorising.",
-              "Write the quadratic formula from memory.",
-              "How can you tell how many solutions there are without solving?",
-            ],
-          },
-          "Summary: Try factorising first because it is quickest. If it will not factorise, use the formula. The discriminant tells you how many real solutions to expect before you start.",
           "Why it works: in maths the notes column should hold a worked example, not only the rule. The cues then ask you to do the working again, which is the part that has to stick. A cue like \"Solve x² − 5x + 6 = 0\" is better than \"Factorising\", because it cannot be answered by recognising a word.",
         ],
       },
       {
         heading: "English example: ambition in Macbeth, Act 1",
         blocks: [
-          "Notes column:",
           {
-            list: [
-              "Act 1 Scene 3: the witches greet Macbeth as Thane of Glamis, Thane of Cawdor and king hereafter. He becomes Thane of Cawdor soon after, so he starts to believe the rest.",
-              "Act 1 Scene 5: Lady Macbeth reads his letter and fears he is \"too full o' th' milk of human kindness\" to kill Duncan.",
-              "Act 1 Scene 7: Macbeth admits his only motive is \"vaulting ambition, which o'erleaps itself\". The image is a rider jumping so hard he falls off the other side.",
-              "Same scene: Lady Macbeth attacks his manhood, \"When you durst do it, then you were a man\", and he agrees to the murder.",
-            ],
+            cornell: {
+              topic: "English: ambition in Macbeth, Act 1",
+              date: "13 March",
+              rows: [
+                {
+                  cue: "How do the witches' predictions set Macbeth's ambition going?",
+                  notes: [
+                    "1.3: witches call him Thane of Glamis, Thane of Cawdor and king hereafter.",
+                    "He is made Thane of Cawdor soon after, so he starts to believe the rest.",
+                  ],
+                },
+                {
+                  cue: "What does Lady Macbeth fear about her husband's character?",
+                  notes: ["1.5: he is \"too full o' th' milk of human kindness\" to kill Duncan."],
+                },
+                {
+                  cue: "What does the \"vaulting ambition\" image suggest will happen to him?",
+                  notes: [
+                    "1.7: his only motive is \"vaulting ambition, which o'erleaps itself\".",
+                    "A rider jumping so hard he falls off the other side.",
+                  ],
+                },
+                {
+                  cue: "How does Lady Macbeth persuade him? Give a quotation.",
+                  notes: ["1.7: attacks his manhood, \"When you durst do it, then you were a man\". He agrees to the murder."],
+                },
+              ],
+              summary: "In Act 1 Macbeth's ambition is woken by the witches but held back by his conscience. Lady Macbeth pushes him past it by questioning his manhood, and his own image of vaulting ambition already hints at his fall.",
+            },
           },
-          "Cue column:",
-          {
-            list: [
-              "How do the witches' predictions set Macbeth's ambition going?",
-              "What does Lady Macbeth fear about her husband's character?",
-              "What does the \"vaulting ambition\" image suggest will happen to him?",
-              "How does Lady Macbeth persuade him? Give a quotation.",
-            ],
-          },
-          "Summary: In Act 1 Macbeth's ambition is woken by the witches but held back by his conscience. Lady Macbeth pushes him past it by questioning his manhood, and his own image of vaulting ambition already hints at his fall.",
           "Why it works: each note pairs a moment with a short quotation and what it shows. Essays are marked on analysis backed by evidence, so a page built this way is close to essay paragraphs already.",
         ],
       },
@@ -633,7 +714,12 @@ export function readingMinutes(body: BlogBody): number {
     texts.push(section.heading);
     for (const block of section.blocks) {
       if (typeof block === "string") texts.push(block);
-      else texts.push(...("list" in block ? block.list : block.steps));
+      else if ("list" in block) texts.push(...block.list);
+      else if ("steps" in block) texts.push(...block.steps);
+      else {
+        const page = block.cornell;
+        texts.push(page.topic, page.summary, ...page.rows.flatMap((row) => [row.cue, ...row.notes]));
+      }
     }
   }
   const words = texts.join(" ").split(/\s+/).filter(Boolean).length;
