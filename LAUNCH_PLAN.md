@@ -4,7 +4,7 @@ The tick-list of what to do, in order, is `LAUNCH_CHECKLIST.md`.
 
 When to pay for what, and what has to be done before launch. Everything is in AUD unless marked US$. Converted at A$1 = US$0.65, the same rate `CLAUDE.md` §6 uses. Overseas services usually add 10% GST for Australian customers.
 
-Last updated 2026-10-03. Prices were written on 2026-09-26 from memory, not read off each provider's site. Check the provider's pricing page before paying.
+Last updated 2026-10-11. Prices were written on 2026-09-26 from memory, not read off each provider's site. Check the provider's pricing page before paying.
 
 ## What is being paid for today
 
@@ -21,11 +21,11 @@ Last updated 2026-10-03. Prices were written on 2026-09-26 from memory, not read
 ## Before launch
 
 1. **Railway Hobby plan.** Done 2026-09-26. US$5 a month, which includes US$5 of usage; expect about US$10–15 a month in total once the three services run all month, since usage past the included US$5 is billed on top.
-2. **Stripe live mode.** Done 2026-09-29: account active, live Prices (all nine currencies since 2026-10-03), live env vars on the `grasp` service, live webhook with all five events. Pro and Max were bought with a real card and the full flow tested on 2026-10-01. Those charges were kept on purpose, to see the first payout arrive.
+2. **Stripe live mode.** Done 2026-09-29: account active, live Prices (all nine currencies since 2026-10-03), live env vars on the `grasp` service, live webhook with all eight events (three invoice events added 2026-10-04 and 2026-10-08). Pro and Max were bought with a real card and the full flow tested on 2026-10-01. Those charges were kept on purpose, to see the first payout arrive.
    - **Age:** Stripe's terms normally need the account holder to be 18. Dad is the business representative on the account. The ABN (25 427 279 360, 2026-09-29) is on the Terms.
 3. **Stripe dashboard settings, in live mode** (none of these can be set from code):
    - **Statement descriptor** `GRASPSTUDY`, done (Settings > Business > Public details), so a weekly charge is recognised on a bank statement rather than disputed as fraud.
-   - **Live webhook events.** Done: all five, `checkout.session.async_payment_succeeded` and `customer.subscription.trial_will_end` included (checked 2026-10-03).
+   - **Live webhook events.** Done: all eight (the list is in `LAUNCH_CHECKLIST.md`).
    - **Terms of Service URL**: not needed. The dashboard has no field for it, and Checkout already links the Terms beside the pay button.
 4. **OpenAI.** Done. Auto-reload is on, the monthly spend limit is US$120 with alerts at 80% and 100%, and the account reached Tier 2 on 2026-09-26 after a US$50 top-up. The US$120 limit is a hard stop that switches the AI off for everyone, so raise it as students grow.
 5. **Legal pass.** Done 2026-09-26: Queensland law, the Australian Consumer Law wording, fairer change and closure terms, and Cloudflare and overseas processing in the Privacy Policy. Extended 2026-09-28 for selling abroad: the EU and UK 14-day cancellation right in the Terms and a GDPR section in the Privacy Policy (see "Selling outside Australia"). ABN 25 427 279 360 and the operator's name added to both pages 2026-09-29.
@@ -47,7 +47,7 @@ Decided 2026-09-28: Grasp sells to everyone, since Instagram and TikTok reach ev
 - Both Stripe Prices are tax-inclusive, and Stripe Tax can be switched on with `STRIPE_TAX=on` on Railway. Tax then comes out of the price rather than being added on top, so what a student pays does not change.
 
 **Cannot be done yet, and when to do each:**
-- **Activate Stripe Tax** (dashboard, needs the business address, so after the ABN), then set `STRIPE_TAX=on` on both Railway services. Stripe charges a small fee per transaction for it; check the current rate. Its threshold monitoring then shows where Grasp is getting close to having to register.
+- **Activate Stripe Tax** once `/admin/analytics` shows the first EU or UK payment (decided 2026-10-11), then set `STRIPE_TAX=on` on both Railway services. Stripe charges a small fee per transaction for it; check the current rate. Its threshold monitoring then shows where Grasp is getting close to having to register.
 - **EU VAT.** A seller outside the EU owes VAT on digital services to EU consumers from the first sale, with no threshold. Register for the EU's non-Union OSS scheme (one registration, in one EU country, covers all of them), add it in Stripe Tax, and lodge one return a quarter. About 17–27% of each EU sale goes to VAT. Do it before ads target Europe, or once EU students start paying, whichever is first. `/admin/analytics` (staging) has a tax section that turns red, with a banner at the top, as soon as anyone in the EU or the UK has paid; check it when you check the rest of the figures. Registering earlier than that means filing an empty return every quarter.
 - **UK VAT.** Same rule, a separate registration with HMRC. Same timing, for the UK.
 - **US sales tax.** Only owed in a state once Grasp passes that state's threshold, usually US$100,000 of sales, or 200 transactions in some states. Weekly billing makes 200 transactions only about 4 students paying for a year. Stripe Tax's monitoring says when a state is close; register there then.
@@ -89,7 +89,7 @@ Cloudflare stays free at any size Grasp is likely to reach. Sentry (error alerts
 
 ## Marketing
 
-No fixed budget. Post the 9:16 video free on Instagram and TikTok first, then test paid ads with around A$150, see which brings signups, and put more money into whatever works. `CLAUDE.md` §8 has the approach. Added 2026-09-27.
+No fixed budget. **The current plan is `CLAUDE.md` §8 (revised 2026-10-10) and the Ads list in `LAUNCH_CHECKLIST.md`**: a Meta-only test of about A$300, then the main push late January to March 2027.
 
 **Revised 2026-10-10:** research changed this plan (under-16 social media ban, adult-owned ad accounts, TikTok's minimum, exam and holiday timing, break-even cost per signup). The current plan is in `CLAUDE.md` §8: a Meta-only test of about A$300, a pause over the holidays, and the main push in late January to March 2027. The original split below is kept for reference.
 
