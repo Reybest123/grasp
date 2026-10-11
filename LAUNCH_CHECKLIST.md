@@ -46,7 +46,7 @@ Live since 2026-09-29: live Prices in all nine currencies (SGD, INR and JPY adde
 - [x] `/admin/analytics` (staging site) shows signups and payments coming through (checked by the user, 2026-10-11)
 - [x] Tested on a real phone (2026-10-11): popups, writing mode and the study planner all smooth
 - [ ] Set the Stripe public business name to "Grasp Study" (Settings, Business, Public details). The statement descriptor `GRASPSTUDY` is already set.
-- [ ] Switch off Cloudflare Web Analytics for graspstudy.com. Its beacon is blocked by the CSP and is the one console error on the site.
+- [x] Cloudflare Web Analytics is off for graspstudy.com (checked through the API, 2026-10-11), so its CSP-blocked beacon no longer loads
 
 ## Ads (the plan is CLAUDE.md section 8, revised 2026-10-10)
 
