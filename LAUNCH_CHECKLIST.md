@@ -19,7 +19,7 @@ Tick these off in order. `LAUNCH_PLAN.md` has the costs and when to pay for more
 - [x] TFN
 - [x] ABN 25 427 279 360 (2026-09-29), on the Terms and Privacy Policy
 - [x] Business name "Grasp Study" registered with ASIC (2026-10-08, renews 2027-10-08), on the Terms and Privacy Policy as "trading as Grasp Study"
-- [ ] Use "Grasp Study" as the business name on the Stripe account (its public business name and statement descriptor)
+- [x] Stripe public business name is "Grasp Study" and the shortened descriptor `GRASP` (2026-10-11); the statement descriptor is `GRASPSTUDY`
 - [x] Talk to your dad about being the business representative on the Stripe account. As understood (not confirmed): you open the account with your own email and invite him in during setup as the representative, so he does not need his own Stripe account. If Stripe blocks you on age during signup, ask their support. Whoever is the representative is who Stripe's identity checks are about.
 
 ## Stripe live mode (this is the launch blocker)
@@ -45,7 +45,7 @@ Live since 2026-09-29: live Prices in all nine currencies (SGD, INR and JPY adde
 - [x] Delete the "Grasp has not launched" block at the top of CLAUDE.md section 11 and say so there (2026-10-08)
 - [x] `/admin/analytics` (staging site) shows signups and payments coming through (checked by the user, 2026-10-11)
 - [x] Tested on a real phone (2026-10-11): popups, writing mode and the study planner all smooth
-- [ ] Set the Stripe public business name to "Grasp Study" (Settings, Business, Public details). The statement descriptor `GRASPSTUDY` is already set.
+- [x] Stripe public business name set to "Grasp Study", shortened descriptor `GRASP` (2026-10-11)
 - [x] Cloudflare Web Analytics is off for graspstudy.com (checked through the API, 2026-10-11), so its CSP-blocked beacon no longer loads
 
 ## Ads (the plan is CLAUDE.md section 8, revised 2026-10-10)
