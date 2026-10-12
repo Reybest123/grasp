@@ -11,10 +11,55 @@ How to use it:
 
 ## Next check
 
+- **Around 20 October 2026**: if `/study-planner` is still "Discovered, currently not indexed", request indexing again.
 - **Around 26 October 2026**: has Google crawled since 1 October? Are `/study-planner`, `/legal/privacy`, `/blog/cornell-notes-examples` and the updated timetable post indexed? Any impressions for "cornell notes example" or "study schedule"?
 - **Mid-November 2026**: full Queries snapshot over the last 3 months, to choose the next two posts.
 
 ## Snapshots
+
+### 2026-10-12 (pulled through Chrome, last 3 months; Search Console data runs to 9 October)
+
+**Totals:** 26 clicks, 140 impressions, CTR 18.6%, average position 6.8. Indexing report last updated 9 October: 11 pages indexed, 6 not.
+
+Queries (only 10 are shown; the other ~80 impressions are rare searches Google hides):
+
+| Query | Clicks | Impressions |
+|---|---|---|
+| grasp study | 9 | 40 |
+| how to take cornell notes | 1 | 1 |
+| grasp.study | 0 | 6 |
+| study grasp | 0 | 5 |
+| graspr ai, how can i fix, cornell notes rubric, cornell method notes example, how to choose your marking method, how to make a study schedule | 0 | 1 each |
+
+Pages:
+
+| Page | Clicks | Impressions |
+|---|---|---|
+| `/` | 21 | 119 |
+| `/blog/ai-note-taking-workflow-for-indian-students` | 2 | 6 |
+| `/blog` | 1 | 6 |
+| `/blog/how-to-take-cornell-notes` | 1 | 5 |
+| `/blog/how-to-quiz-yourself-from-your-notes` | 1 | 3 |
+| `/legal/terms` | 0 | 5 |
+| `/blog/jee-neet-board-exam-study-workflow` (old address, 301s to the Indian post) | 0 | 4 |
+| `/blog/how-to-make-a-study-timetable` | 0 | 4 |
+| `http://graspstudy.com/` (301s to https) | 0 | 3 |
+| `/blog/ai-note-taking-for-students` | 0 | 2 |
+
+Countries (33 in all): Australia 23 clicks / 58 impressions (position 7.2), India 2 / 28 (position 3.5), South Korea 1 / 2, United States 0 / 16 (position 12.8), UAE 0 / 3, then 1 or 2 impressions each from 28 more.
+
+Devices: desktop 21 / 106 (position 7.7), mobile 5 / 32 (position 4.2), tablet 0 / 2.
+
+Indexing, not indexed: "Discovered, currently not indexed" (Google knows the address but has not crawled it yet): `/study-planner`, `/legal/privacy`, `/login`, `/signup`. "Page with redirect", 2 pages: expected (the http address and the old JEE/NEET address). The 11 October indexing requests are newer than this report.
+
+Notes:
+
+- **The brand search is the site's real traffic.** "grasp study" brought 9 of the 26 clicks shown, and the home page holds 21 clicks. Most of that is probably people who saw Grasp on Instagram or TikTok and searched for it, plus the user's own checks.
+- **The Indian students post is reaching India.** India is the second-biggest country by impressions (28) at an average position of 3.5, higher up the page than Australia. That post is the only one aimed there, so it is doing what it was written for. A second post for that audience is worth considering if India keeps growing.
+- **The blog is starting to show up.** Five posts have impressions, with clicks on the Cornell, quiz and Indian posts. All of it is single digits, as expected four weeks in.
+- **Mobile ranks higher than desktop** (4.2 against 7.7), but most impressions are desktop. Students search on phones, so mobile impressions should grow as the blog does.
+- **The study planner is still not crawled**, and it is the page the school emails point to. Re-request indexing if it is still "Discovered" around 20 October. Links from school pages would also get it crawled.
+- `/login` and `/signup` sitting unindexed does not matter.
 
 ### 2026-10-11 (pasted by the user, last 3 months, mostly the user's own searches)
 
