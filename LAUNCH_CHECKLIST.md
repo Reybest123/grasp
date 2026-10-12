@@ -50,9 +50,11 @@ Live since 2026-09-29: live Prices in all nine currencies (SGD, INR and JPY adde
 
 ## Ads (the plan is CLAUDE.md section 8, revised 2026-10-10)
 
-- [ ] Meta Business account and ad account in your dad's name and card, as with Stripe
+- [x] Meta Business portfolio "Grasp Study", Facebook Page and ad account `Grasp ads` (id 1130062276674460, AUD, Australia/Brisbane), made 2026-10-11 on the Grasp Instagram login. Open Ads Manager with `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=1130062276674460`.
+- [ ] Add your dad's Facebook to the portfolio as an admin (backup, and the adult Meta expects behind the account)
+- [ ] Account spending limit A$100 (Billing and payments)
 - [ ] Tag every **paid** ad link with UTMs: `utm_source=meta`, `utm_medium=paid`, `utm_campaign` (the video's name), `utm_content` (which variant). Organic bio links stay untagged (the user's decision, 2026-10-10). Open each tagged link once and check the visit appears in `/admin/analytics`.
-- [ ] The Meta test: about A$300, link-click optimisation, about A$20 a day for two weeks, Australia only, one ad set aged 16-18 and one 18-24 with uni interests. Copy may say "free for 7 days, no card"; never imply Grasp stays free.
+- [ ] The Meta test (cut to A$100 on 2026-10-12): one ad, the "paying attention in class is hard" video, Traffic objective, link clicks, A$100 lifetime budget over 10 to 14 days, Australia only, ages 18-24 with uni interests. Link: `https://graspstudy.com/?utm_source=meta&utm_medium=paid&utm_campaign=attention-in-class&utm_content=uni-18-24`. Copy may say "free for 7 days, no card"; never imply Grasp stays free.
 - [ ] Mid-November: judge on cost per signup in `/admin/analytics` (under about A$5 is worth scaling, over about A$15 means the message or price is the problem)
 - [ ] Pause December to mid-January
 - [ ] Before the late January to March push: Meta's server-side Conversions API (needs a Meta dataset id and access token from Events Manager) and the Privacy Policy change that goes with it

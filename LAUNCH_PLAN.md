@@ -89,9 +89,9 @@ Cloudflare stays free at any size Grasp is likely to reach. Sentry (error alerts
 
 ## Marketing
 
-No fixed budget. **The current plan is `CLAUDE.md` §8 (revised 2026-10-10) and the Ads list in `LAUNCH_CHECKLIST.md`**: a Meta-only test of about A$300, then the main push late January to March 2027.
+No fixed budget. **The current plan is `CLAUDE.md` §8 (revised 2026-10-10) and the Ads list in `LAUNCH_CHECKLIST.md`**: a Meta-only test of A$100 with one ad (cut from A$300 on 2026-10-12), then the main push late January to March 2027.
 
-**Revised 2026-10-10:** research changed this plan (under-16 social media ban, adult-owned ad accounts, TikTok's minimum, exam and holiday timing, break-even cost per signup). The current plan is in `CLAUDE.md` §8: a Meta-only test of about A$300, a pause over the holidays, and the main push in late January to March 2027. The original split below is kept for reference.
+**Revised 2026-10-10:** research changed this plan (under-16 social media ban, adult-owned ad accounts, TikTok's minimum, exam and holiday timing, break-even cost per signup). The current plan is in `CLAUDE.md` §8: a Meta-only test (A$100 since 2026-10-12), a pause over the holidays, and the main push in late January to March 2027. The original split below is kept for reference.
 
 **The A$150 test (a guess until it runs).** About A$50 on Meta (Instagram and Facebook), A$50 on TikTok Ads, A$50 on YouTube Shorts or Snapchat, each for 5-7 days with the same video. TikTok's minimum is about A$30 a day per campaign, so it may need a shorter run.
 
