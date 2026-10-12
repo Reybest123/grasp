@@ -110,8 +110,9 @@ The school list itself (names, addresses, which page would link) is kept in
 >
 > We have also written some short study guides:
 >
-> - How to take Cornell notes, with a worked example:
->   https://graspstudy.com/blog/how-to-take-cornell-notes
+> - Cornell notes examples for biology, history, maths and English, drawn
+>   as filled-in pages:
+>   https://graspstudy.com/blog/cornell-notes-examples
 > - How to quiz yourself from your own notes:
 >   https://graspstudy.com/blog/how-to-quiz-yourself-from-your-notes
 > - How to read a marking rubric:
