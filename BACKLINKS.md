@@ -74,8 +74,10 @@ named person where the page gives one.
 **Who sends them (2026-10-04, the user's decision):** Liam, from his own
 liamspencer address rather than graspstudyai@gmail.com, since a personal
 address reads as a person sharing something useful rather than a company
-chasing customers. The emails still say plainly that Liam is with Grasp and
-sign off with graspstudy.com. That is not optional: the Spam Act requires a
+chasing customers. The emails still say plainly that Liam is with Grasp ("I'm
+Liam, part of the small team behind Grasp"); since 2026-10-13, at the user's
+request, they sign off with just "Liam", and that opening line is what names
+the business. Keep it in every email. That is not optional: the Spam Act requires a
 commercial email to identify who it is from, and a librarian who later works
 out that a "personal" email was from the business behind the link would trust
 it less, not more. The press pitch (4) is the founder's own story, so the
@@ -106,7 +108,9 @@ The school list itself (names, addresses, which page would link) is kept in
 > We have made a free study
 > timetable planner for school students: they add their subjects, assessment
 > dates and free time, and it lays out a week of study blocks they can print.
-> No sign-up, no ads, and nothing they type leaves their browser:
+>
+> There are no sign-ups or ads, it is just a free organisation tool that your
+> students might find useful:
 >
 > https://graspstudy.com/study-planner
 >
@@ -127,7 +131,6 @@ The school list itself (names, addresses, which page would link) is kept in
 >
 > Thanks,
 > Liam
-> Grasp, graspstudy.com
 
 ### 2. Teacher or study-skills coordinator (before exams)
 
@@ -139,7 +142,10 @@ The school list itself (names, addresses, which page would link) is kept in
 > With exams coming up, I wanted to pass on a free study planner your
 > students might find useful. They add their subjects, assessment dates and
 > free time, and it lays out a week of study blocks they can print, with more
-> time for the subjects that are close and shaky. No sign-up:
+> time for the subjects that are close and shaky.
+>
+> There are no sign-ups or ads, it is just a free organisation tool that your
+> students might find useful:
 >
 > https://graspstudy.com/study-planner
 >
@@ -154,7 +160,6 @@ The school list itself (names, addresses, which page would link) is kept in
 >
 > Thanks,
 > Liam
-> Grasp, graspstudy.com
 
 ### 3. One follow-up, 3 days later, if there has been no reply
 
@@ -169,7 +174,6 @@ The school list itself (names, addresses, which page would link) is kept in
 >
 > Thanks,
 > Liam
-> Grasp, graspstudy.com
 
 Send it as a reply in the same thread, so they see the original underneath.
 For the QSLA secretariat, ask whether they can pass it to the district
@@ -210,8 +214,10 @@ planner on reaches every school library in the district.
 >
 > We have made a free study timetable planner for secondary students: they
 > add their subjects, assessment dates and free time, and it lays out a week
-> of study blocks they can print. No sign-up, no ads, and nothing they type
-> leaves their browser:
+> of study blocks they can print.
+>
+> There are no sign-ups or ads, it is just a free organisation tool that your
+> students might find useful:
 >
 > https://graspstudy.com/study-planner
 >
@@ -221,7 +227,6 @@ planner on reaches every school library in the district.
 >
 > Thanks,
 > Liam
-> Grasp, graspstudy.com
 
 ## Listing kit
 
