@@ -17,6 +17,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-13 (pulled through Chrome, last 28 days; data runs to 10 October)
+
+**Totals:** 27 clicks, 146 impressions, CTR 18.5%, average position 6.7. One day of new data since the 12 October snapshot: "grasp study" went from 40 to 43 impressions; every other query was unchanged. Nothing to act on. The Meta ad (from 12 October) is not in this data yet.
+
 ### 2026-10-12 (pulled through Chrome, last 3 months; Search Console data runs to 9 October)
 
 **Totals:** 26 clicks, 140 impressions, CTR 18.6%, average position 6.8. Indexing report last updated 9 October: 11 pages indexed, 6 not.
