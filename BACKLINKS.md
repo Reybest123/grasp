@@ -61,8 +61,10 @@ staff or contact page.
 The Spam Act allows a business email to an address a school has published,
 as long as it relates to that person's role (a librarian's address, about
 study resources). Every email must say who it is from and give a way to opt
-out. The templates below do both. Do not buy email lists, and stop at one
-follow-up.
+out. The templates say who they are from. The "If you would rather not hear
+from me again, just reply and say so" line was removed on 2026-10-13, at the
+user's request; a reply address is the only opt-out left, so honour any
+"please stop" at once. Do not buy email lists, and stop at one follow-up.
 
 ## Email templates
 
@@ -126,8 +128,6 @@ The school list itself (names, addresses, which page would link) is kept in
 > Thanks,
 > Liam
 > Grasp, graspstudy.com
->
-> If you would rather not hear from me again, just reply and say so.
 
 ### 2. Teacher or study-skills coordinator (before exams)
 
@@ -155,8 +155,6 @@ The school list itself (names, addresses, which page would link) is kept in
 > Thanks,
 > Liam
 > Grasp, graspstudy.com
->
-> If you would rather not hear from me again, just reply and say so.
 
 ### 3. One follow-up, 3 days later, if there has been no reply
 
@@ -224,8 +222,6 @@ planner on reaches every school library in the district.
 > Thanks,
 > Liam
 > Grasp, graspstudy.com
->
-> If you would rather not hear from me again, just reply and say so.
 
 ## Listing kit
 
