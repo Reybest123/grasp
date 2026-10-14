@@ -56,6 +56,28 @@ On each page, check it links to outside sites (if it does, it will link to
 one more), then find the librarian's or staff member's email on the school's
 staff or contact page.
 
+### Check the fit before sending (2026-10-14)
+
+A review of every contact in the sheet on 2026-10-14 found three that should
+not have been emailed. Before sending, open the page and check:
+
+- **It is a study or resources page, not library rules.** A library page that
+  is mostly opening hours and borrowing limits ("two fiction and one
+  non-fiction") has nowhere for the link to go. Good pages already link out to
+  study tools: QUT Study Smart, RMIT's Assignment Planner, Cornell's
+  note-taking guide, or a list of study apps (Quizlet, Todoist, Forest).
+- **It serves secondary students.** Grasp is for 13 and over. Several QSLA
+  networks are primary only (the page says "Primary TLs" or "Primary
+  schools"); skip those.
+- **The address still works.** The QSLA network page is not kept up to date:
+  one convenor's eq.edu.au address bounced as a discontinued account
+  ("550 5.7.1 ... This user account has been discontinued"). That bounce comes
+  back within seconds, so check the inbox straight after sending and mark the
+  row dead rather than following up.
+
+A PDF (a guidance officer's study tips, a printable planner) is the weakest
+kind of target: a link only goes in at the next edition, and counts for little.
+
 ### The law on cold emails (Australia)
 
 The Spam Act allows a business email to an address a school has published,
@@ -227,6 +249,14 @@ planner on reaches every school library in the district.
 >
 > Thanks,
 > Liam
+
+**If the network has its own website with a links page, name it in the
+opening line instead**, the way the school emails do (2026-10-14, at the
+user's request): "I came across the [network]'s Web Links page ([URL]) and
+thought something we have made might suit it, alongside [two things it already
+links]. I'm Liam, part of the small team behind Grasp, a study site from
+Brisbane." Only when there is a real page; most convenors have none, and then
+the opening stays as it is.
 
 ## Listing kit
 
