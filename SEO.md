@@ -17,6 +17,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-14 (pulled through Chrome, last 28 days; data runs to 11 October)
+
+**Totals:** 29 clicks, 157 impressions, CTR 18.5%, average position 6.9. One more day of data: "grasp study" 9 clicks from 44 impressions (was 43), the home page 24 clicks from 136, and a new one-impression query ("its not"). Pages otherwise unchanged; the Cornell examples post and the "study schedule" retitle have no impressions yet. The Meta ad (from 12 October) is still not in this data.
+
 ### 2026-10-13 (pulled through Chrome, last 28 days; data runs to 10 October)
 
 **Totals:** 27 clicks, 146 impressions, CTR 18.5%, average position 6.7. One day of new data since the 12 October snapshot: "grasp study" went from 40 to 43 impressions; every other query was unchanged. Nothing to act on. The Meta ad (from 12 October) is not in this data yet.
