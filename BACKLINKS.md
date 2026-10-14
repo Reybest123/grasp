@@ -222,8 +222,9 @@ planner on reaches every school library in the district.
 > https://graspstudy.com/study-planner
 >
 > If you think it would be useful to the librarians in your network, I would
-> be grateful if you passed it on. And if they would like a guide on any
-> study topic, I am happy to write one.
+> be grateful if you passed it on. It fits best on a library's study skills
+> or student resources page, beside tools like QUT Study Smart. And if they
+> would like a guide on any study topic, I am happy to write one.
 >
 > Thanks,
 > Liam
