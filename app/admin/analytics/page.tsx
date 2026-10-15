@@ -1,5 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { adminConfigured, readAdmin } from "@/lib/admin";
+import { notFound } from "next/navigation";
+import { adminConfigured } from "@/lib/admin";
 import { loadAnalytics, rangeOf } from "@/lib/analytics";
 import { loadTaxWatch, type TaxWatch } from "@/lib/taxWatch";
 import { AnalyticsView } from "@/components/admin/AnalyticsView";
@@ -10,10 +10,8 @@ export const metadata = { title: "Analytics", robots: { index: false, follow: fa
  * searchParams is a promise in this version of Next, hence the await.
  */
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
-  // Like /admin itself: only where ADMIN_PASSWORD is set, and only for a
-  // browser that has unlocked it.
+  // Like /admin itself: only on the staging site.
   if (!adminConfigured()) notFound();
-  if (!(await readAdmin())) redirect("/admin");
 
   const range = rangeOf((await searchParams).range);
   // Read from Stripe, separately, so Stripe being down never hides the rest.

@@ -165,15 +165,15 @@ export default async function BlogPost({ params }: Props) {
         )}
 
         <div className="mt-14 rounded-2xl border border-slate-200 bg-white p-7">
-          <h2 className="text-2xl font-bold text-ink">Try it with your own subjects</h2>
+          <h2 className="text-2xl font-bold text-ink">Record your next lecture with Grasp</h2>
           <p className="mt-2.5 leading-relaxed text-slate-600">
-            Upload your timetable and Grasp builds a notebook for every subject.
+            Press record and Grasp writes your notes while the lecture is still going.
           </p>
           <Link
             href="/signup"
             className="group mt-5 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white shadow-soft transition hover:bg-brand-700"
           >
-            Start with your timetable
+            Start recording
             <ArrowRightIcon className="h-5 w-5 transition group-hover:translate-x-0.5" />
           </Link>
         </div>

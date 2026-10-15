@@ -26,6 +26,7 @@ import { EmptyTab } from "@/components/workspace/EmptyTab";
 import { ErrorNote } from "@/components/ErrorNote";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
 import { WaitingState } from "@/components/WaitingState";
+import { RecordControls } from "@/components/workspace/RecordControls";
 
 const QUIET_WARN_SECONDS = 40;
 
@@ -173,7 +174,12 @@ export function RecordTab({
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-ring">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          {rec.phase === "recording" ? (
+          {rec.phase === "recording" && rec.paused ? (
+            <>
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+              <span className="text-amber-700">Paused</span>
+            </>
+          ) : rec.phase === "recording" ? (
             <>
               <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
               <span className="text-red-600">Recording</span>
@@ -306,6 +312,8 @@ export function RecordTab({
                 </p>
               )}
             </>
+          ) : rec.phase === "recording" && !rec.transcript && rec.paused ? (
+            <p className="text-sm text-slate-400">Paused. Press Resume to carry on.</p>
           ) : rec.phase === "recording" && !rec.transcript && rec.quietSeconds > 0 ? (
             <div className="flex items-start gap-2 text-sm text-amber-800">
               <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
@@ -325,7 +333,7 @@ export function RecordTab({
           )}
           {/* A pause in a lecture is normal, so this waits for a longer
               stretch than the empty-start message above does. */}
-          {rec.phase === "recording" && rec.transcript && rec.quietSeconds >= QUIET_WARN_SECONDS && (
+          {rec.phase === "recording" && !rec.paused && rec.transcript && rec.quietSeconds >= QUIET_WARN_SECONDS && (
             <p className="mt-4 flex items-start gap-2 text-sm text-amber-800">
               <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
               Nothing picked up in the last {rec.quietSeconds} seconds.
@@ -351,14 +359,12 @@ export function RecordTab({
       )}
 
       {rec.phase === "recording" && (
-        <div className="mt-5 flex justify-center gap-3">
-          <button
-            onClick={() => void rec.stop()}
-            className="rounded-xl bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:bg-ink/90"
-          >
-            Stop recording
-          </button>
-        </div>
+        <RecordControls
+          paused={rec.paused}
+          onPause={rec.pause}
+          onResume={rec.resume}
+          onStop={() => void rec.stop()}
+        />
       )}
 
       {/* Only reached when there are no notes to save on their own: keep the

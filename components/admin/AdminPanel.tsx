@@ -1,19 +1,16 @@
 "use client";
 
-// /admin: a password screen, then the plans with a switch for each, and
-// unlimited mode. The state is held server-side in a signed cookie (lib/admin.ts);
+// /admin: the plans with a switch for each, and unlimited mode. No lock screen:
+// the staging site's own password already stands in front of it. The state is held server-side in a signed cookie (lib/admin.ts);
 // this only shows it and asks for changes.
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { PLAN_LABEL, PLANS, type BilledPlan } from "@/lib/plan";
 import { Logo } from "@/components/Logo";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
-import { PasswordInput } from "@/components/PasswordInput";
 import { ErrorNote } from "@/components/ErrorNote";
-import { LockIcon } from "@/components/icons";
 
 type AdminState = { plan: BilledPlan | null; unlimited: boolean };
 
@@ -21,11 +18,11 @@ export function AdminPanel({
   initial,
   email,
 }: {
-  initial: AdminState | null;
-  /** the account signed in on this browser, once unlocked */
+  initial: AdminState;
+  /** the account signed in on this browser */
   email: string | null;
 }) {
-  const [state, setState] = useState<AdminState | null>(initial);
+  const [state, setState] = useState<AdminState>(initial);
 
   return (
     <div className="min-h-dvh bg-slate-50">
@@ -37,86 +34,8 @@ export function AdminPanel({
           </span>
         </div>
       </header>
-      {state ? (
-        <Controls state={state} setState={setState} email={email} />
-      ) : (
-        <Unlock onUnlocked={setState} />
-      )}
+      <Controls state={state} setState={setState} email={email} />
     </div>
-  );
-}
-
-function Unlock({ onUnlocked }: { onUnlocked: (state: AdminState) => void }) {
-  const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!password) {
-      setError("Please enter the password.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/admin/unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.state) {
-        setError(data.error ?? "Grasp could not unlock admin just now. Try again in a moment.");
-        return;
-      }
-      onUnlocked(data.state);
-      // Re-renders the page on the server, which is what fills in the account.
-      router.refresh();
-    } catch {
-      setError("Grasp could not be reached. Check your connection and try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="grid place-items-center px-4 py-20">
-      <form
-        noValidate
-        onSubmit={submit}
-        className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-8 shadow-ring"
-      >
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
-          <LockIcon className="h-6 w-6" />
-        </span>
-        <h1 className="mt-5 text-2xl font-bold text-ink">Admin</h1>
-        <p className="mt-1 text-sm text-slate-500">Enter the password to continue.</p>
-        <label htmlFor="admin-password" className="mt-6 block text-sm font-semibold text-ink">
-          Password
-        </label>
-        <div className="mt-2">
-          <PasswordInput
-            id="admin-password"
-            value={password}
-            onChange={setPassword}
-            autoComplete="current-password"
-            autoFocus
-            invalid={Boolean(error)}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500"
-          />
-        </div>
-        {error && <ErrorNote message={error} className="mt-4" />}
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-6 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-        >
-          {busy ? "Checking…" : "Unlock"}
-        </button>
-      </form>
-    </main>
   );
 }
 
@@ -126,7 +45,7 @@ function Controls({
   email,
 }: {
   state: AdminState;
-  setState: (state: AdminState | null) => void;
+  setState: (state: AdminState) => void;
   email: string | null;
 }) {
   const currency = useCurrency();
@@ -143,10 +62,6 @@ function Controls({
         body: JSON.stringify(next),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 401) {
-        setState(null);
-        return;
-      }
       if (!res.ok || !data.state) {
         setState(before);
         setError(data.error ?? "That change was not saved. Try again.");
@@ -159,9 +74,10 @@ function Controls({
     }
   }
 
-  async function lock() {
-    await fetch("/api/admin", { method: "DELETE" }).catch(() => null);
-    setState(null);
+  async function reset() {
+    const res = await fetch("/api/admin", { method: "DELETE" }).catch(() => null);
+    if (res?.ok) setState({ plan: null, unlimited: false });
+    else setError("That change was not saved. Try again.");
   }
 
   return (
@@ -182,10 +98,10 @@ function Controls({
             Analytics
           </Link>
           <button
-            onClick={lock}
+            onClick={reset}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:bg-slate-100"
           >
-            Lock admin
+            Reset
           </button>
           <Link
             href={email ? "/home" : "/login"}

@@ -3,7 +3,6 @@ import { Logo } from "@/components/Logo";
 import { RouteFade } from "@/components/RouteFade";
 
 const NAV: [string, string][] = [
-  ["How it works", "/#how-it-works"],
   ["Features", "/#features"],
   ["Blog", "/blog"],
   ["Study planner", "/study-planner"],

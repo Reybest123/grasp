@@ -1,5 +1,4 @@
-// Changes or ends the admin override for this browser (lib/admin.ts). Only a
-// browser that has already unlocked /admin can change it.
+// Changes or clears the admin override for this browser (lib/admin.ts).
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminConfigured, clearAdmin, readAdmin, writeAdmin } from "@/lib/admin";
@@ -8,11 +7,8 @@ import { isBilledPlan } from "@/lib/plan";
 const notFound = () => NextResponse.json({ error: "Not found." }, { status: 404 });
 
 export async function PATCH(req: NextRequest) {
-  if (!adminConfigured()) return notFound();
   const current = await readAdmin();
-  if (!current) {
-    return NextResponse.json({ error: "Admin is locked. Enter the password again." }, { status: 401 });
-  }
+  if (!current) return notFound();
 
   const body = await req.json().catch(() => ({}));
   const state = {

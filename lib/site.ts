@@ -20,10 +20,13 @@ export const SITE_NAME = "Grasp";
  */
 export const SITE_ALTERNATE_NAMES = ["Grasp Study", "GraspStudy"];
 
-export const SITE_TAGLINE = "AI note-taking for students";
+// Recording lectures is what Grasp leads with (2026-10-15): the notes written
+// live while the lecture is still going are the reason to sign up, and the
+// explanations and quizzes are built on them.
+export const SITE_TAGLINE = "AI lecture recorder and notes for students";
 
 export const SITE_DESCRIPTION =
-  "Grasp turns your timetable into ready-to-use subject notebooks, explains anything you highlight, and quizzes you from your own notes.";
+  "Record your lectures and Grasp writes the notes live while you listen. Highlight anything to have it explained, and quiz yourself on what was said.";
 
 /** The signed-out pages worth finding in a search, with how often they change. */
 export const PUBLIC_PAGES: {

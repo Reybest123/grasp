@@ -17,15 +17,27 @@ export type Scene = {
 };
 
 /**
- * The four scenes, in the order the hero cycles them. Explain leads because it
- * is the thing no free note app does; quizzes follow because they are what the
- * notes are ultimately for.
+ * The four scenes, in the order the hero cycles them. Recording leads
+ * (2026-10-15): notes that write themselves during a lecture are what Grasp is
+ * sold on. Explain follows because it is the thing no free note app does, then
+ * quizzes, which are what the notes are ultimately for.
  *
  * One list, read twice: the hero cycles it, and the Features section gives each
  * entry its own section. So a scene added here appears in both places, and the
  * two can never fall out of step.
  */
 export const SCENES: Scene[] = [
+  {
+    id: "record",
+    label: "Record lectures",
+    icon: <MicIcon className="h-4 w-4" />,
+    title: "Record the lecture, watch the notes write themselves",
+    body: "Press record and the notes are written while the lecturer is still talking. Pause for a break, press stop at the end, and the finished notes save straight into that subject. The audio is deleted as soon as it has been transcribed.",
+    subject: "Biology",
+    monogram: "B",
+    tint: "from-emerald-400 to-teal-500",
+    tab: "Record",
+  },
   {
     id: "explain",
     label: "Grasp explains",
@@ -47,17 +59,6 @@ export const SCENES: Scene[] = [
     monogram: "B",
     tint: "from-emerald-400 to-teal-500",
     tab: "Quizzes",
-  },
-  {
-    id: "record",
-    label: "Live notes",
-    icon: <MicIcon className="h-4 w-4" />,
-    title: "Record the lesson, watch the notes write themselves",
-    body: "Hit record and watch the notes being written while the lesson is still going. Press stop, give it a name, and it saves into that subject. The audio is deleted as soon as it has been transcribed.",
-    subject: "Biology",
-    monogram: "B",
-    tint: "from-emerald-400 to-teal-500",
-    tab: "Record",
   },
   {
     id: "resources",

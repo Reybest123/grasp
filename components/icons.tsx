@@ -486,3 +486,31 @@ export function PrinterIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+// Media controls. Filled rather than stroked, the way transport buttons are
+// drawn everywhere, so they read at a glance inside a round button.
+
+export function PauseIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)} fill="currentColor" stroke="none">
+      <rect x="6" y="5" width="4" height="14" rx="1.25" />
+      <rect x="14" y="5" width="4" height="14" rx="1.25" />
+    </svg>
+  );
+}
+
+export function PlayIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)} fill="currentColor" stroke="none">
+      <path d="M8 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.52 4.75A1 1 0 0 0 8 5.6z" />
+    </svg>
+  );
+}
+
+export function StopIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)} fill="currentColor" stroke="none">
+      <rect x="6" y="6" width="12" height="12" rx="2" />
+    </svg>
+  );
+}

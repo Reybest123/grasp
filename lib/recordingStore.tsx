@@ -63,6 +63,8 @@ export type RecordingState = {
   subjectId: string | null;
   subjectName: string;
   seconds: number;
+  /** held by the student mid-lecture: nothing is recorded and the clock waits */
+  paused: boolean;
   /**
    * Recording time left this week, in seconds, as it stood before the current
    * recording started; subtract `seconds` for the live figure. Null while
@@ -103,6 +105,8 @@ export type RecordingState = {
     resources: ResourceBrief[];
   }) => Promise<void>;
   stop: () => Promise<void>;
+  pause: () => void;
+  resume: () => void;
   discard: () => void;
   /**
    * Writes the lecture into the subject it was recorded for; returns its id.
@@ -123,6 +127,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [subjectName, setSubjectName] = useState("");
   const [seconds, setSeconds] = useState(0);
+  const [paused, setPaused] = useState(false);
   const [weekLeft, setWeekLeft] = useState<number | null>(null);
   const [transcript, setTranscript] = useState("");
   const [quietSeconds, setQuietSeconds] = useState(0);
@@ -167,6 +172,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   /** When this week's recording time comes back, for the dialog raised on running out. */
   const weekResetsRef = useRef<string | null>(null);
   const stopRef = useRef<() => Promise<void>>(async () => {});
+  /** The elapsed clock: started with a recording and again on each resume. */
+  const startTicker = useCallback(() => {
+    if (!timerRef.current) timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+  }, []);
   // Stop is reached from the button, the week running out and a refused
   // segment. Only the first may run: a second would pay for another final pass
   // and could save or reset a recording started after the first finished.
@@ -323,8 +332,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setNonsense(false);
         setNotice(null);
         setSeconds(0);
+        setPaused(false);
         setPhase("recording");
-        timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+        startTicker();
       } catch (err) {
         setFatal({
           subjectId: subject.id,
@@ -337,7 +347,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setStarting(false);
       }
     },
-    [ingest]
+    [ingest, startTicker]
   );
 
   // Re-read whenever no recording is running, so the time left shown before
@@ -380,8 +390,24 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     setNoMaterial(false);
     setNonsense(false);
     setSeconds(0);
+    setPaused(false);
     setNotice(null);
   }, []);
+
+  const pause = useCallback(() => {
+    if (!handleRef.current || stoppingRef.current) return;
+    handleRef.current.pause();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    setPaused(true);
+  }, []);
+
+  const resume = useCallback(() => {
+    if (!handleRef.current || stoppingRef.current) return;
+    handleRef.current.resume();
+    startTicker();
+    setPaused(false);
+  }, [startTicker]);
 
   const discard = useCallback(() => {
     handleRef.current?.cancel();
@@ -422,6 +448,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     const session = recordingIdRef.current;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
+    setPaused(false);
     setPhase("naming");
     titleRef.current = `${subjectNameRef.current} lecture — ${new Date().toLocaleDateString()}`;
     setFinishing(true);
@@ -582,6 +609,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         subjectId,
         subjectName,
         seconds,
+        paused,
         weekLeft,
         transcript,
         quietSeconds,
@@ -601,6 +629,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         guard,
         start,
         stop,
+        pause,
+        resume,
         discard,
         save,
       }}
@@ -632,7 +662,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         }
         body={
           phase === "recording"
-            ? `Your ${subjectName} lecture keeps recording, but you won't see the notes being drafted. The chip in the header brings you back to it.`
+            ? `Your ${subjectName} lecture ${paused ? "stays paused" : "keeps recording"}, but you won't see the notes being drafted. The chip in the header brings you back to it.`
             : `Your ${subjectName} recording still needs a name before it's saved to your notes. The chip in the header brings you back to it.`
         }
         confirmLabel="Leave"

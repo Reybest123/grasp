@@ -20,6 +20,13 @@ export type RecorderHandle = {
   stop: () => Promise<void>;
   /** Drops the segment in progress and releases the microphone. */
   cancel: () => void;
+  /**
+   * Holds the segment in progress without ending it. MediaRecorder's own pause
+   * keeps the segment one valid file, so a pause sends no extra segment and
+   * costs nothing; the segment's clock and the voice meter wait with it.
+   */
+  pause: () => void;
+  resume: () => void;
 };
 
 /** Its `message` is shown to the student as written. */
@@ -125,7 +132,25 @@ export async function startSegmentedRecording({
   }
 
   let active = true;
+  let paused = false;
   let current: MediaRecorder | null = null;
+  // The segment in progress: how long it has actually recorded, and when its
+  // current unpaused stretch began.
+  let recordedMs = 0;
+  let runStart = 0;
+  let stretchOpen = false;
+  /** Banks the unpaused stretch that is running, if one is. */
+  const closeStretch = () => {
+    if (!stretchOpen) return;
+    stretchOpen = false;
+    recordedMs += Date.now() - runStart;
+  };
+  // The microphone goes quiet while paused, not just the recorder.
+  const setMicOn = (on: boolean) => stream.getAudioTracks().forEach((track) => (track.enabled = on));
+  const openStretch = () => {
+    runStart = Date.now();
+    stretchOpen = true;
+  };
   let timer: ReturnType<typeof setTimeout> | null = null;
   let finished: (() => void) | null = null;
 
@@ -154,6 +179,7 @@ export async function startSegmentedRecording({
       const now = performance.now();
       const elapsed = Math.min(now - lastTick, 1000);
       lastTick = now;
+      if (paused) return;
       analyser.getFloatTimeDomainData(frame);
       let sum = 0;
       for (let i = 0; i < frame.length; i += 1) sum += frame[i] * frame[i];
@@ -190,8 +216,8 @@ export async function startSegmentedRecording({
 
     const chunks: Blob[] = [];
     const rec = new MediaRecorder(stream, { mimeType: mime });
-    const startedAt = Date.now();
     voicedMs = 0;
+    recordedMs = 0;
     current = rec;
 
     rec.ondataavailable = (e) => {
@@ -199,16 +225,26 @@ export async function startSegmentedRecording({
     };
     rec.onstop = () => {
       current = null;
-      const longEnough = chunks.length > 0 && Date.now() - startedAt >= MIN_SEGMENT_MS;
+      closeStretch();
+      const longEnough = chunks.length > 0 && recordedMs >= MIN_SEGMENT_MS;
       if (longEnough && heardSomething()) onSegment({ blob: new Blob(chunks, { type: mime }), ext });
       else if (longEnough) onQuiet();
       startSegment();
     };
 
     rec.start();
+    // Paused while the last segment was being closed off: this one waits too.
+    if (paused) rec.pause();
+    else run(rec);
+  }
+
+  function run(rec: MediaRecorder) {
+    openStretch();
     timer = setTimeout(() => {
-      if (rec.state === "recording") rec.stop();
-    }, segmentMs);
+      if (rec.state !== "recording") return;
+      closeStretch();
+      rec.stop();
+    }, Math.max(0, segmentMs - recordedMs));
   }
 
   startSegment();
@@ -231,6 +267,26 @@ export async function startSegmentedRecording({
       });
 
       release();
+    },
+
+    pause() {
+      if (!active || paused) return;
+      paused = true;
+      if (timer) clearTimeout(timer);
+      timer = null;
+      closeStretch();
+      setMicOn(false);
+      if (current?.state === "recording") current.pause();
+    },
+
+    resume() {
+      if (!active || !paused) return;
+      paused = false;
+      setMicOn(true);
+      if (current?.state === "paused") {
+        current.resume();
+        run(current);
+      }
     },
 
     cancel() {

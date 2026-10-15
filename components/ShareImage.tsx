@@ -8,7 +8,7 @@ import { ImageResponse } from "next/og";
 import { SITE_TAGLINE } from "@/lib/site";
 
 export const SHARE_ALT =
-  "Grasp: AI note-taking for students. Your timetable becomes a notebook for every subject.";
+  "Grasp: AI lecture recorder and notes for students. Record a lecture and the notes write themselves.";
 export const SHARE_SIZE = { width: 1200, height: 630 };
 
 const INK = "#0b2340";
@@ -74,8 +74,8 @@ export function shareImage() {
             {SITE_TAGLINE.charAt(0).toUpperCase() + SITE_TAGLINE.slice(1)}
           </div>
           <div style={{ fontSize: 34, color: "#4a453f", maxWidth: 940, lineHeight: 1.3 }}>
-            Upload your timetable and get a notebook for every subject, explanations for anything
-            you highlight, and quizzes from your own notes.
+            Press record and Grasp writes your notes while the lecture is still going, then
+            explains anything you highlight and quizzes you on it.
           </div>
         </div>
 

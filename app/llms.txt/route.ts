@@ -11,17 +11,18 @@ const BODY = `# ${SITE_NAME}
 
 > ${SITE_DESCRIPTION}
 
-Grasp is a note-taking website for students, built around
-subjects, timetables and assessments rather than work meetings.
+Grasp is a lecture recorder and note-taking website for students, built
+around lectures, subjects and assessments rather than work meetings.
 
 ## What it does
 
-- Timetable setup: a student uploads a screenshot of their timetable and Grasp
-  creates a notebook for every subject.
+- Lecture recording: press record and Grasp transcribes the lecture and writes
+  structured notes while it is still going. Recording can be paused and resumed.
+  On stop the notes save into that subject. Audio is not stored.
 - Notes: a rich-text editor with AI cleanup and expansion of the student's own notes.
 - Explain: highlight any part of a note to get an explanation, and ask follow-up questions.
-- Lecture recording: Grasp transcribes a lesson and drafts notes while it runs.
-  Audio is not stored.
+- Timetable setup: a student can upload a screenshot of their timetable and Grasp
+  creates a notebook for every subject.
 - Quizzes: multiple choice, short and long answer questions written from the
   student's own notes, marked by AI, with partial credit.
 - Resource Bank: assessment criteria, past papers and handouts that Grasp takes

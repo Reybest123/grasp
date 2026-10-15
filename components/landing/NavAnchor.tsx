@@ -5,8 +5,8 @@ import { scrollToElement } from "@/lib/scrollTo";
 /**
  * A nav link to a section of this page.
  *
- * It exists because a plain `<a href="#how-it-works">` does nothing at all once
- * the URL already ends in `#how-it-works` — the browser sees no change to make,
+ * It exists because a plain `<a href="#features">` does nothing at all once
+ * the URL already ends in `#features` — the browser sees no change to make,
  * so a student who has scrolled away and pressed the link again just gets
  * nothing. Handling the click ourselves scrolls every time, whatever the
  * address bar currently says.
@@ -28,7 +28,15 @@ import { scrollToElement } from "@/lib/scrollTo";
  * The sections carry `scroll-mt-20` so the fixed header does not sit over the
  * heading we land on.
  */
-export function NavAnchor({ href, children }: { href: string; children: React.ReactNode }) {
+export function NavAnchor({
+  href,
+  className = "rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink",
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <a
       href={href}
@@ -39,7 +47,7 @@ export function NavAnchor({ href, children }: { href: string; children: React.Re
         scrollToElement(target, "start");
         window.history.replaceState(null, "", href);
       }}
-      className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
+      className={className}
     >
       {children}
     </a>

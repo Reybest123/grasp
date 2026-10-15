@@ -1,10 +1,11 @@
 # Grasp
 
-**AI note-taking for students.**
+**AI lecture recorder and notes for students.**
 
-Grasp turns a screenshot of your school timetable into a notebook for every subject, drafts notes
-live while you record a lecture, explains anything you highlight right inside your notes, and
-quizzes you from your own notes and assessment criteria rather than a generic question bank.
+Press record in a lecture and Grasp writes your notes while the lecturer is still talking, then
+saves them into that subject when you stop. From there it explains anything you highlight right
+inside your notes, and quizzes you from your own notes and assessment criteria rather than a
+generic question bank. A screenshot of your timetable sets up a notebook for every subject.
 
 **Grasp is in production at [graspstudy.com](https://graspstudy.com).** It deploys to Railway, with a
 password-protected staging site for testing, and Stripe runs live on production. The full product spec, design
@@ -23,7 +24,7 @@ conventions and a detailed changelog of how everything is built live in [`CLAUDE
 | Notebooks grid with next class and exam countdowns | `/workspace` |
 | Rich-text notes: lists, checklists, tables, equations, undo/redo, AI enhance and AI generate | subject > Notes |
 | Highlight to Explain or Refine, as a thread beside the note | subject > Notes (select text) |
-| Lecture recording with Whisper transcription and notes drafted live | subject > Record |
+| Lecture recording with Whisper transcription, notes drafted live, and pause and resume | subject > Record |
 | Quizzes from your notes: multiple choice, short and long answer, AI marking with half marks, "explain why I'm wrong" | subject > Quizzes |
 | Resource Bank: rubrics, criteria and term planners read once and cited wherever the AI uses them | subject > Resource Bank |
 | Pro and Max plans, billed weekly through Stripe (a card is taken when either plan starts; the free trial needs none), with weekly quiz and recording limits enforced server-side | `lib/plan.ts`, `lib/billing.ts`, `lib/usage.ts` |
@@ -73,9 +74,10 @@ charging a real card).
 
    `RESEND_API_KEY` sends the email that confirms a new account; an unconfirmed account cannot use
    the app. Without `EMAIL_FROM`, Resend's test sender only delivers to your own Resend login address.
-   An optional `ADMIN_PASSWORD` unlocks `/admin`, where a browser can try the app as Pro or Max or
-   with every usage limit off; without it `/admin` stays locked. Once unlocked, `/admin/analytics`
-   shows traffic, the signup funnel, trial conversion, subscribers and allowance use.
+   An optional `ADMIN_PASSWORD` turns on `/admin`, where a browser can try the app as Pro or Max or
+   with every usage limit off, and `/admin/analytics`, which shows traffic, the signup funnel, trial
+   conversion, subscribers and allowance use. There is no lock screen: admin only exists where
+   `SITE_PASSWORD` also puts the whole site behind a password (staging, or set both locally).
 
    Any Postgres works, local included. To use the Railway database from your machine, take the
    Postgres service's `DATABASE_PUBLIC_URL`; the `*.railway.internal` address only resolves inside
@@ -132,7 +134,7 @@ Pushing to `main` deploys to Railway, where the app and its Postgres run as two 
 project. The app service needs `DATABASE_URL` (the Postgres service's private
 `*.railway.internal` URL), `OPENAI_API_KEY` and `RESEND_API_KEY`, plus `EMAIL_FROM` (an address on
 a domain verified in Resend) and `APP_URL` (the site's public address) once it has real users, and
-`ADMIN_PASSWORD` for `/admin`.
+`ADMIN_PASSWORD` plus `SITE_PASSWORD` for `/admin` (staging only).
 
 Billing needs three more: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO` and `STRIPE_PRICE_MAX` (from
 `npm run billing:setup`, run once against the deployment — see below), and `STRIPE_WEBHOOK_SECRET` for
