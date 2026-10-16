@@ -17,6 +17,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-17 (pulled through Chrome, last 28 days; data runs to 14 October)
+
+**Totals:** 31 clicks, 178 impressions, CTR 17.4%, average position 8.0. Two more days of data, both quiet (12 and 13 October had no clicks). Last 7 days: 10 clicks from 59 impressions, "grasp study" 2 clicks from 15. Pages: home 24 clicks from 146, the Indian students post 2 from 11, the study planner 2 from 3, the blog index 1 from 6, Cornell notes 1 from 5 (position 30), quizzing yourself 1 from 4, the study timetable post 0 from 6 (position 46.7). The retitle showed its first query, "how to create a study schedule", at position 87, one impression. The Cornell examples post still has no impressions. Nothing to act on.
+
 ### 2026-10-15 (pulled through Chrome, last 28 days; data runs to 12 October)
 
 **Totals:** 29 clicks, 158 impressions, CTR 18.4%, average position 7.5. One more impression and no new clicks: "grasp study" still 9 clicks from 44, the home page 24 from 136. Queries and pages unchanged; the Cornell examples post and the "study schedule" retitle still have no impressions. Nothing to act on.
