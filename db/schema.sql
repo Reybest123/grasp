@@ -109,6 +109,11 @@ alter table users add column if not exists currency text;
 -- so a database without it signs everyone out.
 alter table users add column if not exists free_trial_started_at timestamptz;
 
+-- When the "your free trial ends tomorrow" email was sent (lib/freeTrialMail.ts).
+-- Claimed by the same update that picks the account, so it goes out once even
+-- if two servers run the check at once; cleared again if the send fails.
+alter table users add column if not exists free_trial_reminder_sent_at timestamptz;
+
 -- A customer or subscription id is looked up by its Stripe id in the webhook
 -- and the checkout-complete redirect, both of which run before they know which
 -- user they are for. Partial: most rows have neither yet.
