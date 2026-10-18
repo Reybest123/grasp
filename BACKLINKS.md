@@ -19,6 +19,8 @@ helps its students, and that is what to offer:
   thing to offer, since "a free tool for your students" is an easy yes for a
   librarian. Lead with it.
 
+**Keep the planner free of sign-up prompts** (2026-10-18): every email promises "no sign-ups or ads", so a librarian who checks the page must find exactly that. The shared header's Sign up button is the only way on to Grasp from it.
+
 Never ask a school to link to the sign-up page or the plans. Never say "AI" in
 the subject line; plenty of schools are wary of it, and the guides stand on
 their own.
@@ -51,6 +53,8 @@ Search Google for pages that already link out to study resources:
 inurl:library "study skills" school Brisbane
 "Cornell notes" "useful websites" school
 ```
+
+**What worked on 2026-10-18.** Google started showing a CAPTCHA after about a dozen searches, and the plain search tools return mostly US results. Two things found targets anyway: independent schools keep LibGuides at `libguides.<school domain>` (Lourdes Hill, Pacific Lutheran, St Peters), so probing that address for a list of school domains finds them directly; and every state school's library is at `<code>.eq.edu.au/facilities/library` (or `/facilities/resource-centre`), so a list of school codes can be checked by script for outside links and a library email. Most state school library pages turn out thin (no outside links), so weigh those lower. A school that lists no email often has one on its Contact us page after all (Albany Creek, Centenary Heights and Mackay North all did).
 
 On each page, check it links to outside sites (if it does, it will link to
 one more), then find the librarian's or staff member's email on the school's
