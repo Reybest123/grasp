@@ -17,6 +17,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-19 (pulled through Chrome, last 28 days; data runs to 16 October)
+
+**Totals:** 31 clicks, 192 impressions, CTR 16.1%, average position 9.4. One more day, ten more impressions, no clicks. Queries unchanged apart from "grasp.study" at 7 impressions (was 6). The Cornell examples post still has no impressions. Nothing to act on. Outreach the same day: the North Queensland teacher-librarian convenor passed the study planner on to her network, and QSLA's committee will discuss it on 24 October.
+
 ### 2026-10-18 (pulled through Chrome, last 28 days; data runs to 15 October)
 
 **Totals:** 31 clicks, 182 impressions, CTR 17%, average position 8. One more day, four more impressions, no clicks. Last 7 days: 8 clicks from 53 impressions, "grasp study" 2 from 12; "how to create a study schedule" still one impression at position 87. Pages over 28 days: home 24 from 148, the Indian students post 2 from 11, the study planner 2 from 3 (position 2), the study timetable post 0 from 6 (position 46.7). The Cornell examples post still has no impressions. Nothing to act on.
