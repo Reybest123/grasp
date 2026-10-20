@@ -11,11 +11,14 @@ How to use it:
 
 ## Next check
 
-- **Around 20 October 2026**: if `/study-planner` is still "Discovered, currently not indexed", request indexing again.
 - **Around 26 October 2026**: has Google crawled since 1 October? Are `/study-planner`, `/legal/privacy`, `/blog/cornell-notes-examples` and the updated timetable post indexed? Any impressions for "cornell notes example" or "study schedule"?
 - **Mid-November 2026**: full Queries snapshot over the last 3 months, to choose the next two posts.
 
 ## Snapshots
+
+### 2026-10-20 (pulled through Chrome, last 28 days; data runs to 17 October)
+
+**Totals:** 31 clicks, 199 impressions, CTR 15.6%, average position 10.2. "grasp study" 9 clicks from 52 impressions; "how to choose your marking method" now 2 impressions. **Indexing moved: 14 pages indexed, 5 not** (was 11 and 6). URL inspection shows `/study-planner` and `/blog/cornell-notes-examples` both indexed, so the planner no longer needs a re-request. The only pages left out are `/login` and `/signup` ("Crawled, currently not indexed", fine) and three redirects. Links report: no external links yet (Brisbane State High's library page still has no link; it is with their IT committee). Search Console flagged the home page's impressions down 54% recently, which is the Instagram-driven brand searches settling.
 
 ### 2026-10-19 (pulled through Chrome, last 28 days; data runs to 16 October)
 
@@ -112,8 +115,8 @@ Read: the brand name works ("Grasp Study" as an alternate name, 2026-09-30). Cor
 
 | Date | What | Page | Aimed at | Result |
 |---|---|---|---|---|
-| 2026-10-11 | Requested indexing | `/study-planner`, `/legal/privacy` | Not crawled since 1 October | Check around 26 October |
-| 2026-10-11 | New post, drawn Cornell pages for four subjects | `/blog/cornell-notes-examples` | "cornell method notes example", "cornell notes example" | Indexing requested 2026-10-11 |
+| 2026-10-11 | Requested indexing | `/study-planner`, `/legal/privacy` | Not crawled since 1 October | `/study-planner` indexed by 2026-10-20 |
+| 2026-10-11 | New post, drawn Cornell pages for four subjects | `/blog/cornell-notes-examples` | "cornell method notes example", "cornell notes example" | Indexed by 2026-10-20, no impressions yet |
 | 2026-10-11 | Title, description, intro and two headings now also say "study schedule" | `/blog/how-to-make-a-study-timetable` | "how to make a study schedule" | Indexing requested 2026-10-11 |
 | 2026-10-05 | Post for Indian engineering and medical students | `/blog/ai-note-taking-workflow-for-indian-students` | JEE/NEET and university note-taking searches | 1 click, 2 impressions by 2026-10-11 |
 | 2026-10-04 | Free study planner, the page school outreach links to | `/study-planner` | Backlinks from school library pages (BACKLINKS.md) | Not crawled by 2026-10-11 |
