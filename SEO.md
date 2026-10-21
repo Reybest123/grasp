@@ -16,6 +16,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-21 (pulled through Chrome, last 28 days; data runs to 18 October)
+
+**Totals:** 31 clicks, 204 impressions, CTR 15.2%, average position 10.7. One more day, five more impressions, no clicks: "grasp study" 9 clicks from 53. Queries otherwise unchanged; the Cornell examples post still has no impressions. Nothing to act on. Google Ads search test (live 19 October) so far: 20 impressions, 2 clicks, A$2.95 at A$1.48 a click, campaign "Eligible (Limited): missing enough relevant keywords", so phrase-match volume for these terms is very low. Outreach the same day: San Damiano's teacher-librarian said the planner is unlikely to be used there.
+
 ### 2026-10-20 (pulled through Chrome, last 28 days; data runs to 17 October)
 
 **Totals:** 31 clicks, 199 impressions, CTR 15.6%, average position 10.2. "grasp study" 9 clicks from 52 impressions; "how to choose your marking method" now 2 impressions. **Indexing moved: 14 pages indexed, 5 not** (was 11 and 6). URL inspection shows `/study-planner` and `/blog/cornell-notes-examples` both indexed, so the planner no longer needs a re-request. The only pages left out are `/login` and `/signup` ("Crawled, currently not indexed", fine) and three redirects. Links report: no external links yet (Brisbane State High's library page still has no link; it is with their IT committee). Search Console flagged the home page's impressions down 54% recently, which is the Instagram-driven brand searches settling.
