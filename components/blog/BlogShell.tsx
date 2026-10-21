@@ -12,8 +12,18 @@ const NAV: [string, string][] = [
  * The frame the blog index, every post and the study planner share: the landing page's header
  * (its two section links pointing back at the landing page) and its footer.
  * Like the landing page, it says nothing about price.
+ *
+ * `bare` is for the study planner, the page schools are asked to share: its header carries only
+ * Blog and Study planner, with no Features link and no Log in or Sign up, since some schools
+ * cannot point students at a page that offers an account (a librarian's reply, 2026-10-21).
  */
-export function BlogShell({ children }: { children: React.ReactNode }) {
+export function BlogShell({
+  children,
+  bare = false,
+}: {
+  children: React.ReactNode;
+  bare?: boolean;
+}) {
   return (
     <RouteFade>
       <div className="flex min-h-screen flex-col">
@@ -23,31 +33,49 @@ export function BlogShell({ children }: { children: React.ReactNode }) {
         <header className="fixed inset-x-0 top-0 z-50 print:hidden border-b border-slate-200/80 bg-slate-50/70 backdrop-blur">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
             <Logo />
-            <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-              {NAV.map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
-                >
-                  {label}
-                </Link>
-              ))}
-            </nav>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Link
-                href="/login"
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-ink"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink/90"
-              >
-                Sign up
-              </Link>
-            </div>
+            {bare ? (
+              <nav className="flex items-center gap-1">
+                {NAV.filter(([, href]) => !href.startsWith("/#")).map(
+                  ([label, href]) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
+                    >
+                      {label}
+                    </Link>
+                  ),
+                )}
+              </nav>
+            ) : (
+              <>
+                <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
+                  {NAV.map(([label, href]) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-ink"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </nav>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Link
+                    href="/login"
+                    className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-ink"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink/90"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </header>
 

@@ -45,7 +45,7 @@ const RULES = [
 
 export default function StudyPlannerPage() {
   return (
-    <BlogShell>
+    <BlogShell bare>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }}
