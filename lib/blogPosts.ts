@@ -25,6 +25,175 @@ export type BlogSection = { heading: string; blocks: BlogBlock[] };
 export type BlogBody = { intro: string[]; sections: BlogSection[] };
 
 export const BLOG_BODIES: Record<string, BlogBody> = {
+  "how-to-record-lectures": {
+    intro: [
+      "Recording a lecture means you can listen properly instead of racing to write every word down. It also means you have the whole thing to go back to when your notes do not make sense a week later.",
+      "Before you press record, though, you need to know whether you are allowed to. This covers when recording is fine, how to ask, how to get audio clear enough to use, and how to turn it into notes rather than a file you never open again.",
+    ],
+    sections: [
+      {
+        heading: "Are you allowed to record a lecture?",
+        blocks: [
+          "Usually the answer depends on two things: the rules of your university or school, and the law where you live. Of the two, the rules of your university or school are the ones you will run into first.",
+          {
+            list: [
+              "Many universities let students record lectures for their own study, and many already record them and post them online. Check your course page first. If the lecture is already recorded, you may not need your own copy.",
+              "Some universities ask you to get the lecturer's permission first, or only allow recording as part of a learning or disability support plan.",
+              "Most schools need the teacher's consent before a class is recorded, and many do not allow phones in class at all.",
+              "Tutorials, labs and small classes are different from a lecture. Other students are talking, so ask before recording any of them.",
+            ],
+          },
+          "Recording laws also differ between countries, and between states within some countries, especially for private conversations. A lecture is not usually a private conversation, but if you are unsure, ask. Asking is free, and a lecturer who says yes rarely minds afterwards.",
+        ],
+      },
+      {
+        heading: "How to ask",
+        blocks: [
+          "Keep it short and say why. A quick message before the first lecture works well: \"Would you mind if I record your lectures for my own study? I will not share them.\" Most lecturers say yes, because a student who wants to go back over the content is a student who is trying.",
+          "If you have a support plan that includes recording, you do not need to ask each lecturer, but it is polite to let them know.",
+        ],
+      },
+      {
+        heading: "What you can and cannot do with a recording",
+        blocks: [
+          "A recording is for your own study. The lecture, its slides and its words belong to the lecturer or the university, so do not post it online, share it in a group chat or sell notes made from it unless you have been told you can. Classmates' voices are in it too.",
+        ],
+      },
+      {
+        heading: "Getting audio you can actually use",
+        blocks: [
+          {
+            list: [
+              "Sit near the front, or near a speaker if the lecturer uses a microphone. Distance matters more than which phone or app you use.",
+              "Put the device on the desk, not in a bag or pocket, and keep it still. Moving it around adds noise.",
+              "Turn on Do Not Disturb so notifications do not interrupt or end the recording.",
+              "Check the battery and storage before you start. An hour of audio is not small, and a phone that dies halfway through loses the end.",
+              "Record a few seconds first and play them back, at least the first time in a new room.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Still take some notes",
+        blocks: [
+          "A recording is not a reason to stop paying attention. Write down the main headings, anything on the board, and the time when something confusing comes up, so you know where to look later. These notes are short, but they are what makes the recording easy to use.",
+        ],
+      },
+      {
+        heading: "Turning a recording into notes",
+        blocks: [
+          "Most recordings are never listened to again. An hour of audio takes an hour to replay, and it is hard to find the one part you need. The recording becomes useful once it is turned into something you can read.",
+          {
+            steps: [
+              "Get a transcript. Many phones and apps can now transcribe audio, so you do not have to type it out.",
+              "Pull out the main ideas, definitions and examples into proper notes, organised under headings.",
+              "Check the notes against the slides or the textbook, since transcription gets technical words and names wrong.",
+              "Within a day or two, test yourself on the notes rather than only re-reading them.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "How Grasp does it",
+        blocks: [
+          "Grasp records the lecture in your browser on a laptop or phone, transcribes it as it goes, and writes your notes while the lecture is still running, so you can watch them build. You can pause and carry on. When you stop, the notes are saved into that subject's notebook, where you can edit them, highlight a line to have it explained, or make a quiz from them.",
+          "The audio itself is not kept, only the notes, so it is not a way to replay a lecture later. You still need permission to record, and it is still worth reading the notes through once and fixing anything that is off.",
+        ],
+      },
+    ],
+  },
+
+  "best-apps-for-recording-lectures": {
+    intro: [
+      "There are a lot of ways to record a lecture now, and they do quite different things. Some only record. Some line the audio up with your own notes. Some transcribe it, and some go further and write the notes for you.",
+      "The right one depends on what you actually want at the end: an audio file to replay, a transcript to search, or notes to study from. Grasp is one of the tools here, so this tries to be fair about where the others are a better fit.",
+    ],
+    sections: [
+      {
+        heading: "First, check you are allowed to record",
+        blocks: [
+          "Whatever you use, check your university or school allows recording first, and ask the lecturer if you are unsure. Our guide on how to record lectures covers when it is allowed and how to ask.",
+        ],
+      },
+      {
+        heading: "Your phone's built-in voice recorder",
+        blocks: [
+          "The simplest option, and free. Recent iPhones can transcribe a recording in the Voice Memos app, and many Android phones have a recorder app that does the same.",
+          {
+            list: [
+              "Good for: having the whole lecture to replay, with no setup.",
+              "Not so good for: notes. You get audio and, at best, a block of transcript with no structure, which is a lot to read through.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Note apps that record audio, like Notability and OneNote",
+        blocks: [
+          "These let you write or type notes while recording, and tie the audio to what you wrote, so tapping a line plays what was being said at that moment. Notability, on iPad, is popular for this with handwritten notes, and newer versions add transcripts and study features.",
+          {
+            list: [
+              "Good for: students who like writing their own notes, especially by hand, and want the audio as a backup.",
+              "Not so good for: lectures where you cannot keep up. You still write the notes yourself.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Lecture recording tools for accessibility, like Glean",
+        blocks: [
+          "Glean is built around lectures: it records, lets you mark important moments, bring in slides and add your own notes alongside the audio. Many universities provide it free through their disability or accessibility service.",
+          {
+            list: [
+              "Good for: students with a learning support plan. Ask your accessibility office whether your university offers it.",
+              "Not so good for: anyone who cannot get access through their university.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Transcription apps, like Otter",
+        blocks: [
+          "Transcription apps turn speech into text live and are good at it. Most, including Otter, are built mainly for work meetings and calls, with features like speaker names and meeting summaries.",
+          {
+            list: [
+              "Good for: a searchable word-for-word transcript.",
+              "Not so good for: study notes. A transcript is not notes, and turning an hour of it into something you can revise from is still your job.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "AI tools that write the notes, like Grasp",
+        blocks: [
+          "This is the newest kind of tool: it records and transcribes, and then writes structured notes from what was said, with headings, definitions and examples. Grasp writes the notes while the lecture is still going, then saves them into that subject's notebook when you stop. From there you can highlight any line to have it explained, and make a quiz from your notes.",
+          {
+            list: [
+              "Good for: lectures that move faster than you can write, and getting straight to notes you can study from.",
+              "Not so good for: replaying the lecture. Grasp does not keep the audio, only the notes, so if you want the recording itself, use your phone's recorder alongside it.",
+              "Worth knowing: AI notes can get things wrong, especially names and technical terms. Read them through once after the lecture.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Which one to choose",
+        blocks: [
+          {
+            list: [
+              "You want to replay the lecture: your phone's voice recorder.",
+              "You write your own notes and want audio as a backup: Notability or OneNote.",
+              "You have a learning support plan: ask your university about Glean.",
+              "You want a word-for-word transcript: a transcription app.",
+              "You want notes written for you that you can study and quiz yourself from: an AI note tool like Grasp.",
+            ],
+          },
+          "Whichever you pick, the recording only helps if you go back to it. Read the notes within a day or two, and test yourself on them before the exam rather than the night before.",
+        ],
+      },
+    ],
+  },
+
   "ai-note-taking-workflow-for-indian-students": {
     intro: [
       "Between cracking competitive exams like JEE/NEET, managing massive syllabus loads in B.Tech, B.Sc, or MBBS, and keeping up with professors who teach at lightning speed, being a student in India is a massive juggling act.",

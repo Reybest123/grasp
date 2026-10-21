@@ -119,6 +119,7 @@ Read: the brand name works ("Grasp Study" as an alternate name, 2026-09-30). Cor
 
 | Date | What | Page | Aimed at | Result |
 |---|---|---|---|---|
+| 2026-10-21 | Two recording posts | `/blog/how-to-record-lectures`, `/blog/best-apps-for-recording-lectures` | "how to record lectures", "best app for recording lectures", "lecture recorder app" (the Google Ads suggestions) | On staging |
 | 2026-10-11 | Requested indexing | `/study-planner`, `/legal/privacy` | Not crawled since 1 October | `/study-planner` indexed by 2026-10-20 |
 | 2026-10-11 | New post, drawn Cornell pages for four subjects | `/blog/cornell-notes-examples` | "cornell method notes example", "cornell notes example" | Indexed by 2026-10-20, no impressions yet |
 | 2026-10-11 | Title, description, intro and two headings now also say "study schedule" | `/blog/how-to-make-a-study-timetable` | "how to make a study schedule" | Indexing requested 2026-10-11 |

@@ -35,6 +35,24 @@ export type BlogPostMeta = {
  */
 export const BLOG_POSTS: BlogPostMeta[] = ([
   {
+    slug: "how-to-record-lectures",
+    title: "How to record lectures, and whether you are allowed to",
+    description:
+      "When recording a lecture or class is allowed, how to ask, how to get clear audio from the back of the room, and how to turn the recording into notes you will actually use.",
+    date: "2026-10-21",
+    imageAlt: "A lecture theatre with students seated in rows facing the front",
+    keywords: ["how to record lectures", "can I record my lectures", "record lectures", "recording lectures at university"],
+  },
+  {
+    slug: "best-apps-for-recording-lectures",
+    title: "Best apps for recording lectures and taking notes",
+    description:
+      "An honest look at the main ways to record a lecture and get notes from it: a phone's voice recorder, note apps that record, transcription apps, and AI tools that write the notes for you.",
+    date: "2026-10-21",
+    imageAlt: "A laptop, a coffee mug, a notepad and a phone on a wooden desk",
+    keywords: ["best app for recording lectures", "lecture recorder app", "app to record lectures and take notes", "ai lecture notes"],
+  },
+  {
     slug: "ai-note-taking-workflow-for-indian-students",
     title: "Best AI note taking tool for engineering and medical students whether NEET/JEE aspirants or studying in universities",
     description:
