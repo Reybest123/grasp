@@ -16,6 +16,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-23 (pulled through Chrome, last 7 days; data runs to 21 October)
+
+**Totals (7 days):** 1 click, 54 impressions, CTR 1.9%, average position 21. "grasp study" 10 impressions; "how to make a study schedule" 2; single impressions for "spanish cornell notes", "cue column", "how to make a study timetable", "how to create study timetable", "grasp of the subject" and "how to choose your marking method". **"spanish cornell notes" and "cue column" are the first impressions from searches that are neither the brand nor a post's own title**, so the Cornell posts are starting to be matched to the wider topic. Google Ads (18 to 22 October): 70 impressions, 3 clicks, A$4.44, still "Eligible (Limited)". The two recording posts went live today once Railway builds returned; indexing requested for both, and for `/study-planner` (bare header).
+
 ### 2026-10-21 (pulled through Chrome, last 28 days; data runs to 18 October)
 
 **Totals:** 31 clicks, 204 impressions, CTR 15.2%, average position 10.7. One more day, five more impressions, no clicks: "grasp study" 9 clicks from 53. Queries otherwise unchanged; the Cornell examples post still has no impressions. Nothing to act on. Google Ads search test (live 19 October) so far: 20 impressions, 2 clicks, A$2.95 at A$1.48 a click, campaign "Eligible (Limited): missing enough relevant keywords", so phrase-match volume for these terms is very low. Outreach the same day: San Damiano's teacher-librarian said the planner is unlikely to be used there.
@@ -119,7 +123,8 @@ Read: the brand name works ("Grasp Study" as an alternate name, 2026-09-30). Cor
 
 | Date | What | Page | Aimed at | Result |
 |---|---|---|---|---|
-| 2026-10-21 | Two recording posts | `/blog/how-to-record-lectures`, `/blog/best-apps-for-recording-lectures` | "how to record lectures", "best app for recording lectures", "lecture recorder app" (the Google Ads suggestions) | On staging |
+| 2026-10-23 | Requested re-indexing after the header lost its account links | `/study-planner` | Schools that cannot share pages offering sign-ups | |
+| 2026-10-21 | Two recording posts | `/blog/how-to-record-lectures`, `/blog/best-apps-for-recording-lectures` | "how to record lectures", "best app for recording lectures", "lecture recorder app" (the Google Ads suggestions) | Live 2026-10-23 (held up by the Railway incident); indexing requested the same day |
 | 2026-10-11 | Requested indexing | `/study-planner`, `/legal/privacy` | Not crawled since 1 October | `/study-planner` indexed by 2026-10-20 |
 | 2026-10-11 | New post, drawn Cornell pages for four subjects | `/blog/cornell-notes-examples` | "cornell method notes example", "cornell notes example" | Indexed by 2026-10-20, no impressions yet |
 | 2026-10-11 | Title, description, intro and two headings now also say "study schedule" | `/blog/how-to-make-a-study-timetable` | "how to make a study schedule" | Indexing requested 2026-10-11 |
