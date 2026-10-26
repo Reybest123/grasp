@@ -16,6 +16,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-26 (pulled through Chrome, last 28 days; data runs to 24 October)
+
+**Totals:** 32 clicks, 264 impressions, CTR 12.1%, average position 14.4. "grasp study" 9 clicks from 59 (position 6.7); "how to take cornell notes" 1 from 1; "grasp.study" 6, "study grasp" 4, "grasplet login" 3, "how to make a study schedule" 3 (position 82), "grasp ai login" 2, **"how to record a lecture" 2 (position 45), the first impressions for the recording posts**, "how to choose your marking method" 2, "how to make a study timetable" 2 (position 77). Google Ads (19 to 25 October): 223 impressions, 11 clicks, A$16.28. Since the broad-match keywords were added on 21 October, most paid clicks have been competitor or off-topic searches at about A$1.50 each ("anki flashcards", "app astra ai", "dola", "turbostudy", "notes from youtube video"); "astra ai" alone had 7 impressions. Google Ads also shows a "Complete advertiser verification" prompt.
+
 ### 2026-10-23 (pulled through Chrome, last 7 days; data runs to 21 October)
 
 **Totals (7 days):** 1 click, 54 impressions, CTR 1.9%, average position 21. "grasp study" 10 impressions; "how to make a study schedule" 2; single impressions for "spanish cornell notes", "cue column", "how to make a study timetable", "how to create study timetable", "grasp of the subject" and "how to choose your marking method". **"spanish cornell notes" and "cue column" are the first impressions from searches that are neither the brand nor a post's own title**, so the Cornell posts are starting to be matched to the wider topic. Google Ads (18 to 22 October): 70 impressions, 3 clicks, A$4.44, still "Eligible (Limited)". The two recording posts went live today once Railway builds returned; indexing requested for both, and for `/study-planner` (bare header).
