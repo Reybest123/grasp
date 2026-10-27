@@ -309,6 +309,42 @@ links]. I'm Liam, part of the small team behind Grasp, a study site from
 Brisbane." Only when there is a real page; most convenors have none, and then
 the opening stays as it is.
 
+### 6. University study-skills page or app roundup (2026-10-27)
+
+For uni library guides, academic-skills pages and "best study apps" lists. Lead
+with recording, since that is what these pages list; most only have a contact
+form, so paste it there.
+
+> **Subject:** A lecture recording app for your [page name] page
+>
+> Hi [name, or "there"],
+>
+> I came across your [page name] ([link]) and thought something we have made
+> might suit it, alongside [two tools it already lists].
+>
+> I'm Liam, part of the small team behind Grasp, a study app from Brisbane.
+> Grasp records a lecture and writes the notes while it is still going, then
+> quizzes students on their own notes. We do not keep the audio.
+>
+> https://graspstudy.com
+>
+> We have also written two free guides your students might find useful:
+>
+> - How to record lectures, and whether you are allowed to:
+>   https://graspstudy.com/blog/how-to-record-lectures
+> - Best apps for recording lectures and taking notes (a fair comparison,
+>   including free options):
+>   https://graspstudy.com/blog/best-apps-for-recording-lectures
+>
+> If either the app or the guides would suit the page, you are welcome to
+> link to them.
+>
+> Thanks,
+> Liam
+
+Grasp is paid after a free week, so unlike the school emails this one does
+not say "free" about the app itself; only the guides are free.
+
 ## Listing kit
 
 Copy for any directory, profile or form that asks for it.
