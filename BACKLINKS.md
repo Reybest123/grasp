@@ -92,6 +92,53 @@ from me again, just reply and say so" line was removed on 2026-10-13, at the
 user's request; a reply address is the only opt-out left, so honour any
 "please stop" at once. Do not buy email lists, and stop at one follow-up.
 
+### Where schools stand (2026-10-27)
+
+34 contacts emailed from 5 to 18 October, follow-ups all sent, nothing newer
+than 21 October in the inbox. Yeses: Brisbane State High (Nicole, willing to
+add it), Holland Park (Alison, interested), Craigslea (Fran, looking), San
+Damiano (passed to their teacher-librarian), North Queensland network (shared
+to NQ-TL). QSLA's committee was to discuss it on 24 October; no answer yet.
+No link is confirmed live. Brisbane School of Distance Education said state
+schools cannot point students at anything with an account, which is why the
+planner's header is bare. Schools are close to done: wait for those answers,
+then check the live pages and Search Console's Links report in November.
+
+## Beyond schools (2026-10-27)
+
+Next targets, in order. None of these is bound by the Department's account
+rule, and most of them link out as their job.
+
+1. **University study-skills and library pages.** Uni learning advisers keep
+   lists of study and note-taking tools, and recording lectures is a uni
+   need. Lead with the recording guides
+   (`/blog/how-to-record-lectures`, `/blog/best-apps-for-recording-lectures`)
+   as well as the planner. Search: `"note-taking" "apps" site:edu.au library`,
+   `"recording lectures" site:edu.au`.
+2. **Uni student groups**: study, med, engineering and law societies, and
+   residential colleges. Ask for a spot in their newsletter or member
+   resources page. These also lead into the O-Week demos in February.
+3. **Tutoring businesses** (Brisbane and online). Their blogs and resource
+   pages link to guides that save them writing one. Offer the Cornell
+   examples and the planner.
+4. **Homeschool networks and blogs** (HEN Queensland, Home Education
+   Association, homeschool Facebook groups and blogs). Families choose their
+   own tools, so there is no department sign-off, and a free printable
+   planner is exactly what they share.
+5. **Public libraries.** Brisbane City Council and regional council libraries
+   run study help and HSC/QCE pages. Same pitch as a school library.
+6. **"Best study apps" roundup posts.** Search `"best apps for recording
+   lectures"`, `"best note taking apps for students" 2026`; email the author
+   asking to be considered, with the listing kit below. Weaker links, but they
+   rank for the exact searches.
+7. **The directories** under "Directories" below, which have not been done
+   yet. An afternoon's work.
+
+Use the same rules: a named person, one email, one follow-up after 3 days.
+Templates 1 and 2 fit with the opening changed to the kind of page; for uni
+pages and roundups, mention lecture recording, since that is what they are
+listing.
+
 ## Email templates
 
 Replace everything in [square brackets]. One email per school, written to a

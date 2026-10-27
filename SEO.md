@@ -16,6 +16,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-27 (pulled through Chrome; Search Console unchanged since 2026-10-26, data still runs to 24 October)
+
+Google Ads, 20 to 26 October: 349 impressions, 20 clicks, A$29.75 (A$1.49 a click), still mostly other apps' names ("anki flashcards", "app astra ai", "dola"). `/admin/analytics` (last 30 days): the lecture-recorder campaign brought 34 visitors and 1 signup, who took the free trial and has not bought. The study planner is the second most viewed page (215 views), and google.com is the second biggest referrer (67) after Instagram (84).
+
 ### 2026-10-26 (pulled through Chrome, last 28 days; data runs to 24 October)
 
 **Totals:** 32 clicks, 264 impressions, CTR 12.1%, average position 14.4. "grasp study" 9 clicks from 59 (position 6.7); "how to take cornell notes" 1 from 1; "grasp.study" 6, "study grasp" 4, "grasplet login" 3, "how to make a study schedule" 3 (position 82), "grasp ai login" 2, **"how to record a lecture" 2 (position 45), the first impressions for the recording posts**, "how to choose your marking method" 2, "how to make a study timetable" 2 (position 77). Google Ads (19 to 25 October): 223 impressions, 11 clicks, A$16.28. Since the broad-match keywords were added on 21 October, most paid clicks have been competitor or off-topic searches at about A$1.50 each ("anki flashcards", "app astra ai", "dola", "turbostudy", "notes from youtube video"); "astra ai" alone had 7 impressions. Google Ads also shows a "Complete advertiser verification" prompt.
