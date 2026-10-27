@@ -248,6 +248,10 @@ export async function createCheckoutSession({
       currency: charged,
       line_items: [{ price: priceId(plan), quantity: 1 }],
       payment_method_collection: "always",
+      // Creator codes (CREATORS.md): a Stripe promotion code per creator, made in
+      // the dashboard with one redemption each. The card is still taken, so a
+      // plan a code paid for renews at full price once the code runs out.
+      allow_promotion_codes: true,
       subscription_data: {
         // `replaces` rides on the new subscription itself, so whichever
         // Checkout's cleanup runs first still knows which plan it replaced.
@@ -283,7 +287,7 @@ export async function createCheckoutSession({
 function checkoutDisclosure(plan: BilledPlan, currency: Currency, switching = false): string {
   const price = chargeLabel(plan, currency);
   const terms = `${SITE_URL.replace(/^https:\/\//, "")}/legal/terms`;
-  const charge = `${switching ? "This replaces your current plan, which ends as soon as you pay, with no refund for its unused days. " : ""}${price} now, then ${price} every week until you cancel. Cancel any time on Grasp's Plans page.`;
+  const charge = `${switching ? "This replaces your current plan, which ends as soon as you pay, with no refund for its unused days. " : ""}${price} now, then ${price} every week until you cancel, less any promotion code shown above. Cancel any time on Grasp's Plans page.`;
   return `${charge} By subscribing you agree to Grasp's Terms of Service (${terms}) and ask for your plan to start straight away.`;
 }
 

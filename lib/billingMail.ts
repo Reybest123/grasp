@@ -99,6 +99,14 @@ export async function sendSubscribedMail(subscription: Stripe.Subscription, plan
       "To avoid being charged, cancel on the Plans page before the trial ends. Your trial keeps working until then.",
     ]);
   }
+  if (subscription.status === "active" && subscription.discounts.length > 0) {
+    // A promotion code: the first week may have cost nothing, so say what
+    // happens when the code runs out rather than what was charged.
+    return send(userId, `You are on ${label}`, [
+      `Your promotion code has been applied to ${label}.`,
+      `Once it runs out, your plan renews every week at ${price} until you cancel. You can cancel at any time on the Plans page, and your plan keeps working until the end of the week it has covered.`,
+    ]);
+  }
   if (subscription.status === "active") {
     return send(userId, `You are on ${label}`, [
       `You have been charged ${price} for your first week of ${label}.`,
