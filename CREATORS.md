@@ -33,10 +33,9 @@ for later, once a free deal has shown which kind of creator brings signups.
 **How to give it: a promotion code** (2026-10-27). Checkout accepts Stripe
 promotion codes (`allow_promotion_codes` in `createCheckoutSession`). The
 creator signs up, takes the free trial or goes straight to Max, enters their
-code on Stripe's page, and pays nothing for 3 months. The card is still taken,
-so the plan renews at full price afterwards unless they cancel; tell them that
-up front. The plan-started email says the code was applied rather than that
-they were charged.
+code on Stripe's page, and pays nothing for 3 months. A code that covers the
+whole charge asks for no card, and the plan simply ends when the 3 months are
+up; they can choose a plan then to keep going. The plan-started email says so.
 
 - **The coupon:** "Creator: free Max for 3 months", 100% off, repeating 3
   months. Made in the sandbox on 2026-10-27 with the code `TESTCREATOR`; the

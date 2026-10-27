@@ -247,10 +247,11 @@ export async function createCheckoutSession({
       // all, since the subscription already has one.
       currency: charged,
       line_items: [{ price: priceId(plan), quantity: 1 }],
-      payment_method_collection: "always",
       // Creator codes (CREATORS.md): a Stripe promotion code per creator, made in
-      // the dashboard with one redemption each. The card is still taken, so a
-      // plan a code paid for renews at full price once the code runs out.
+      // the dashboard with one redemption each. A code that covers the whole
+      // charge asks for no card, and that plan ends when the code does
+      // (`endWithCode`); any other purchase still takes a card.
+      payment_method_collection: "if_required",
       allow_promotion_codes: true,
       subscription_data: {
         // `replaces` rides on the new subscription itself, so whichever
@@ -366,8 +367,23 @@ export async function settleSubscriptions(session: Stripe.Checkout.Session): Pro
   // Always, even with nothing to cancel: a sync of a subscription another call
   // has just cancelled can land after this one's, and this puts the account
   // back on the one that is live.
-  await syncSubscription(keep);
+  await syncSubscription(await endWithCode(keep));
   return keep.id;
+}
+
+/**
+ * A plan a promotion code paid for, bought without a card: set it to end when
+ * the code does, so it stops rather than trying to charge nothing and being
+ * declined. Safe to repeat: one already set to end is returned as it is.
+ */
+async function endWithCode(sub: Stripe.Subscription): Promise<Stripe.Subscription> {
+  if (sub.default_payment_method || sub.cancel_at || sub.discounts.length === 0) return sub;
+  const full = await stripe().subscriptions.retrieve(sub.id, { expand: ["discounts"] });
+  const ends = full.discounts
+    .map((d) => (typeof d === "string" ? null : d.end))
+    .filter((end): end is number => typeof end === "number");
+  if (!ends.length) return sub;
+  return stripe().subscriptions.update(sub.id, { cancel_at: Math.max(...ends), proration_behavior: "none" });
 }
 
 /** Refunds a subscription's latest paid invoice, once. */

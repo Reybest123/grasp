@@ -104,7 +104,9 @@ export async function sendSubscribedMail(subscription: Stripe.Subscription, plan
     // happens when the code runs out rather than what was charged.
     return send(userId, `You are on ${label}`, [
       `Your promotion code has been applied to ${label}.`,
-      `Once it runs out, your plan renews every week at ${price} until you cancel. You can cancel at any time on the Plans page, and your plan keeps working until the end of the week it has covered.`,
+      subscription.default_payment_method
+        ? `Once it runs out, your plan renews every week at ${price} until you cancel. You can cancel at any time on the Plans page, and your plan keeps working until the end of the week it has covered.`
+        : "Nothing will be charged. Your plan stops when the code runs out, and you can choose a plan then to keep going. Your work stays in your account either way.",
     ]);
   }
   if (subscription.status === "active") {
