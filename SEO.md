@@ -16,6 +16,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-28 (pulled through Chrome, last 28 days)
+
+**Totals:** 31 clicks, 296 impressions, CTR 10.5%, average position 17.8. "grasp study" 9 clicks from 61. **The recording posts are now matched to their own topic:** "how to record lectures" 4, "record lectures" 4, "how to record a lecture" 3 impressions (no clicks yet). "how to make a study schedule" 3. Links report: still no external links (Brisbane State High's library page checked, no link yet). Google Ads, 21 to 27 October: 373 impressions, 23 clicks, A$34.22 (A$1.49 a click). The 26 October negatives have not stopped competitor spend: paid clicks on 27 October went to "gizmo", "gizmo ai", "educato", "homework doer", "anki flashcards", "app astra ai" (anki and astra were already negatives, so these clicks are likely from before they took effect). Only "help study" and "note taking help" were on topic.
+
 ### 2026-10-27 (pulled through Chrome; Search Console unchanged since 2026-10-26, data still runs to 24 October)
 
 Google Ads, 20 to 26 October: 349 impressions, 20 clicks, A$29.75 (A$1.49 a click), still mostly other apps' names ("anki flashcards", "app astra ai", "dola"). `/admin/analytics` (last 30 days): the lecture-recorder campaign brought 34 visitors and 1 signup, who took the free trial and has not bought. The study planner is the second most viewed page (215 views), and google.com is the second biggest referrer (67) after Instagram (84).
