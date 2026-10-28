@@ -40,7 +40,9 @@ up; they can choose a plan then to keep going. The plan-started email says so.
 - **The coupon:** "Creator: free Max for 3 months", 100% off, repeating 3
   months. Made in the sandbox on 2026-10-27 with the code `TESTCREATOR`; the
   same coupon was made in the live account on 2026-10-27 with one test code,
-  `GRASPTEST1`, limited to 1 redemption. Creator codes go on that live coupon.
+  `GRASPTEST1`, limited to 1 redemption (used on 2026-10-27; Stripe now shows it
+  1/1 and Inactive). A second, `GRASPTEST2`, also 1 redemption, was added on
+  2026-10-29. Creator codes go on that live coupon.
 - **One code per creator**, limited to 1 redemption, named after them (for
   example `MAYA3`). Add it as another code on the same coupon. A code also
   tracks signups from TikTok's in-app browser, where tagged links often lose
