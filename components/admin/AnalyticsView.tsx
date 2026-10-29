@@ -230,13 +230,14 @@ function Report({ data }: { data: Analytics }) {
                 <th className="pb-2 font-medium">Plan</th>
                 <th className="pb-2 text-right font-medium">On trial</th>
                 <th className="pb-2 text-right font-medium">Paying</th>
+                <th className="pb-2 text-right font-medium">Free with a code</th>
                 <th className="pb-2 text-right font-medium">Card failing</th>
               </tr>
             </thead>
             <tbody>
               {subscribers.byPlan.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="border-t border-slate-100 py-3 text-slate-500">
+                  <td colSpan={5} className="border-t border-slate-100 py-3 text-slate-500">
                     Nobody is subscribed yet.
                   </td>
                 </tr>
@@ -246,6 +247,7 @@ function Report({ data }: { data: Analytics }) {
                     <td className="py-2 font-semibold text-ink">{PLAN_LABEL[row.plan]}</td>
                     <td className="py-2 text-right tabular-nums text-slate-700">{row.trialing}</td>
                     <td className="py-2 text-right tabular-nums text-slate-700">{row.active}</td>
+                    <td className="py-2 text-right tabular-nums text-slate-700">{row.freeCode}</td>
                     <td className="py-2 text-right tabular-nums text-slate-700">{row.pastDue}</td>
                   </tr>
                 ))
@@ -270,7 +272,8 @@ function Report({ data }: { data: Analytics }) {
             ))
           )}
           <p className="mt-2 text-xs text-slate-500">
-            At list price, before Stripe&apos;s fees. Stripe&apos;s dashboard has the exact figure.
+            At list price less any promotion code, before Stripe&apos;s fees. Plans a code pays for in
+            full are left out. Stripe&apos;s dashboard has the exact figure.
           </p>
         </Card>
       </div>

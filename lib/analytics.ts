@@ -65,7 +65,7 @@ export type Analytics = {
     endedUnpaid: number;
   };
   subscribers: {
-    byPlan: { plan: Plan; trialing: number; active: number; pastDue: number }[];
+    byPlan: { plan: Plan; trialing: number; active: number; freeCode: number; pastDue: number }[];
     ended: number;
     weeklyRevenue: { currency: Currency; amount: number }[];
   };
@@ -117,6 +117,7 @@ function median(values: number[]): number {
 function stageOf(row: Record<string, any>): string {
   const status = row.subscription_status as string | null;
   if (status === "trialing") return row.plan_cancelled_at ? "Trial, cancelling" : "On trial";
+  if (status === "active" && row.free_code) return row.plan_cancelled_at ? "Free with a code, cancelling" : "Free with a code";
   if (status === "active") return row.plan_cancelled_at ? "Paying, cancelling" : "Paying";
   if (status === "past_due" || status === "unpaid") return "Payment failing";
   if (status === "canceled") return "Plan ended";
@@ -195,7 +196,8 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
                count(u.free_trial_started_at)::int as trials,
                count(*) filter (where u.stripe_subscription_id is not null
                  and u.subscription_status is distinct from 'trialing')::int as bought,
-               count(*) filter (where u.subscription_status = 'active')::int as paying_now
+               count(*) filter (where u.subscription_status = 'active'
+                 and (u.plan_discount->>'percentOff') is distinct from '100')::int as paying_now
         from credited c
         join users u on u.id = c.user_id -- scope-ok: analytics reads every account, admin only
         where c.label is not null
@@ -220,7 +222,8 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
           select 1 from events e where e.user_id = u.id and e.name = 'checkout_started'))::int as checkout_started,
         count(*) filter (where u.stripe_subscription_id is not null
           and u.subscription_status is distinct from 'trialing')::int as bought,
-        count(*) filter (where u.subscription_status = 'active')::int as paying_now
+        count(*) filter (where u.subscription_status = 'active'
+                 and (u.plan_discount->>'percentOff') is distinct from '100')::int as paying_now
       from users u
       where u.created_at > ${since} -- scope-ok: analytics reads every account, admin only
     `,
@@ -239,10 +242,13 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       where u.free_trial_started_at > ${since} -- scope-ok: analytics reads every account, admin only
     `,
     sql`
-      select plan, coalesce(currency, 'usd') as currency, subscription_status as status, count(*)::int as n
+      select plan, coalesce(currency, 'usd') as currency, subscription_status as status,
+             coalesce((plan_discount->>'percentOff')::numeric, 0) as percent_off,
+             coalesce((plan_discount->>'amountOff')::numeric, 0) as amount_off,
+             count(*)::int as n
       from users
       where stripe_subscription_id is not null -- scope-ok: analytics reads every account, admin only
-      group by 1, 2, 3
+      group by 1, 2, 3, 4, 5
     `,
     // Every account with a plan, and what it has spent of each weekly
     // allowance over the same rolling 7 days lib/usage.ts counts. `live` is an
@@ -267,6 +273,7 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
     sql`
       select u.email, u.created_at, u.email_verified_at, u.onboarding, u.plan,
              u.subscription_status, u.plan_cancelled_at,
+             (u.plan_discount->>'percentOff') = '100' as free_code,
              exists (select 1 from events e where e.user_id = u.id and e.name = 'checkout_started') as checkout_started
       from users u
       where u.created_at > ${since} -- scope-ok: analytics reads every account, admin only
@@ -286,7 +293,10 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
   const f = funnelRows[0] ?? {};
   const t = trialRows[0] ?? {};
 
-  const byPlan = new Map<BilledPlan, { plan: BilledPlan; trialing: number; active: number; pastDue: number }>();
+  const byPlan = new Map<
+    BilledPlan,
+    { plan: BilledPlan; trialing: number; active: number; freeCode: number; pastDue: number }
+  >();
   const revenue = new Map<Currency, number>();
   let ended = 0;
   for (const row of planRows) {
@@ -295,13 +305,19 @@ export async function loadAnalytics(range: RangeKey): Promise<Analytics> {
       continue;
     }
     if (!isBilledPlan(row.plan)) continue;
-    const entry = byPlan.get(row.plan) ?? { plan: row.plan, trialing: 0, active: 0, pastDue: 0 };
+    const entry = byPlan.get(row.plan) ?? { plan: row.plan, trialing: 0, active: 0, freeCode: 0, pastDue: 0 };
+    // A plan a 100% promotion code pays for earns nothing, so it is counted
+    // apart from paying students and left out of revenue.
+    const freeCode = num(row.percent_off) >= 100;
     if (row.status === "trialing") entry.trialing += num(row.n);
+    else if (row.status === "active" && freeCode) entry.freeCode += num(row.n);
     else if (row.status === "active") entry.active += num(row.n);
     else if (row.status === "past_due" || row.status === "unpaid") entry.pastDue += num(row.n);
     byPlan.set(row.plan, entry);
-    if (row.status === "active" && isCurrency(row.currency)) {
-      const price = PLAN_PRICE_BY_CURRENCY[row.currency][row.plan];
+    if (row.status === "active" && !freeCode && isCurrency(row.currency)) {
+      // What the student is billed, a partial code taken off the list price.
+      const list = PLAN_PRICE_BY_CURRENCY[row.currency][row.plan];
+      const price = Math.max(0, list * (1 - num(row.percent_off) / 100) - num(row.amount_off));
       revenue.set(row.currency, (revenue.get(row.currency) ?? 0) + price * num(row.n));
     }
   }
