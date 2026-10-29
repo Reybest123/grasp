@@ -107,6 +107,8 @@ function priceLine({
   const withCode = free
     ? "Free with your promotion code"
     : `${formatMoney(cost, currency)} a ${BILLING_PERIOD} with your promotion code (${offLabel})`;
+  // Cancelled: the note below says until when.
+  if (cancelled) return `${withCode}.`;
 
   // A plan set to end on its own (a code that needed no card) stops there.
   if (endsOn) return `${withCode} until ${endsOn}. Your plan ends then, and nothing is charged after that.`;
@@ -200,11 +202,21 @@ function CurrentPlan({
     if (failed) setError(failed);
   }
 
-  const accessUntil = trialEnds
-    ? `until ${trialEnds}`
-    : renewsOn
-      ? `until ${renewsOn}`
-      : "until the end of your current billing period";
+  // A free code that outlasts this week is kept to its end when cancelling
+  // (cancelAtPeriodEnd in lib/billing.ts); once cancelled, Stripe's end date says so.
+  const d = status.discount;
+  const freeUntil =
+    d?.percentOff === 100 && d.endsAt && (!status.currentPeriodEnd || d.endsAt > status.currentPeriodEnd)
+      ? d.endsAt
+      : null;
+  const keepUntil = cancelledOn ? status.planEndsAt : (status.planEndsAt ?? freeUntil);
+  const accessUntil = keepUntil
+    ? `until ${new Date(keepUntil).toLocaleDateString(undefined, LONG_DATE)}`
+    : trialEnds
+      ? `until ${trialEnds}`
+      : renewsOn
+        ? `until ${renewsOn}`
+        : "until the end of your current billing period";
 
   if (status.expired) {
     return (

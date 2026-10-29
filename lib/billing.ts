@@ -414,6 +414,22 @@ async function endWithCode(sub: Stripe.Subscription): Promise<Stripe.Subscriptio
   return stripe().subscriptions.update(sub.id, { cancel_at: Math.max(...ends), proration_behavior: "none" });
 }
 
+/**
+ * When a 100%-off code on the subscription ends, if that is after the current
+ * week; null otherwise. Needs `discounts.source.coupon` expanded.
+ */
+function freeCodeEnd(sub: Stripe.Subscription): number | null {
+  const periodEnd = sub.items.data[0]?.current_period_end ?? 0;
+  const ends = sub.discounts
+    .map((d) => {
+      if (typeof d === "string" || !d.end) return null;
+      const coupon = d.source?.coupon;
+      return coupon && typeof coupon !== "string" && coupon.percent_off === 100 ? d.end : null;
+    })
+    .filter((end): end is number => end !== null && end > periodEnd);
+  return ends.length ? Math.max(...ends) : null;
+}
+
 /** Refunds a subscription's latest paid invoice, once. */
 async function refundLatest(sub: Stripe.Subscription): Promise<void> {
   const invoiceId = typeof sub.latest_invoice === "string" ? sub.latest_invoice : sub.latest_invoice?.id;
@@ -456,12 +472,37 @@ export async function cancelAtPeriodEnd(
   }
 
   try {
-    const updated = await stripe().subscriptions.update(subscriptionId, {
-      cancel_at_period_end: cancel,
+    const current = await stripe().subscriptions.retrieve(subscriptionId, {
+      expand: ["discounts.source.coupon"],
     });
-    // Resuming clears Stripe's end date, so a cardless code plan is set to end
-    // with its code again rather than renewing into a charge with no card.
-    await syncSubscription(cancel ? updated : await endWithCode(updated));
+    let updated: Stripe.Subscription;
+    if (cancel) {
+      // A free code that outlasts this week is kept to its end: the plan stops
+      // when the code does, rather than throwing away the free weeks left.
+      // `cancelled` in the metadata is what tells this apart from a cardless
+      // code plan's own end date (writeUser).
+      const freeUntil = freeCodeEnd(current);
+      updated = freeUntil
+        ? await stripe().subscriptions.update(subscriptionId, {
+            cancel_at: freeUntil,
+            proration_behavior: "none",
+            metadata: { cancelled: "1" },
+          })
+        : await stripe().subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    } else {
+      // Stripe takes one way of clearing an end at a time; an empty string
+      // unsets `cancel_at` and removes the metadata key.
+      updated = await stripe().subscriptions.update(
+        subscriptionId,
+        current.cancel_at_period_end
+          ? { cancel_at_period_end: false, metadata: { cancelled: "" } }
+          : { cancel_at: "", metadata: { cancelled: "" } }
+      );
+      // That clears a cardless code plan's end date too, so it is set to end
+      // with its code again rather than renewing into a charge with no card.
+      updated = await endWithCode(updated);
+    }
+    await syncSubscription(updated);
     return { ok: true };
   } catch (err) {
     console.error("[grasp] Stripe cancel/resume failed:", err);
@@ -674,7 +715,9 @@ async function writeUser(
   // cancel date" can be expressed with `coalesce(plan_cancelled_at, now())` —
   // `now()` is SQL, not a bindable value, so it can only appear written
   // directly into one branch or the other.
-  if (subscription.cancel_at_period_end) {
+  // A student's cancel is either Stripe's period-end cancel or, for a free code
+  // kept to its end, an end date marked `cancelled` (cancelAtPeriodEnd).
+  if (subscription.cancel_at_period_end || subscription.metadata?.cancelled === "1") {
     await sql`
       update users
       set plan = coalesce(${plan ?? null}, plan),
