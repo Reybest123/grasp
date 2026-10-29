@@ -90,13 +90,37 @@ export type BillingRow = {
   trialEndsAt: string | null;
   /** what the account is billed in; null until it first reaches Checkout */
   currency: Currency | null;
+  /** a promotion code on the subscription, or null with none */
+  discount: PlanDiscount | null;
+  /** ISO, when the subscription is set to end on its own (a cardless code plan), or null */
+  planEndsAt: string | null;
 };
+
+/** A promotion code's terms, as the Plans page states them. */
+export type PlanDiscount = {
+  /** 1 to 100, or null for a fixed amount off */
+  percentOff: number | null;
+  /** off each bill, in the account's currency, major units; null for a percentage */
+  amountOff: number | null;
+  /** ISO, when the code stops applying; null if it never does */
+  endsAt: string | null;
+};
+
+function asDiscount(value: unknown): PlanDiscount | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  const percentOff = typeof v.percentOff === "number" ? v.percentOff : null;
+  const amountOff = typeof v.amountOff === "number" ? v.amountOff : null;
+  if (percentOff === null && amountOff === null) return null;
+  return { percentOff, amountOff, endsAt: typeof v.endsAt === "string" ? v.endsAt : null };
+}
 
 async function readBillingRow(userId: string) {
   return query(async () => {
     const rows = (await sql`
       select plan, stripe_customer_id, stripe_subscription_id, subscription_status,
-             current_period_end, plan_cancelled_at, trial_ends_at, currency
+             current_period_end, plan_cancelled_at, trial_ends_at, currency,
+             plan_discount, plan_ends_at
       from users where id = ${userId}
     `) as {
       plan: string | null;
@@ -107,6 +131,8 @@ async function readBillingRow(userId: string) {
       plan_cancelled_at: string | Date | null;
       trial_ends_at: string | Date | null;
       currency: string | null;
+      plan_discount: unknown;
+      plan_ends_at: string | Date | null;
     }[];
     const row = rows[0];
     if (!row) return null;
@@ -119,6 +145,8 @@ async function readBillingRow(userId: string) {
       cancelledAt: row.plan_cancelled_at ? new Date(row.plan_cancelled_at).toISOString() : null,
       trialEndsAt: row.trial_ends_at ? new Date(row.trial_ends_at).toISOString() : null,
       currency: isCurrency(row.currency) ? row.currency : null,
+      discount: asDiscount(row.plan_discount),
+      planEndsAt: row.plan_ends_at ? new Date(row.plan_ends_at).toISOString() : null,
     };
     return out;
   });
@@ -431,7 +459,9 @@ export async function cancelAtPeriodEnd(
     const updated = await stripe().subscriptions.update(subscriptionId, {
       cancel_at_period_end: cancel,
     });
-    await syncSubscription(updated);
+    // Resuming clears Stripe's end date, so a cardless code plan is set to end
+    // with its code again rather than renewing into a charge with no card.
+    await syncSubscription(cancel ? updated : await endWithCode(updated));
     return { ok: true };
   } catch (err) {
     console.error("[grasp] Stripe cancel/resume failed:", err);
@@ -625,6 +655,16 @@ async function writeUser(
   const periodEnd = periodEndOverride ?? subscription.items.data[0]?.current_period_end;
   const trialEndsAt = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
   const currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
+  // Stripe sets `cancel_at` to the period's end when cancelled that way too,
+  // which plan_cancelled_at already says; this is only an end set on its own.
+  const planEndsAt =
+    subscription.cancel_at && !subscription.cancel_at_period_end
+      ? new Date(subscription.cancel_at * 1000).toISOString()
+      : null;
+  const discount = await discountOf(subscription);
+  // undefined: Stripe could not be read, so the stored terms are kept.
+  const keepDiscount = discount === undefined;
+  const discountJson = discount ? JSON.stringify(discount) : null;
 
   // An ended or declined subscription never overwrites a different one: a late
   // or retried event for the old subscription of a student who has since paid
@@ -641,6 +681,8 @@ async function writeUser(
           stripe_subscription_id = ${subscription.id},
           subscription_status = ${subscription.status},
           current_period_end = ${currentPeriodEnd},
+          plan_ends_at = ${planEndsAt},
+          plan_discount = case when ${keepDiscount} then plan_discount else ${discountJson}::jsonb end,
           plan_cancelled_at = coalesce(plan_cancelled_at, now()),
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
@@ -655,6 +697,8 @@ async function writeUser(
           stripe_subscription_id = ${subscription.id},
           subscription_status = ${subscription.status},
           current_period_end = ${currentPeriodEnd},
+          plan_ends_at = ${planEndsAt},
+          plan_discount = case when ${keepDiscount} then plan_discount else ${discountJson}::jsonb end,
           plan_cancelled_at = null,
           trial_ends_at = coalesce(${trialEndsAt}, trial_ends_at)
       where id = ${userId}
@@ -662,6 +706,38 @@ async function writeUser(
              or stripe_subscription_id is null
              or stripe_subscription_id = ${subscription.id})
     `;
+  }
+}
+
+/**
+ * The promotion code on a subscription, for the Plans page: null with none,
+ * undefined if Stripe could not be read (the caller keeps what it had, since a
+ * sync must not fail over wording).
+ */
+async function discountOf(subscription: Stripe.Subscription): Promise<PlanDiscount | null | undefined> {
+  if (!subscription.discounts?.length) return null;
+  try {
+    const full = await stripe().subscriptions.retrieve(subscription.id, {
+      expand: ["discounts.source.coupon"],
+    });
+    const cur = full.currency;
+    for (const d of full.discounts) {
+      if (typeof d === "string") continue;
+      const coupon = d.source?.coupon;
+      if (!coupon || typeof coupon === "string") continue;
+      const endsAt = d.end ? new Date(d.end * 1000).toISOString() : null;
+      if (coupon.percent_off) return { percentOff: coupon.percent_off, amountOff: null, endsAt };
+      const minor =
+        coupon.currency_options?.[cur]?.amount_off ?? (coupon.currency === cur ? coupon.amount_off : null);
+      if (minor) {
+        // JPY is Stripe's one zero-decimal currency among Grasp's.
+        return { percentOff: null, amountOff: cur === "jpy" ? minor : minor / 100, endsAt };
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error("[grasp] could not read the subscription's promotion code:", err);
+    return undefined;
   }
 }
 

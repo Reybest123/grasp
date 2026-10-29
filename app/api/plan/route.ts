@@ -19,6 +19,8 @@ async function status(userId: string) {
     cancelledAt: found.data?.cancelledAt ?? null,
     subscriptionStatus: found.data?.subscriptionStatus ?? null,
     currentPeriodEnd: found.data?.currentPeriodEnd ?? null,
+    discount: found.data?.discount ?? null,
+    planEndsAt: found.data?.planEndsAt ?? null,
     expired: needsRenewal(found.data?.subscriptionStatus ?? null),
   };
 }

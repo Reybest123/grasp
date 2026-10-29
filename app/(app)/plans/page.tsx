@@ -11,7 +11,8 @@ import { useSearchParams } from "next/navigation";
 import { useProfile } from "@/lib/profileStore";
 import { useNow } from "@/lib/subjectsStore";
 import { usePlanStatus } from "@/lib/usePlanStatus";
-import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, planName, planPrice, trialDaysLeft, type BilledPlan } from "@/lib/plan";
+import { BILLING_PERIOD, DEFAULT_PLAN, PLANS, PLAN_LABEL, PLAN_PRICE_BY_CURRENCY, planName, planPrice, trialDaysLeft, type BilledPlan } from "@/lib/plan";
+import { formatMoney, type Currency } from "@/lib/currency";
 import { PlanCard } from "@/components/PlanCard";
 import { useCurrency } from "@/lib/currencyStore";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -66,6 +67,58 @@ function CancelScroll() {
   }, [wanted]);
 
   return null;
+}
+
+/**
+ * What a paid plan costs and when it renews or ends, with any promotion code on
+ * it: "Free with your promotion code until 29 January. Your plan ends then...",
+ * or "A$11.99 a week with your promotion code (20% off) until ..., then ...".
+ */
+function priceLine({
+  plan,
+  currency,
+  status,
+  now,
+}: {
+  plan: BilledPlan;
+  currency: Currency;
+  status: ReturnType<typeof usePlanStatus>;
+  now: Date | null;
+}): string {
+  const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, LONG_DATE);
+  const cancelled = status.cancelledAt !== null;
+  const renewsOn = status.currentPeriodEnd && !cancelled ? day(status.currentPeriodEnd) : null;
+  const endsOn = status.planEndsAt && !cancelled ? day(status.planEndsAt) : null;
+  const list = PLAN_PRICE_BY_CURRENCY[currency][plan];
+  const full = `${formatMoney(list, currency)} a ${BILLING_PERIOD}`;
+
+  const d = status.discount;
+  const live = d && (!d.endsAt || !now || new Date(d.endsAt) > now) ? d : null;
+  if (!live) {
+    if (endsOn) return `${full}. Your plan ends on ${endsOn}.`;
+    return `${full}${renewsOn ? `, renews ${renewsOn}` : ""}.`;
+  }
+
+  const off = live.percentOff ?? 0;
+  const cost = live.percentOff !== null ? list * (1 - off / 100) : Math.max(0, list - (live.amountOff ?? 0));
+  const offLabel = live.percentOff !== null ? `${off}% off` : `${formatMoney(live.amountOff ?? 0, currency)} off`;
+  const free = cost <= 0;
+  const codeEnds = live.endsAt ? day(live.endsAt) : null;
+  const withCode = free
+    ? "Free with your promotion code"
+    : `${formatMoney(cost, currency)} a ${BILLING_PERIOD} with your promotion code (${offLabel})`;
+
+  // A plan set to end on its own (a code that needed no card) stops there.
+  if (endsOn) return `${withCode} until ${endsOn}. Your plan ends then, and nothing is charged after that.`;
+  if (!codeEnds) return `${withCode}${renewsOn ? `, renews ${renewsOn}` : ""}.`;
+  // The next bill is still discounted when the code outlasts it.
+  const nextAt =
+    status.currentPeriodEnd && live.endsAt && new Date(status.currentPeriodEnd) < new Date(live.endsAt)
+      ? free
+        ? "free"
+        : formatMoney(cost, currency)
+      : formatMoney(list, currency);
+  return `${withCode} until ${codeEnds}, then ${full}.${renewsOn ? ` Renews ${renewsOn}${nextAt === "free" ? ", free" : ` at ${nextAt}`}.` : ""}`;
 }
 
 export default function PlansPage() {
@@ -209,10 +262,17 @@ function CurrentPlan({
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="max-w-xl">
-            <p className="text-lg font-bold text-ink">{planName(plan, profile.trialEndsAt)}</p>
+            <p className="flex items-center gap-2 text-lg font-bold text-ink">
+              {planName(plan, profile.trialEndsAt)}
+              {status.discount && (!status.discount.endsAt || !now || new Date(status.discount.endsAt) > now) && (
+                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
+                  Promotion code
+                </span>
+              )}
+            </p>
             <p className="mt-1 text-sm text-slate-500">
               {!trialEnds
-                ? `${planPrice(plan, currency)} a ${BILLING_PERIOD}${renewsOn && !cancelledOn ? `, renews ${renewsOn}` : ""}.`
+                ? priceLine({ plan, currency, status, now })
                 : trialLeft === 0
                   ? `Your free trial ended on ${trialEnds}.`
                   : `Your free trial ends on ${trialEnds}${

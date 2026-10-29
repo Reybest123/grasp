@@ -95,6 +95,14 @@ alter table users add column if not exists stripe_subscription_id text;
 alter table users add column if not exists subscription_status text;
 alter table users add column if not exists current_period_end timestamptz;
 
+-- A promotion code on the subscription, as {percentOff, amountOff, endsAt}
+-- (amountOff in the account's currency, major units), or null with none; and
+-- when the subscription is set to end on its own (Stripe's `cancel_at`, which a
+-- cardless code plan gets), or null. Mirrored by syncSubscription so the Plans
+-- page can say "free until" and "ends on". Not read by the session lookup.
+alter table users add column if not exists plan_discount jsonb;
+alter table users add column if not exists plan_ends_at timestamptz;
+
 -- Which currency the account is billed in (usd, aud, eur, gbp, nzd, cad, sgd, inr or jpy; lib/currency.ts).
 -- Written once, when the Stripe Customer is created, and read in preference to
 -- guessing from the request ever after: a Stripe subscription cannot change

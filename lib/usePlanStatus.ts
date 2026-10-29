@@ -5,6 +5,7 @@
 // deleting the account waits on it.
 
 import { useCallback, useEffect, useState } from "react";
+import type { PlanDiscount } from "@/lib/billing";
 
 type Status = {
   /** ISO, or null while the plan is active */
@@ -16,9 +17,40 @@ type Status = {
   currentPeriodEnd: string | null;
   /** Stripe's terminal status: the subscription is fully over and cannot be resumed, only re-subscribed to. */
   expired: boolean;
+  /** A promotion code on the plan, or null. */
+  discount: PlanDiscount | null;
+  /** ISO, when the plan is set to end on its own (a cardless code plan), or null. */
+  planEndsAt: string | null;
 };
 
-const EMPTY: Status = { cancelledAt: null, subscriptionStatus: null, currentPeriodEnd: null, expired: false };
+const EMPTY: Status = {
+  cancelledAt: null,
+  subscriptionStatus: null,
+  currentPeriodEnd: null,
+  expired: false,
+  discount: null,
+  planEndsAt: null,
+};
+
+function parse(body: Record<string, unknown>): Status {
+  const d = body.discount as Record<string, unknown> | null | undefined;
+  const discount: PlanDiscount | null =
+    d && (typeof d.percentOff === "number" || typeof d.amountOff === "number")
+      ? {
+          percentOff: typeof d.percentOff === "number" ? d.percentOff : null,
+          amountOff: typeof d.amountOff === "number" ? d.amountOff : null,
+          endsAt: typeof d.endsAt === "string" ? d.endsAt : null,
+        }
+      : null;
+  return {
+    cancelledAt: typeof body.cancelledAt === "string" ? body.cancelledAt : null,
+    subscriptionStatus: typeof body.subscriptionStatus === "string" ? body.subscriptionStatus : null,
+    currentPeriodEnd: typeof body.currentPeriodEnd === "string" ? body.currentPeriodEnd : null,
+    expired: body.expired === true,
+    discount,
+    planEndsAt: typeof body.planEndsAt === "string" ? body.planEndsAt : null,
+  };
+}
 
 export function usePlanStatus() {
   const [data, setData] = useState<Status>(EMPTY);
@@ -30,12 +62,7 @@ export function usePlanStatus() {
       const res = await fetch("/api/plan");
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
-        setData({
-          cancelledAt: typeof body.cancelledAt === "string" ? body.cancelledAt : null,
-          subscriptionStatus: typeof body.subscriptionStatus === "string" ? body.subscriptionStatus : null,
-          currentPeriodEnd: typeof body.currentPeriodEnd === "string" ? body.currentPeriodEnd : null,
-          expired: body.expired === true,
-        });
+        setData(parse(body));
         setError("");
       } else {
         setError(body.error ?? "Grasp could not load your plan. Refresh to try again.");
@@ -60,12 +87,7 @@ export function usePlanStatus() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) return body.error ?? "That change was not saved. Try again.";
-      setData({
-        cancelledAt: typeof body.cancelledAt === "string" ? body.cancelledAt : null,
-        subscriptionStatus: typeof body.subscriptionStatus === "string" ? body.subscriptionStatus : null,
-        currentPeriodEnd: typeof body.currentPeriodEnd === "string" ? body.currentPeriodEnd : null,
-        expired: body.expired === true,
-      });
+      setData(parse(body));
       setError("");
       return null;
     } catch {
