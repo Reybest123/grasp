@@ -16,6 +16,25 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-30 (pulled through Chrome, last 28 days)
+
+Totals: 29 clicks, 306 impressions, 9.5% CTR, average position 18.5, 32 queries. Indexed 19, not indexed 3 (all "Page with redirect", which is expected).
+
+| Query | Clicks | Impressions |
+|---|---|---|
+| grasp study | 8 | 55 |
+| how to take cornell notes | 1 | 1 |
+| grasp.study | 0 | 7 |
+| how to record lectures | 0 | 5 |
+| study grasp | 0 | 4 |
+| record lectures | 0 | 4 |
+| grasplet login | 0 | 3 |
+| how to record a lecture | 0 | 3 |
+| how to make a study schedule | 0 | 3 |
+| grasp ai login | 0 | 2 |
+
+Read: the recording posts (live 2026-10-23) have started getting impressions for "how to record lectures", "record lectures" and "how to record a lecture", with no clicks yet.
+
 ### 2026-10-28 (pulled through Chrome, last 28 days)
 
 **Totals:** 31 clicks, 296 impressions, CTR 10.5%, average position 17.8. "grasp study" 9 clicks from 61. **The recording posts are now matched to their own topic:** "how to record lectures" 4, "record lectures" 4, "how to record a lecture" 3 impressions (no clicks yet). "how to make a study schedule" 3. Links report: still no external links (Brisbane State High's library page checked, no link yet). Google Ads, 21 to 27 October: 373 impressions, 23 clicks, A$34.22 (A$1.49 a click). The 26 October negatives have not stopped competitor spend: paid clicks on 27 October went to "gizmo", "gizmo ai", "educato", "homework doer", "anki flashcards", "app astra ai" (anki and astra were already negatives, so these clicks are likely from before they took effect). Only "help study" and "note taking help" were on topic.
