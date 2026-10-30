@@ -423,6 +423,8 @@ Worth an afternoon, not more. List on each with the kit above:
 - There's An AI For That, Futurepedia, Toolify (AI directories)
 - Australian startup directories
 
+**Status (2026-10-30):** AlternativeTo submitted as "Grasp Study" (the name Grasp was taken), signed in with graspstudyai, with Otter.ai, TalkNotes.tech, Jamworks, Noter AI and TwinMind as alternatives. It sits in a long free queue unless a one-time priority review is paid for (US$9 or US$29). There's An AI For That costs at least US$49, so it was skipped, as were the other directories.
+
 ## Tracking
 
 Keep a sheet with: school or site, contact name, email, page that would link,
