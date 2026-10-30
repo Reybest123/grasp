@@ -347,55 +347,55 @@ not say "free" about the app itself; only the guides are free.
 
 ## Listing kit
 
-Copy for any directory, profile or form that asks for it.
+Copy for any directory, profile or form that asks for it. Leads with recording
+(2026-10-30, at the user's request), matching the landing page.
 
 **Name:** Grasp
 
 **Website:** https://graspstudy.com
 
-**Category:** Education, Note-taking, Study tools, AI tools for students
+**Category:** Education, Lecture recording, Note-taking, AI tools for students
 
 **Tagline (under 60 characters):**
-AI note-taking built for school students
+AI lecture recorder and notes for students
 
 **Short description (under 160 characters):**
-Upload your timetable and Grasp builds a notebook for every subject, explains
-anything you highlight, and quizzes you on your own notes.
+Record your lectures and Grasp writes the notes live while you listen, then
+explains anything you highlight and quizzes you on what was said.
 
 **Long description:**
 
-> Grasp is a note-taking app built for school students, not for work
-> meetings.
+> Grasp is an AI lecture recorder built for students, not for work meetings.
 >
-> Start by uploading a screenshot of your timetable. Grasp reads it and makes
-> a notebook for every subject, with your class times and teachers already
-> filled in.
+> Press record and Grasp writes your notes while the lecture is still going.
+> When you stop, the notes are saved into that subject, ready to edit. The
+> audio is never kept.
 >
-> Take notes yourself, or record a lesson and watch Grasp write the notes as
-> it goes. Highlight any line you do not understand and Grasp explains it
-> right there in your notes, and you can ask follow-up questions.
+> Highlight any line you do not understand and Grasp explains it right there
+> in your notes, and you can ask follow-up questions.
 >
 > When it is time to study, Grasp writes quizzes from your own notes, with
 > multiple choice, short answer and long answer questions. It marks your
 > written answers, gives half marks for half-right ones, and explains what you
 > missed when you ask.
 >
-> Add your assessment criteria, rubrics and past papers to each subject's
-> Resource Bank, and Grasp uses them when it writes notes and quizzes, so you
-> study what is actually assessed.
+> Upload your timetable and Grasp sets up a notebook for every subject. Add
+> your assessment criteria, rubrics and past papers to a subject's Resource
+> Bank, and Grasp uses them when it writes notes and quizzes, so you study
+> what is actually assessed.
 
 **Key features (for forms that ask for a list):**
-- Timetable screenshot to a notebook for every subject
-- Live notes from a recorded lesson
+- Record a lecture and watch the notes write themselves live
 - Highlight any line to get it explained
 - Quizzes written from your own notes, marked by AI
+- Timetable screenshot to a notebook for every subject
 - Resource Bank for rubrics, criteria and past papers
 
-**Alternative to:** Notion, OneNote, Goodnotes, Notability, Google Docs,
-Quizlet, Studdy
+**Alternative to:** Otter, Glean, Notability, Goodnotes, OneNote, Notion,
+Quizlet
 
-**Who it is for:** high school students (Years 7 to 12), and first-year
-university students
+**Who it is for:** university students first, and high school students
+(13 and over) where recording in class is allowed
 
 **Pricing (for forms that require it):** Free 7-day trial, then paid weekly
 plans. Do not put a price in a school email.
@@ -408,10 +408,10 @@ share card at https://graspstudy.com/opengraph-image (1200x630).
 Use a test account with real-looking subjects (Biology, English, Maths
 Methods, History), at a 1440px-wide window:
 
-1. The workspace grid of notebooks, straight after the timetable read
-2. A note with the Explain panel open beside a highlighted line
+1. The Record tab mid-lecture, with live notes appearing
+2. A saved lecture note with the Explain panel open beside a highlighted line
 3. A quiz results screen with the score ring
-4. The Record tab mid-lesson, with live notes appearing
+4. The workspace grid of notebooks
 5. The dashboard
 
 ## Directories (quick, lower value)
