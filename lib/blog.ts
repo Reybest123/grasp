@@ -25,7 +25,7 @@ export type BlogPostMeta = {
   /** Written into the keywords meta tag. Optional; Google ignores the tag, but some other engines read it. */
   keywords?: string[];
   /** A free tool the post leads into, shown as a card after the post's text. */
-  tool?: { href: string; title: string; text: string };
+  tool?: { href: string; title: string; text: string; download?: boolean };
 };
 
 /**
@@ -34,6 +34,30 @@ export type BlogPostMeta = {
  * stable, so posts sharing a date keep the order they are written in.
  */
 export const BLOG_POSTS: BlogPostMeta[] = ([
+  {
+    slug: "how-to-turn-a-lecture-recording-into-notes",
+    title: "How to turn a lecture recording into notes",
+    description:
+      "How to transcribe a lecture and turn it into notes you can study from, whether you already have the recording or are about to make one.",
+    date: "2026-10-31",
+    imageAlt: "A student wearing headphones working on a laptop",
+    keywords: ["record and transcribe lectures", "transcribe lecture recording", "lecture recording to notes", "app that records lectures and takes notes"],
+  },
+  {
+    slug: "cornell-notes-template",
+    title: "Cornell notes template: free printable, and what goes in the cue column",
+    description:
+      "A free printable Cornell notes template, plus what to write in the cue column, how to set up your own page, and how to adapt it for languages and maths.",
+    date: "2026-10-31",
+    imageAlt: "An open lined notebook with a ballpoint pen above it",
+    keywords: ["cornell notes template", "cornell notes printable", "cue column", "cornell notes rubric"],
+    tool: {
+      href: "/cornell-notes-template.pdf",
+      title: "Download the Cornell notes template",
+      text: "One A4 page as a PDF, with a cue column, a notes column and a summary box. Print as many as you need.",
+      download: true,
+    },
+  },
   {
     slug: "how-to-record-lectures",
     title: "How to record lectures, and whether you are allowed to",
@@ -77,6 +101,11 @@ export const BLOG_POSTS: BlogPostMeta[] = ([
     date: "2026-10-11",
     imageAlt: "A hand writing maths notes in a spiral notebook beside four highlighters",
     keywords: ["cornell notes example", "cornell method notes example", "cornell notes template", "cornell notes for maths"],
+    tool: {
+      href: "/blog/cornell-notes-template",
+      title: "Get the free Cornell notes template",
+      text: "A one-page printable with the cue column, notes column and summary box ready to fill in.",
+    },
   },
   {
     slug: "how-to-take-cornell-notes",
@@ -85,6 +114,11 @@ export const BLOG_POSTS: BlogPostMeta[] = ([
       "The Cornell method splits a page into notes, cues and a summary. Here is how to set it up, what goes in each part, and how to study from it afterwards.",
     date: "2026-09-30",
     imageAlt: "A student writing notes in an open notebook on a wooden desk",
+    tool: {
+      href: "/blog/cornell-notes-template",
+      title: "Get the free Cornell notes template",
+      text: "A one-page printable with the cue column, notes column and summary box ready to fill in.",
+    },
   },
   {
     slug: "how-to-quiz-yourself-from-your-notes",

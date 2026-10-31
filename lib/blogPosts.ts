@@ -25,6 +25,171 @@ export type BlogSection = { heading: string; blocks: BlogBlock[] };
 export type BlogBody = { intro: string[]; sections: BlogSection[] };
 
 export const BLOG_BODIES: Record<string, BlogBody> = {
+  "how-to-turn-a-lecture-recording-into-notes": {
+    intro: [
+      "A recording on its own is not much use for study. An hour of audio takes an hour to replay, and you cannot skim it. What you want is notes you can read, search and test yourself on.",
+      "There are two parts to getting there: turning the audio into text, then turning the text into notes. A transcript is not the same as notes, and most of the value is in the second step.",
+    ],
+    sections: [
+      {
+        heading: "Check whether a transcript already exists",
+        blocks: [
+          "If your university records lectures, look on the course page before doing anything else. Many lecture capture systems add captions or a transcript automatically, and if so, the first part is already done.",
+          "If you are recording your own, make sure you are allowed to first. Our guide to recording lectures covers the rules and how to ask.",
+        ],
+      },
+      {
+        heading: "How to transcribe a lecture recording",
+        blocks: [
+          "If there is no transcript, you do not need to type one yourself. These are the usual ways to get one:",
+          {
+            list: [
+              "Your phone. Some phones now transcribe voice recordings in their built-in recorder app. Check yours before installing anything.",
+              "Your university account. Some Microsoft 365 plans can transcribe an uploaded audio file in Word on the web, so it is worth checking what your student account includes.",
+              "A transcription app. There are plenty, usually with a limit on free minutes.",
+            ],
+          },
+          "Whichever you use, clear audio makes the biggest difference. A recording made from the front of the room comes out far better than one made from the back.",
+        ],
+      },
+      {
+        heading: "Fix the transcript before you rely on it",
+        blocks: [
+          "Transcription gets technical words, names and numbers wrong, and those are often the parts that matter in an exam. A biology term can come out as an ordinary word that sounds alike, and the sentence will still look fine.",
+          "You do not need to correct all of it. Skim for anything that looks odd, and check key terms, names, dates and figures against the slides or the textbook.",
+        ],
+      },
+      {
+        heading: "Turn the transcript into notes",
+        blocks: [
+          "A transcript has every aside and repeated sentence in it, and no structure. Reading it back is nearly as slow as listening. Work through it once and pull out what you would want on a page:",
+          {
+            steps: [
+              "Find the structure. Use the lecture slides or the course outline to mark where each topic starts, and make those your headings.",
+              "Under each heading, write the main idea in your own words. Rewording it is what makes you think about it.",
+              "Add the definitions, formulas and one example for each idea, and leave out the rest.",
+              "Mark anything you still do not understand, so you can ask or look it up rather than copy it down.",
+              "Finish with two or three sentences on what the lecture was about. If you cannot write them, go back to that part.",
+            ],
+          },
+          "A one-hour lecture should come down to a page or two. If your notes are nearly as long as the transcript, you are copying rather than choosing.",
+        ],
+      },
+      {
+        heading: "If you use AI to write the notes",
+        blocks: [
+          "An AI tool can do the first draft of this in seconds, and that is a fair use of it. Two things still matter. Check the draft against the slides, because AI can state something wrong with complete confidence. And read it properly, because notes you have only saved are not notes you have learned.",
+        ],
+      },
+      {
+        heading: "Do it the same day",
+        blocks: [
+          "It is much easier to make notes while the lecture is still fresh, since you remember what the lecturer stressed and what the examples were for. Recordings left for the end of semester tend to stay unopened, and a full week of them is a lot of audio to get through.",
+          "Once the notes are done, test yourself on them within a day or two rather than only re-reading them. That is where the remembering happens.",
+        ],
+      },
+      {
+        heading: "How Grasp does it",
+        blocks: [
+          "Grasp skips the transcript stage. Press record and it writes your notes while the lecture is still going, and when you stop, they are saved into that subject, ready to edit. The audio is not kept.",
+          "It works from a live recording, not from an audio file you already have, so for older recordings use the steps above. From there you can highlight any line to have it explained, and Grasp can write a quiz from your notes.",
+        ],
+      },
+    ],
+  },
+  "cornell-notes-template": {
+    intro: [
+      "A Cornell notes page has three parts: a narrow cue column on the left, a wide notes column on the right, and a summary box along the bottom. The template at the end of this guide has all three ready to print.",
+      "This covers how to use it, what actually goes in the cue column, and how to set up your own page in a notebook or on a laptop.",
+    ],
+    sections: [
+      {
+        heading: "How to use the template",
+        blocks: [
+          {
+            steps: [
+              "Before class, write the subject, topic and date across the top.",
+              "During class, write in the notes column only. Use short phrases, and leave a gap between ideas.",
+              "After class, write questions and key words in the cue column, each one beside the notes it covers.",
+              "Then write two or three sentences in the summary box, in your own words.",
+              "To revise, cover the notes column and answer each cue from memory.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "What goes in the cue column",
+        blocks: [
+          "The cue column is what makes Cornell notes more than ordinary notes, and it is the part most people get wrong. A cue should send you back to the idea without giving it away, because its job is to test you later.",
+          "Questions usually work best. Key words and names work too, as long as you have to explain them. Copying the heading does not help, since you can read it and learn nothing.",
+          {
+            list: [
+              "Weak cue: \"Photosynthesis\". Better cue: \"What goes in and what comes out of photosynthesis?\"",
+              "Weak cue: \"Causes of World War I\". Better cue: \"Why did one assassination lead to a world war?\"",
+              "Weak cue: \"Quadratic formula\". Better cue: \"When would I use the formula rather than factorising?\"",
+            ],
+          },
+          "Write your cues after class, not during it. Choosing them makes you go back over the notes, and that is part of how the method works.",
+          {
+            cornell: {
+              topic: "Biology: photosynthesis",
+              date: "12 May",
+              rows: [
+                {
+                  cue: "What goes in and what comes out?",
+                  notes: ["Carbon dioxide + water, using light, gives glucose + oxygen.", "Happens in the chloroplasts."],
+                },
+                {
+                  cue: "Why does a plant need light?",
+                  notes: ["Chlorophyll absorbs light energy.", "That energy is used to make glucose."],
+                },
+              ],
+              summary: "Plants use light energy to turn carbon dioxide and water into glucose, releasing oxygen. Chlorophyll in the chloroplasts captures the light.",
+            },
+          },
+        ],
+      },
+      {
+        heading: "How to make your own Cornell page",
+        blocks: [
+          "If you are not printing, a ruler and two lines are all you need. The usual layout on an A4 or letter page is a cue column about 6 cm wide, with a summary box about 5 cm tall across the bottom and the rest left for notes.",
+          "On a laptop, make a two-column table in Word, Google Docs or your notes app, with the left column about a third as wide as the right. Add a single row across the bottom for the summary. Copy it to start each new page.",
+        ],
+      },
+      {
+        heading: "Adapting it for languages and maths",
+        blocks: [
+          {
+            list: [
+              "Languages such as Spanish: put vocabulary, verb forms or a phrase in English in the cue column, and the target language with an example sentence in the notes. Covering the notes then tests you the way a vocabulary list cannot.",
+              "Maths and physics: put the worked example in the notes, and in the cue column write the first step or the question \"How do I know to use this method?\"",
+              "English and history: use cues for themes and arguments, and keep quotes or evidence in the notes beside them.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "If your teacher marks your Cornell notes",
+        blocks: [
+          "Some teachers grade Cornell notes with a rubric. Yours will have its own criteria, so use that first, but they usually check for the same things:",
+          {
+            list: [
+              "A complete header with the topic and date.",
+              "Notes in your own words, organised rather than copied.",
+              "Cues that are real questions, lined up with the notes they belong to.",
+              "A summary that covers the main ideas in your own words.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "How Grasp helps",
+        blocks: [
+          "Grasp does not use the Cornell layout, but it does the same job in a different way. Press record and it writes your notes while the lecture is going. Highlight a line you do not follow and it explains it there in your notes, and it can write a quiz from those notes, which does what covering the notes column does.",
+        ],
+      },
+    ],
+  },
   "how-to-record-lectures": {
     intro: [
       "Recording a lecture means you can listen properly instead of racing to write every word down. It also means you have the whole thing to go back to when your notes do not make sense a week later.",
