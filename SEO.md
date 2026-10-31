@@ -160,7 +160,7 @@ Read: the brand name works ("Grasp Study" as an alternate name, 2026-09-30). Cor
 
 | Date | What | Page | Aimed at | Result |
 |---|---|---|---|---|
-| 2026-10-31 | Two new posts, and a printable PDF | `/blog/how-to-turn-a-lecture-recording-into-notes`, `/blog/cornell-notes-template` | "record and transcribe lectures"; "cue column", "cornell notes rubric", "cornell notes template" | On staging; request indexing once live |
+| 2026-10-31 | Two new posts, and a printable PDF | `/blog/how-to-turn-a-lecture-recording-into-notes`, `/blog/cornell-notes-template` | "record and transcribe lectures"; "cue column", "cornell notes rubric", "cornell notes template" | Live 2026-10-31; indexing requested the same day |
 | 2026-10-23 | Requested re-indexing after the header lost its account links | `/study-planner` | Schools that cannot share pages offering sign-ups | |
 | 2026-10-21 | Two recording posts | `/blog/how-to-record-lectures`, `/blog/best-apps-for-recording-lectures` | "how to record lectures", "best app for recording lectures", "lecture recorder app" (the Google Ads suggestions) | Live 2026-10-23 (held up by the Railway incident); indexing requested the same day |
 | 2026-10-11 | Requested indexing | `/study-planner`, `/legal/privacy` | Not crawled since 1 October | `/study-planner` indexed by 2026-10-20 |
