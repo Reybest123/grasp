@@ -104,6 +104,14 @@ schools cannot point students at anything with an account, which is why the
 planner's header is bare. Schools are close to done: wait for those answers,
 then check the live pages and Search Console's Links report in November.
 
+**Update 2026-10-31.** QSLA agreed on 30 October to promote the planner in its
+eNewsletter, and Liam sent the 600 x 300 image and the copy the same day. Holland
+Park (Alison) will share it with students and link it on the school intranet,
+which is private, so it will not show as a backlink. HEA will send its partner
+pack; partnerships there are year-long member benefits. Brisbane State High,
+Holland Park, Craigslea, HEA and the Ipswich network's page have no public link
+yet, and Search Console shows 0 external links.
+
 ## Beyond schools (2026-10-27)
 
 Next targets, in order. None of these is bound by the Department's account

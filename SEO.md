@@ -16,6 +16,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-10-31 (pulled through Chrome, about the last 28 days; data runs to 28 October)
+
+Totals: 34 clicks, 358 impressions, 9.5% CTR, average position 17.5, 34 queries. "grasp study" 9 clicks from 67; "grasp.study" 10; "how to record lectures" 5, "record lectures" 4, "how to record a lecture" 3, "how to make a study schedule" 3, still no clicks on those. Indexed 19, not indexed 3 (all "Page with redirect"). Links report: 0 external links. Google Ads, 24 to 30 October: 698 impressions, 45 clicks, A$66.07 (A$1.47 a click, about A$9.40 a day), unbilled balance A$75.48, still mostly other apps' names (gizmo, study ai, turbo ai). `/admin/analytics` (30 days): lecture-recorder campaign 69 visitors, 4 signups, 3 free trials, none bought; study planner 251 views. AlternativeTo still in the free review queue, visible only to the submitter.
+
 ### 2026-10-30 (pulled through Chrome, last 28 days)
 
 Totals: 29 clicks, 306 impressions, 9.5% CTR, average position 18.5, 32 queries. Indexed 19, not indexed 3 (all "Page with redirect", which is expected).
