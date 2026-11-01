@@ -112,6 +112,8 @@ pack; partnerships there are year-long member benefits. Brisbane State High,
 Holland Park, Craigslea, HEA and the Ipswich network's page have no public link
 yet, and Search Console shows 0 external links.
 
+**Update 2026-11-01.** Nothing new in the liamspencer549 mailbox since 30 October, and Search Console still shows 0 external links. The six university follow-ups (JCU, UQ, UNSW, La Trobe, Curtin, Wollongong) are in Gmail's Scheduled folder for 2 November.
+
 ## Beyond schools (2026-10-27)
 
 Next targets, in order. None of these is bound by the Department's account

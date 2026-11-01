@@ -16,6 +16,12 @@ How to use it:
 
 ## Snapshots
 
+### 2026-11-01 (pulled through Chrome; data runs to 30 October)
+
+Last 28 days: 19 clicks, 313 impressions, 6.1% CTR, average position 20.5, 34 queries. Last 7 days: 1 click, 135 impressions, 0.7% CTR, position 25.9, 18 queries. The drop from 34 clicks is mostly early-October brand clicks leaving the 28-day window: "grasp study" 4 clicks from 50 (0 from 19 in the last 7 days). Topic impressions are growing, all without clicks: "record lectures" 6, "how to record lectures" 5, "how to record a lecture" 3, "how to make a study schedule" 3, and over the last 7 days "best lecture note taking app" 2 and "lecture recording app" 2. Indexed 19, not indexed 3 (all "Page with redirect"). Links report: 0 external links. The indexing status of the two 31 October posts could not be read (URL inspection did not open through Chrome).
+
+Google Ads, 25 to 31 October: 729 impressions, 50 clicks, A$73.36 (A$1.47 a click), unbilled balance A$75.48, status "Eligible (Limited)". Top searches are still mostly other apps (gizmo, studley ai, noteglider, retain, solvely ai, turbo ai, astra ai), with "lecture recorder" and "record lectures" among them. `/admin/analytics` (30 days): lecture-recorder campaign 71 visitors, 4 signups, 3 free trials, none bought; 420 landing visitors, 21 accounts, 13 free trials, 1 bought (10 ended without buying); study planner 256 views; google.com 90 referrals. Revenue reads A$23.98 a week, but Stripe has only 2 active live subscriptions: the user's own Pro, and a Max on a 100% code for 3 months (the panel counts it as paying, probably because `plan_discount` was not set when it synced). Allowance use in the last 7 days is 0% on average.
+
 ### 2026-10-31 (pulled through Chrome, about the last 28 days; data runs to 28 October)
 
 Totals: 34 clicks, 358 impressions, 9.5% CTR, average position 17.5, 34 queries. "grasp study" 9 clicks from 67; "grasp.study" 10; "how to record lectures" 5, "record lectures" 4, "how to record a lecture" 3, "how to make a study schedule" 3, still no clicks on those. Indexed 19, not indexed 3 (all "Page with redirect"). Links report: 0 external links. Google Ads, 24 to 30 October: 698 impressions, 45 clicks, A$66.07 (A$1.47 a click, about A$9.40 a day), unbilled balance A$75.48, still mostly other apps' names (gizmo, study ai, turbo ai). `/admin/analytics` (30 days): lecture-recorder campaign 69 visitors, 4 signups, 3 free trials, none bought; study planner 251 views. AlternativeTo still in the free review queue, visible only to the submitter.
