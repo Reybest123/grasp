@@ -91,6 +91,42 @@ Do not promise the plan stays free, and check the creator labels it as a
 gifted or sponsored post (#ad / Paid partnership): both platforms and the
 consumer law in Australia and the US require it.
 
+## Candidates found 2026-11-03
+
+Found through TikTok search, with follower counts and post dates read off each
+profile that day. None contacted yet. "Hook" is a recent video to name in the
+first message's [specific video].
+
+**Checked: posting in the last two weeks, uni-level, North America**
+
+| Handle (TikTok) | Followers | Last post | Who | Hook |
+|---|---|---|---|---|
+| @yazanazidan | 19.9k | 1 Nov | Electrical engineering, Queen's (Canada); shows study apps | "comment if you want the app name" video |
+| @dentalguyry | 16.3k | 2 Nov | 3rd-year dental, USC, LA; business email in bio | "halfway there" |
+| @smiles.by.tania | 8.1k | 25 Oct | 3rd-year dental, Harvard; already does brand posts (FIGS) | "a few things dental school has taught me" |
+| @the.dental.student | 9.9k | 10 Oct | Dental student, US; email in bio | anatomy and biochemistry "warmup" |
+| @kaylin_ngo | 6.1k | 1 Nov | MS2, medicine, posts study-with-me timelapses; country not stated | "morning lock-in sesh" |
+| @karenabortiz | 4.2k | 10 Oct | PharmD student, Dallas-Fort Worth; study-with-me | rainy day study session |
+| @nadiaselod | 42.5k | 30 Oct | MS3, US; does paid posts. Third year is hospital rotations, not lectures, so a weaker fit | "DIML as an MS3 in surgery" |
+| @studywithericas | 60k | 30 Oct | UCLA med; just over the 50k ceiling and sells MCAT guides | "12 hour study day as a first year medical student" |
+
+**Good fit, outside the US/Canada first wave**
+
+| Handle (TikTok) | Followers | Last post | Why held back |
+|---|---|---|---|
+| @valpaspositivity | 6.6k | 2 Nov | Uni student, posts how she takes notes (OneNote, "not sponsored"); "freshers" suggests UK, where Grasp does not sell yet |
+| @enj0eneering | 35.9k | 3 Nov | 4th-year aerospace engineering, posted "no point going to lectures to just stare into space"; managed by an agency (taplab) and likely UK, so expect a fee |
+
+**Found but not yet checked** (TikTok rate-limited the search): @gmoney.learns
+(56.7k, learning strategies, Pittsburgh), @elaverose (4.8k, UPenn),
+@lifewithkelsey2 (17.2k), @.isabellagrace0 (9.1k, 2nd-year student),
+@aashleysdaily (5.8k), @engineeringwithpalden (27.5k, sells engineering
+notes). Look at each before messaging.
+
+Left out: accounts outside North America (Indonesia, the Philippines,
+Pakistan), Australian ones (they come back in late January), anyone inactive
+for months, and university or school brand accounts.
+
 ## Tracking
 
 | Creator | Platform | Followers | Sent | Reply | Code / link | Posted | Signups |
