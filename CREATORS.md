@@ -101,21 +101,21 @@ first message's [specific video].
 
 | Handle (TikTok) | Followers | Last post | Who | Hook |
 |---|---|---|---|---|
-| @yazanazidan | 19.9k | 1 Nov | Electrical engineering, Queen's (Canada); shows study apps | "comment if you want the app name" video |
-| @dentalguyry | 16.3k | 2 Nov | 3rd-year dental, USC, LA; business email in bio | "halfway there" |
-| @smiles.by.tania | 8.1k | 25 Oct | 3rd-year dental, Harvard; already does brand posts (FIGS) | "a few things dental school has taught me" |
-| @the.dental.student | 9.9k | 10 Oct | Dental student, US; email in bio | anatomy and biochemistry "warmup" |
-| @kaylin_ngo | 6.1k | 1 Nov | MS2, medicine, posts study-with-me timelapses; country not stated | "morning lock-in sesh" |
-| @karenabortiz | 4.2k | 10 Oct | PharmD student, Dallas-Fort Worth; study-with-me | rainy day study session |
-| @nadiaselod | 42.5k | 30 Oct | MS3, US; does paid posts. Third year is hospital rotations, not lectures, so a weaker fit | "DIML as an MS3 in surgery" |
-| @studywithericas | 60k | 30 Oct | UCLA med; just over the 50k ceiling and sells MCAT guides | "12 hour study day as a first year medical student" |
+| [@yazanazidan](https://www.tiktok.com/@yazanazidan) | 19.9k | 1 Nov | Electrical engineering, Queen's (Canada); shows study apps | "comment if you want the app name" video |
+| [@dentalguyry](https://www.tiktok.com/@dentalguyry) | 16.3k | 2 Nov | 3rd-year dental, USC, LA; business email in bio | "halfway there" |
+| [@smiles.by.tania](https://www.tiktok.com/@smiles.by.tania) | 8.1k | 25 Oct | 3rd-year dental, Harvard; already does brand posts (FIGS) | "a few things dental school has taught me" |
+| [@the.dental.student](https://www.tiktok.com/@the.dental.student) | 9.9k | 10 Oct | Dental student, US; email in bio | anatomy and biochemistry "warmup" |
+| [@kaylin_ngo](https://www.tiktok.com/@kaylin_ngo) | 6.1k | 1 Nov | MS2, medicine, posts study-with-me timelapses; country not stated | "morning lock-in sesh" |
+| [@karenabortiz](https://www.tiktok.com/@karenabortiz) | 4.2k | 10 Oct | PharmD student, Dallas-Fort Worth; study-with-me | rainy day study session |
+| [@nadiaselod](https://www.tiktok.com/@nadiaselod) | 42.5k | 30 Oct | MS3, US; does paid posts. Third year is hospital rotations, not lectures, so a weaker fit | "DIML as an MS3 in surgery" |
+| [@studywithericas](https://www.tiktok.com/@studywithericas) | 60k | 30 Oct | UCLA med; just over the 50k ceiling and sells MCAT guides | "12 hour study day as a first year medical student" |
 
 **Good fit, outside the US/Canada first wave**
 
 | Handle (TikTok) | Followers | Last post | Why held back |
 |---|---|---|---|
-| @valpaspositivity | 6.6k | 2 Nov | Uni student, posts how she takes notes (OneNote, "not sponsored"); "freshers" suggests UK, where Grasp does not sell yet |
-| @enj0eneering | 35.9k | 3 Nov | 4th-year aerospace engineering, posted "no point going to lectures to just stare into space"; managed by an agency (taplab) and likely UK, so expect a fee |
+| [@valpaspositivity](https://www.tiktok.com/@valpaspositivity) | 6.6k | 2 Nov | Uni student, posts how she takes notes (OneNote, "not sponsored"); "freshers" suggests UK, where Grasp does not sell yet |
+| [@enj0eneering](https://www.tiktok.com/@enj0eneering) | 35.9k | 3 Nov | 4th-year aerospace engineering, posted "no point going to lectures to just stare into space"; managed by an agency (taplab) and likely UK, so expect a fee |
 
 **Found but not yet checked** (TikTok rate-limited the search): @gmoney.learns
 (56.7k, learning strategies, Pittsburgh), @elaverose (4.8k, UPenn),
@@ -126,6 +126,41 @@ notes). Look at each before messaging.
 Left out: accounts outside North America (Indonesia, the Philippines,
 Pakistan), Australian ones (they come back in late January), anyone inactive
 for months, and university or school brand accounts.
+
+### Drafted first messages (2026-11-03)
+
+Each is the message above, cut down for a DM and made specific to a video seen
+on their profile. Five list an email in their bio (dentalguyry, the.dental.student,
+kaylin_ngo, karenabortiz, studywithericas), and small creators often miss DMs
+from accounts they do not follow, so email is the backup: one personal message
+to an address they publish for business is fine; never a bulk send.
+
+**@yazanazidan**
+> Hi Yazan, I'm with Grasp. Saw your "comment if you want the app name" video and figured you might like this one: it's a lecture recorder where you press record and it writes your notes while the lecture is still going, then quizzes you on them later. Would you try it in one of your EE lectures? We'd give you Max free for 3 months, and if you like it, one honest video would mean a lot. No script, and you can say what you didn't like. graspstudy.com
+
+**@dentalguyry**
+> Hi Ryan, I'm with Grasp, a lecture recorder for students: press record and it writes your notes while the lecture is still going, then quizzes you on them later. Dental school content like yours is exactly who we built it for. Would you try it in one of your lectures? Max free for 3 months, and if you like it, one honest video would mean a lot. No script, say whatever you think. graspstudy.com
+
+**@smiles.by.tania**
+> Hi Tania, I'm with Grasp. Loved your "a few things dental school has taught me" video. Grasp is a lecture recorder: press record and it writes your notes while the lecture is still going, then quizzes you on them later. Would you try it in one of your lectures? We'd give you Max free for 3 months, and if you like it, one honest video would mean a lot. No script, and you're free to say what you didn't like. graspstudy.com
+
+**@the.dental.student**
+> Hi Luke, I'm with Grasp. Saw your anatomy and biochem study videos and thought this might fit: Grasp records a lecture and writes your notes while it's still going, then quizzes you on them later. Would you try it in one of your lectures? Max free for 3 months, and if you like it, one honest video would mean a lot. No script, and say what you didn't like too. graspstudy.com
+
+**@kaylin_ngo**
+> Hi Kaylin, I'm with Grasp. Your morning lock-in study videos are great. Grasp is a lecture recorder: press record and it writes your notes while the lecture is still going, then quizzes you on them later. Would you try it in one of your med school lectures? We'd give you Max free for 3 months, and if you like it, one honest video would mean a lot. No script. graspstudy.com
+
+**@karenabortiz**
+> Hi Karen, I'm with Grasp. Saw your rainy day study-with-me and thought of you: Grasp records a lecture and writes your notes while it's still going, then quizzes you on them later. Would you try it in one of your PharmD lectures? Max free for 3 months, and if you like it, one honest video would mean a lot. No script, and you can say what you didn't like. graspstudy.com
+
+**@nadiaselod** (send only if lectures are still part of her week)
+> Hi Nadia, I'm with Grasp, a lecture recorder: press record and it writes your notes while the lecture or teaching session is still going, then quizzes you on them later. Do you still have lectures or didactics during rotations? If so, would you try it? Max free for 3 months, and if you like it, one honest video would mean a lot. No script. graspstudy.com
+
+**@studywithericas** (likely to ask for payment)
+> Hi Erica, I'm with Grasp. Your 12-hour study day video is what got me: Grasp records a lecture and writes your notes while it's still going, then quizzes you on them later. Would you try it in one of your lectures? We'd give you Max free for 3 months, and if you like it, one honest video would mean a lot. No script, and you're free to say what you didn't like. graspstudy.com
+
+Before sending, open the video named and check it is what the caption
+suggests; the hooks above come from captions, not from watching.
 
 ## Tracking
 
