@@ -16,6 +16,10 @@ How to use it:
 
 ## Snapshots
 
+### 2026-11-03 (pulled through Chrome, last 7 days; data runs to 1 November)
+
+2 clicks, 121 impressions, average position 29. Top queries: grasp study (16 impressions, position 4.8), cue column (4, 36), how to record lectures (4, 74), record lectures (4, 84), how to use cornell notes to study (2, 45), best lecture note taking app (2, 72). The recording and template posts from 21 and 31 October are being shown, still far down the page. Links report: 0 external links, 116 internal.
+
 ### 2026-11-01 (pulled through Chrome; data runs to 30 October)
 
 Last 28 days: 19 clicks, 313 impressions, 6.1% CTR, average position 20.5, 34 queries. Last 7 days: 1 click, 135 impressions, 0.7% CTR, position 25.9, 18 queries. The drop from 34 clicks is mostly early-October brand clicks leaving the 28-day window: "grasp study" 4 clicks from 50 (0 from 19 in the last 7 days). Topic impressions are growing, all without clicks: "record lectures" 6, "how to record lectures" 5, "how to record a lecture" 3, "how to make a study schedule" 3, and over the last 7 days "best lecture note taking app" 2 and "lecture recording app" 2. Indexed 19, not indexed 3 (all "Page with redirect"). Links report: 0 external links. URL inspection: `/blog/cornell-notes-template` and `/blog/how-to-turn-a-lecture-recording-into-notes` are both on Google, indexed within a day of going live.
