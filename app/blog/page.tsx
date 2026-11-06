@@ -33,7 +33,7 @@ const STRUCTURED_DATA = {
 
 export default function BlogIndex() {
   return (
-    <BlogShell>
+    <BlogShell bare>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }}
