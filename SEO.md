@@ -184,3 +184,5 @@ Read: the brand name works ("Grasp Study" as an alternate name, 2026-09-30). Cor
 | 2026-09-30 | Search Console verified, sitemap submitted | Whole site | | |
 
 Backlink outreach is tracked separately in `outreach/schools.csv` (not committed) and `BACKLINKS.md`.
+
+**Snapshot 2026-11-06** (Search Console, read through Chrome). Performance, last 3 months: 36 clicks, 446 impressions, average CTR 8.1%, average position 21. "grasp study" 9 clicks from 78 impressions; "how to take cornell notes" 1 from 1; "grasp.study" 0 from 13; "how to record lectures" 0 from 9; "record lectures" 0 from 6; "cue column" 0 from 5. Links report: **0 external links** still, and the internal top pages are the home page, the legal pages, the blog index and the study planner (12 internal links). Indexing: 19 pages indexed, 3 not. Brisbane State High's library page (checked live the same day) has no Grasp link. Nicole's last message (14 October) said the request is with the IT committee; Liam replied "No worries" and has not written since. QSLA's eNewsletter and Holland Park's intranet are not public, so no backlink is expected from them.
