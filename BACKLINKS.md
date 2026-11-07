@@ -437,6 +437,15 @@ Worth an afternoon, not more. List on each with the kit above:
 
 **Status (2026-10-30):** AlternativeTo submitted as "Grasp Study" (the name Grasp was taken), signed in with graspstudyai, with Otter.ai, TalkNotes.tech, Jamworks, Noter AI and TwinMind as alternatives. It sits in a long free queue unless a one-time priority review is paid for (US$9 or US$29). There's An AI For That costs at least US$49, so it was skipped, as were the other directories.
 
+**Status (2026-11-07), from `outreach/schools.csv` (not committed):**
+- **Live links: none confirmed.** The Search Console Links report shows 0 external links (2026-11-07).
+- **Brisbane State High School** (library page): Nicole said on 14 October the request is with the IT committee. Not yet live as far as is known; no more chasing, check the page now and then.
+- **Waiting on a reply:** University of Queensland Study Stories (sent 28 October, follow-up scheduled 2 November), JCU Taking Notes guide (28 October, follow-up scheduled), UTS Smart Study (form submitted 30 October), UQ Digital Essentials (feedback form 29 October), University of Wollongong Academic Skills (29 October, follow-up scheduled). The scheduled follow-ups were due Monday 2 November; check Gmail for replies.
+- **QSLA newsletter:** the secretariat was sent the blurb and image on 30 October. Whether it ran is not known.
+- **Holland Park State High School:** will share the planner with students and on the school intranet. The intranet is not public, so it gives no backlink.
+- **Brisbane School of Distance Education:** will share the planner with a disclaimer about accounts. Its library has not replied since 26 October, and no link is expected.
+- **Declined or dead ends:** Kelvin Grove (not needed), San Damiano (said students are unlikely to use it), Chancellor State College (weak fit, no study links on its site), the Stafford network (primary schools only), and the Cairns, Caboolture and Grove networks (contacts have left or the network no longer exists). The Brisbane Catholic and Brisbane East networks were not pursued.
+- **No reply yet:** Cavendish Road, Redlands College, Kedron, Craigslea (feedback promised, not received), Harristown, MacGregor, Wynnum, Glasshouse, Toowoomba Grammar, Bracken Ridge, Pacific Lutheran, Lourdes Hill, Carey Baptist, Albany Creek, Centenary Heights, Mackay North, Pimlico.
 ## Tracking
 
 Keep a sheet with: school or site, contact name, email, page that would link,

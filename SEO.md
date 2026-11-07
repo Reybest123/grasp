@@ -16,6 +16,16 @@ How to use it:
 
 ## Snapshots
 
+### 2026-11-07 (pulled through Chrome; Search Console chart runs 22 September to 4 November)
+
+Performance: 36 clicks, 470 impressions, CTR 7.7%, average position 22.1. Top queries: "grasp study" 9 clicks from 79 impressions, "how to take cornell notes" 1 from 1, "grasp.study" 0 from 15, "how to record lectures" 0 from 10, "record lectures" 0 from 6, "study grasp" 0 from 5, "cue column" 0 from 5, "how to use cornell notes to study" 0 from 5, "grasplet login" 0 from 3, "how to record a lecture" 0 from 3. 58 queries in all. Indexing: 19 indexed, 3 not (all "Page with redirect"). Links report: 0 external links, 101 internal (led by the privacy page 17, terms 16, login 16, blog index 15, signup 15, study planner 14, then the best-apps post 6). The brand searches are still the only clicks.
+
+`/admin/analytics` (staging, 30 days, read through Chrome): 970 page views, 516 visitors, 14 accounts from 359 landing-page visitors (4%). Funnel: 14 made an account, 11 confirmed, 11 answered the questions, 8 started the free trial, 0 went to checkout, 0 bought. Trials: 8 started, 1 still in its week, 7 ended without buying, free trial to paid 0%. Sources: google.com 85, instagram.com 84, m.facebook.com 6. Campaigns: google / paid / lecture-recorder 73 visitors, 3 signups, 0 bought; meta / paid / attention-in-class / uni-18-24 103 visitors, 0 signups; chatgpt.com 2 visitors, 1 signup. Subscribers: Pro 2 and Max 1, all three "free with a code" and none paying. Weekly revenue reads as a dash. Tax: Australia only, 5 payments, A$56.95, first on 29 September.
+
+Correction to the 2026-11-01 entry: that "1 bought" and the A$23.98 a week are the 100%-off Max code, which the panel now leaves out of revenue, so no student has paid for a plan yet. The panel now reads 0 bought and 0 paying.
+
+Read: the ads and the landing page are reaching people, but nobody has bought a plan. Lecture-recorder search traffic is 73 visitors for 3 signups. Meta's 103 visitors made none. The study planner is the second most-viewed page (239 views), and the study schools are being sent to.
+
 ### 2026-11-03 (pulled through Chrome, last 7 days; data runs to 1 November)
 
 2 clicks, 121 impressions, average position 29. Top queries: grasp study (16 impressions, position 4.8), cue column (4, 36), how to record lectures (4, 74), record lectures (4, 84), how to use cornell notes to study (2, 45), best lecture note taking app (2, 72). The recording and template posts from 21 and 31 October are being shown, still far down the page. Links report: 0 external links, 116 internal.
