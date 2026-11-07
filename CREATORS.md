@@ -140,7 +140,7 @@ from accounts they do not follow, so email is the backup: one personal message
 to an address they publish for business is fine; never a bulk send.
 
 **@yazanazidan**
-> Hi Yazan, I'm with Grasp. Saw your "comment if you want the app name" video. We make a lecture recorder: you press record and it writes your notes while the lecture is still going, then quizzes you on them later. Would you be up for a paid mention in one of your EE videos? US$50 to US$100, with a pinned comment linking graspstudy.com, labelled as a paid partnership. Your honest take is what we want.
+> Hi Yazan, I'm with Grasp and I saw your "comment if you want the app name" video for Cramelon. Our product is an AI notetaker, that records lectures or lessons and turns them into notes with AI. For 50 US dollars, would you be willing to make a promotional video and leave a pinned comment pointing to GraspStudy.com? Video: [link to the video]
 
 **@dentalguyry**
 > Hi Ryan, I'm with Grasp, a lecture recorder for students: press record and it writes your notes while the lecture is still going, then quizzes you on them later. Dental school content like yours is exactly who we built it for. Would you be up for a paid mention in one of your videos? US$50 to US$100, with a pinned comment linking graspstudy.com, labelled as a paid partnership. Say whatever you think.
@@ -170,3 +170,4 @@ suggests; the hooks above come from captions, not from watching.
 
 | Creator | Platform | Followers | Sent | Reply | Agreed fee | Link | Posted | Signups |
 |---|---|---|---|---|---|---|---|---|
+| @yazanazidan | TikTok | 19.9k | 2026-11-07, TikTok DM | None. TikTok blocked the DM as possibly breaking its Community Guidelines, so it was not delivered | | | | |
