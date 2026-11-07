@@ -140,7 +140,7 @@ from accounts they do not follow, so email is the backup: one personal message
 to an address they publish for business is fine; never a bulk send.
 
 **@yazanazidan**
-> Hi Yazan, I'm with Grasp and I saw your "comment if you want the app name" video for Cramelon. Our product is an AI notetaker, that records lectures or lessons and turns them into notes with AI. For 50 US dollars, would you be willing to make a promotional video and leave a pinned comment pointing to GraspStudy.com? Video: [link to the video]
+> Hi Yazan, I'm with Grasp. Our product is an AI notetaker, that records lectures or lessons and turns them into notes with AI. For 50 US dollars, would you be willing to make a promotional video and leave a pinned comment pointing to our site?
 
 **@dentalguyry**
 > Hi Ryan, I'm with Grasp, a lecture recorder for students: press record and it writes your notes while the lecture is still going, then quizzes you on them later. Dental school content like yours is exactly who we built it for. Would you be up for a paid mention in one of your videos? US$50 to US$100, with a pinned comment linking graspstudy.com, labelled as a paid partnership. Say whatever you think.
