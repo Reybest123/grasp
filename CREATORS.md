@@ -171,3 +171,4 @@ suggests; the hooks above come from captions, not from watching.
 | Creator | Platform | Followers | Sent | Reply | Agreed fee | Link | Posted | Signups |
 |---|---|---|---|---|---|---|---|---|
 | @yazanazidan | TikTok | 19.9k | 2026-11-07, TikTok DM | None. TikTok blocked the DM as possibly breaking its Community Guidelines, so it was not delivered | | | | |
+| @taae.leee (Tae Lee) | Instagram | 33.9k | 2026-11-07, 9:03 PM, Instagram DM | None yet. Offered US$100. Promoted TurboLearn (now Turbo AI, a competitor) in an earlier post, so likely open to paid work. Paid-partnership label not yet agreed | | | | |
