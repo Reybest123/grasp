@@ -171,4 +171,5 @@ suggests; the hooks above come from captions, not from watching.
 | Creator | Platform | Followers | Sent | Reply | Agreed fee | Link | Posted | Signups |
 |---|---|---|---|---|---|---|---|---|
 | @yazanazidan | TikTok | 19.9k | 2026-11-07, TikTok DM | None. TikTok blocked the DM as possibly breaking its Community Guidelines, so it was not delivered | | | | |
-| @taae.leee (Tae Lee) | Instagram | 33.9k | 2026-11-07, 9:03 PM, Instagram DM | None yet. Offered US$100. Promoted TurboLearn (now Turbo AI, a competitor) in an earlier post, so likely open to paid work. Paid-partnership label not yet agreed | | | | |
+| @taae.leee (Tae Lee) | Instagram | 33.9k | 2026-11-07, 9:03 PM, Instagram DM | No reply as of 2026-11-08. Offered US$100. Promoted TurboLearn (now Turbo AI, a competitor) in an earlier post, so likely open to paid work. Paid-partnership label not yet agreed | | | | |
+| @studywithlizzz_ (Lizzie) | Instagram | 120k | 2026-11-08, email to studytips808@gmail.com (bio address), not a DM. Offered US$100 for a pinned comment and a reference in a Post or Reel. Above the 5k to 50k target. Paid-partnership label not yet agreed (must be before she posts) | No reply yet | | | | |
