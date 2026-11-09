@@ -26,6 +26,12 @@ Correction to the 2026-11-01 entry: that "1 bought" and the A$23.98 a week are t
 
 Read: the ads and the landing page are reaching people, but nobody has bought a plan. Lecture-recorder search traffic is 73 visitors for 3 signups. Meta's 103 visitors made none. The study planner is the second most-viewed page (239 views), and the study schools are being sent to.
 
+### 2026-11-09 (pulled through Chrome; Performance, last 3 months, the date range shown on the page was not read)
+
+Performance: 36 clicks, 567 impressions, CTR 6.3%, average position 25.2. Top queries: "grasp study" 9 clicks from 81 impressions, "how to take cornell notes" 1 from 1, "grasp.study" 0 from 19, "how to record lectures" 0 from 12, "how to use cornell notes to study" 0 from 11, "cornell notes" 0 from 8, "cornell method" 0 from 8, "record lectures" 0 from 7, "study grasp" 0 from 5, "cue column" 0 from 5. 83 queries in all. Links report: 0 external links, 101 internal (led by the privacy page 17, terms 16, login 16, blog index 15, signup 15, study planner 14, then the cornell template post 1 and the lecture-recording post 1).
+
+Read against the 6 November snapshot: impressions read higher and average position lower, though the two windows may not match. Clicks are unchanged at 36. The non-brand queries gaining impressions ("cornell notes", "record lectures") still get no clicks. Still no external links, so the study-schools outreach has not yet produced a public link.
+
 ### 2026-11-03 (pulled through Chrome, last 7 days; data runs to 1 November)
 
 2 clicks, 121 impressions, average position 29. Top queries: grasp study (16 impressions, position 4.8), cue column (4, 36), how to record lectures (4, 74), record lectures (4, 84), how to use cornell notes to study (2, 45), best lecture note taking app (2, 72). The recording and template posts from 21 and 31 October are being shown, still far down the page. Links report: 0 external links, 116 internal.
