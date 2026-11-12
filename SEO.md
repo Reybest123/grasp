@@ -16,6 +16,14 @@ How to use it:
 
 ## Snapshots
 
+### 2026-11-12 (pulled through Chrome; the Performance chart runs 22 September to 10 November, the totals' window was not read)
+
+Performance: 36 clicks, 672 impressions, CTR 5.4%, average position 28.1. Top queries: "grasp study" 9 clicks from 85 impressions, "how to take cornell notes" 1 from 1, "grasp.study" 0 from 24, "how to use cornell notes to study" 0 from 19, "cornell notes" 0 from 15, "cornell method" 0 from 15, "how to record lectures" 0 from 15, "record lectures" 0 from 12, "cornell note" 0 from 9, "cornell style notes" 0 from 7. 97 queries in all.
+
+Read: clicks are flat at 36 since the 6 November snapshot, but impressions are up (470, then 567, now 672) and the average position has slipped (22.1, 25.2, now 28.1). The windows differ, so treat the trend as a direction, not a figure. The new impressions are non-brand ("cornell notes", "record lectures", "how to record lectures"), and none has a click yet. "grasp.study" keeps getting impressions (24) for a separate study site, so the name confusion is real and is not something this site can fix on its own.
+
+Alternative domains (checked 2026-11-12 through who.is, a third-party lookup, not the registry): **graspstudy.io** and **graspstudy.ai** both show as available. grasp.io is listed for sale (GoDaddy and Dan.com, Dan asks US$25,000). Nothing was bought. Confirm at a registrar before buying anything.
+
 ### 2026-11-07 (pulled through Chrome; Search Console chart runs 22 September to 4 November)
 
 Performance: 36 clicks, 470 impressions, CTR 7.7%, average position 22.1. Top queries: "grasp study" 9 clicks from 79 impressions, "how to take cornell notes" 1 from 1, "grasp.study" 0 from 15, "how to record lectures" 0 from 10, "record lectures" 0 from 6, "study grasp" 0 from 5, "cue column" 0 from 5, "how to use cornell notes to study" 0 from 5, "grasplet login" 0 from 3, "how to record a lecture" 0 from 3. 58 queries in all. Indexing: 19 indexed, 3 not (all "Page with redirect"). Links report: 0 external links, 101 internal (led by the privacy page 17, terms 16, login 16, blog index 15, signup 15, study planner 14, then the best-apps post 6). The brand searches are still the only clicks.

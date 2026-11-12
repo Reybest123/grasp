@@ -118,6 +118,27 @@ yet, and Search Console shows 0 external links.
 
 **Update 2026-11-09.** UTS Library declined (Nicole Aradas, ticket #4702679, sent 9 November). Its Assistive Technologies and Tools guide lists only enterprise software, built-in accessibility features, or tools students recommend in the JISC Student Digital Experience Insights Survey, which last ran in 2024. She said Grasp could be added if students pick it in a future survey. Nothing to do now. QSLA's Angie Farmer confirmed the eNewsletter went to members on Friday 6 November, with the planner image attached. It is members-only, so no public link is expected. HEA has sent no reply since the 3 November partner form. Brisbane State High, Holland Park, Craigslea and the Ipswich network have no public link yet, and the Search Console Links report still shows 0 external links.
 
+**Update 2026-11-12.** Checked the liamspencer549 mailbox after the user cleared the resolved threads. It has 3 left in the inbox. The rest was searched across all folders, which turned up the full "study skills page" run of 36 threads. Replies and outcomes, with the date of the last message:
+
+- **Brisbane School of Distance Education** (Megan Wallace, 21 October): raised the Department's risk review. Liam replied on 26 October that the sign-up and log-in links are now off the planner page, and asked to hear more about the review. Waiting on that review. No link is expected yet.
+- **Holland Park State High** (Alison Winfield, 28 October): will share the planner with students and put it on the school intranet. Intranet is private, so no backlink. Liam thanked her on 29 October.
+- **Craigslea State High** (Fran Neisler, 9 October): said she would look at it and send feedback. Liam asked for a yes or no on 23 October. No reply since.
+- **Brisbane State High** (Nicole, last message 14 October): with the IT committee. Liam chased once on 9 November. No reply since. No more chasing.
+- **Kelvin Grove State College** (Belinda Parslow, 21 October): declined, the planner is not needed for the junior campus.
+- **North Queensland TL network** (Wanda, 21 October): shared with the network, feedback passed on. Liam thanked her. No public link.
+- **San Damiano** (Michelle Carter, 21 October): checked with Nicole and passed the request on. Recorded as declined earlier, unchanged.
+- **The Grove TL network** (Assunta, 19 October): the group no longer exists. Pointed to QSLA.
+- **Caboolture network** (Amelia, 14 and 17 October): both emails bounced, the address (aconn10@eq.edu.au) was not found. Gmail filed the first bounce as spam. Dead, do not write again.
+- **Cairns network** (Annette, 17 October): bounced. Dead, as recorded above.
+- **Brisbane Catholic network** (Renee Mason, 14 October): automatic reply, on leave. It pointed invoices to San Damiano's business manager. Not pursued.
+- **UQ Future Students Australia** (Jayden Weidemann, Senior Coordinator, 2 November): said "Looks great" about the best-study-apps article request and forwarded it to UQ's Marketing team, who will reply. The pitch went on 28 October and a follow-up on 2 November. Nothing since. No more email until Marketing answers.
+- **Curtin Library** (29 October, ref 261029-000272; 2 November, ref 261102-000101): automatic receipts only. **AskUOW** (Wollongong, 29 October): automatic receipt only.
+- **Academic Skills note-taking page, note-taking toolkit, and UniSkills** (Curtin, 2 November): pitches sent, no reply in the mailbox.
+
+Still no reply, sent and followed up once: Kedron, MacGregor, Carey Baptist, Pacific Lutheran, Ipswich, Benedict Centre, the library portal and resource centre pages, and the "before exams" guidance-officer emails. Brisbane East (Carol, 13 October) has had one email and no follow-up.
+
+Search Console still shows 0 external links.
+
 ## Beyond schools (2026-10-27)
 
 Next targets, in order. None of these is bound by the Department's account
