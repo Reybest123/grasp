@@ -139,6 +139,13 @@ Still no reply, sent and followed up once: Kedron, MacGregor, Carey Baptist, Pac
 
 Search Console still shows 0 external links.
 
+**Update 2026-11-13.** Two check-in emails sent from liamspencer549 at about 10:33 and 10:34 am:
+
+- **HEA** (Tina Smith, reply in the partner-pack thread): asks whether anything else is needed to finish the partnership, a logo in another size, more images, or wording for their newsletter or member pages, and invites a better way to support members. No reply yet.
+- **UQ Future Students Australia** (Jayden Weidemann, reply in the article thread): asks whether UQ Marketing has looked at the article request, and whether they need a different description or the guide links. This is the third message in that thread, after the 28 October pitch and the 2 November follow-up. No reply yet.
+
+**HEA and backlinks.** Liam's view is that the free partnership is for the backlink, not for social posts, since HEA partner posts have had little engagement. The earlier 3 November entry logs what the 2027 pack offers. Quality tier: 3 ads or articles, 3 Facebook posts, 3 Instagram posts and 3 newsletter posts. The articles carry a backlinked logo, so that is the backlink. Displaying a backlinked HEA logo on graspstudy.com would earn one more of each (Premium tier), but that reciprocal logo was declined, so the backlink stays on HEA's side. The exact wording in the PDF was not reread on 13 November: the pack is an attachment on Tina's 3 November email, and downloading it needs the user's OK.
+
 ## Beyond schools (2026-10-27)
 
 Next targets, in order. None of these is bound by the Department's account
