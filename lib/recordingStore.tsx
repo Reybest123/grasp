@@ -87,6 +87,9 @@ export type RecordingState = {
   notice: string | null;
   /** a failed start, kept against the subject that attempted it */
   fatal: { subjectId: string; message: string } | null;
+  /** the subject whose recording was stopped with nothing heard, until dismissed */
+  nothingHeard: string | null;
+  clearNothingHeard: () => void;
   /** a recording just saved itself while its Record tab was on screen: open it in Notes */
   openNote: { subjectId: string; noteId: string } | null;
   clearOpenNote: () => void;
@@ -140,6 +143,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const [finishing, setFinishing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [fatal, setFatal] = useState<{ subjectId: string; message: string } | null>(null);
+  const [nothingHeard, setNothingHeard] = useState<string | null>(null);
+  const clearNothingHeard = useCallback(() => setNothingHeard(null), []);
   const [openNote, setOpenNote] = useState<{ subjectId: string; noteId: string } | null>(null);
   const clearOpenNote = useCallback(() => setOpenNote(null), []);
   const titleRef = useRef("");
@@ -280,6 +285,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const start = useCallback(
     async (subject: { id: string; name: string; context: string; resources: ResourceBrief[] }) => {
       setFatal(null);
+      setNothingHeard(null);
       setStarting(true);
       try {
         // Checked before the microphone is asked for, so a student out of
@@ -473,7 +479,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     } else if (!transcriptRef.current) {
       const id = subjectIdRef.current;
       reset();
-      if (id) setFatal({ subjectId: id, message: "Nothing was picked up, so nothing was saved." });
+      if (id) setNothingHeard(id);
     }
   }, [draft, save, reset]);
 
@@ -622,6 +628,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         finishing,
         notice,
         fatal,
+        nothingHeard,
+        clearNothingHeard,
         openNote,
         clearOpenNote,
         viewing,

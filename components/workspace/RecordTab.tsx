@@ -388,7 +388,34 @@ export function RecordTab({
     </div>
   );
 
-  const main = active ? livePanel : elsewhere ? busyPanel : selected ? (
+  // Stopped with nothing heard. There is no transcript to keep, so the only
+  // way on is Discard, which goes back to the start panel.
+  const nothingHeardPanel = (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-ring">
+      <div className="grid min-h-[240px] place-items-center rounded-2xl bg-amber-50 p-5 text-center">
+        <div>
+          <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700">
+            <AlertIcon className="h-5 w-5" />
+          </span>
+          <p className="mt-4 font-semibold text-amber-900" role="status">
+            Nothing was picked up
+          </p>
+        </div>
+      </div>
+      <div className="mt-5 flex justify-end">
+        <button
+          onClick={rec.clearNothingHeard}
+          className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
+        >
+          Discard
+        </button>
+      </div>
+    </div>
+  );
+
+  const main = active ? livePanel : elsewhere ? busyPanel : rec.nothingHeard === subjectId ? (
+    nothingHeardPanel
+  ) : selected ? (
     <RecordedNote note={selected} now={now} onEdit={() => onOpenNote(selected.id)} />
   ) : (
     startPanel

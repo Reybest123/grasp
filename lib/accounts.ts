@@ -92,6 +92,9 @@ const COMMON_PASSWORDS = new Set([
  * `email` is optional so a caller with nothing to compare against — a script, a
  * test — still gets the other checks.
  */
+/** One wording for a common password, a repeated character and a straight run. */
+const WEAK_PASSWORD = "This is a weak password. Please choose a different one.";
+
 export function passwordProblem(password: string, email = ""): string | null {
   if (password.length < 8) return "Your password must be at least 8 characters long.";
   if (password.length > 200) return "Your password must be 200 characters or fewer.";
@@ -99,16 +102,16 @@ export function passwordProblem(password: string, email = ""): string | null {
   const lowered = password.toLowerCase();
 
   if (COMMON_PASSWORDS.has(lowered)) {
-    return "That is one of the most commonly used passwords, so it is among the first an attacker would try. Please choose a different one.";
+    return WEAK_PASSWORD;
   }
 
   // "aaaaaaaa" clears the length floor and has eight characters of one guess in
   // it. The same for a straight run off the keyboard.
   if (/^(.)\1+$/.test(password)) {
-    return "That password is a single character repeated. Please choose a different one.";
+    return WEAK_PASSWORD;
   }
   if (isSequential(lowered)) {
-    return "That password is a single run of sequential characters. Please choose a different one.";
+    return WEAK_PASSWORD;
   }
 
   // The address is the one thing an attacker already knows, so anything built
