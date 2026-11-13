@@ -149,16 +149,28 @@ export async function transcribeSegment(
   blob: Blob,
   ext: string,
   recordingId: string
-): Promise<{ text: string; error: string | null; limit: boolean }> {
+): Promise<{ text: string; error: string | null; limit: boolean; retry: boolean }> {
   const form = new FormData();
   form.append("audio", blob, `segment.${ext}`);
   form.append("recording", recordingId);
-  const data = await postForm<{ text: string; limit?: boolean }>("/api/transcribe", form);
-  if (data.error) return { text: "", error: data.error, limit: data.limit === true };
-  return { text: typeof data.text === "string" ? data.text : "", error: null, limit: false };
+  let res: Response;
+  try {
+    res = await fetch("/api/transcribe", { method: "POST", body: form });
+  } catch {
+    // No connection: the same clip can be sent again once it is back.
+    return { text: "", error: OFFLINE, limit: false, retry: true };
+  }
+  const data = await readReply<{ text: string; limit?: boolean }>(res);
+  if (data.error) {
+    // Worth sending again when the server or the provider failed, or when the
+    // server is still busy with this recording's last clip (409). Anything
+    // else (a spent allowance, a clip it will not take) would fail the same way.
+    const retry = data.limit !== true && (res.status >= 500 || res.status === 409);
+    return { text: "", error: data.error, limit: data.limit === true, retry };
+  }
+  return { text: typeof data.text === "string" ? data.text : "", error: null, limit: false, retry: false };
 }
 
-/** `limit` is null in the admin's unlimited mode. */
 export type Allowance = { used: number; limit: number | null; resetsAt: string | null };
 export type Usage = {
   quizzes: Allowance;

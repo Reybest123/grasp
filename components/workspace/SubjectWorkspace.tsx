@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { JSX } from "react";
 import type { Note, Quiz, Subject } from "@/lib/subjects";
+import { noteId } from "@/lib/subjects";
 import { briefsFor, type Resource } from "@/lib/resources";
 import { useSubjects } from "@/lib/subjectsStore";
 import { useRecording } from "@/lib/recordingStore";
@@ -104,23 +105,29 @@ export function SubjectWorkspace({
     return () => setViewing(false);
   }, [showingLive, setViewing]);
 
+  // Every write below reads the subject as it stands when the write lands
+  // (a function patch), never the copy this render was drawn from. Several of
+  // them are called after a wait on the AI, and a patch built from the old
+  // copy put back every note, quiz or document as it was before the wait.
+  const sid = subject.id;
+
   const updateNote = useCallback(
     (id: string, patch: Partial<Note>) => {
-      updateSubject(subject.id, {
+      updateSubject(sid, (s) => ({
         // Every edit, a rename included, is what "3 days ago" counts from.
-        notes: subject.notes.map((n) =>
+        notes: s.notes.map((n) =>
           n.id === id ? { ...n, ...patch, updated: patch.updated ?? new Date().toISOString() } : n
         ),
-      });
+      }));
     },
-    [subject.id, subject.notes, updateSubject]
+    [sid, updateSubject]
   );
 
   const deleteNote = useCallback(
     (id: string) => {
       const index = subject.notes.findIndex((n) => n.id === id);
       const notes = subject.notes.filter((n) => n.id !== id);
-      updateSubject(subject.id, { notes });
+      updateSubject(sid, (s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
       // Only move the selection if the note being deleted was the one open —
       // deleting from further down the list should leave the editor alone.
       // The neighbour below takes its place, or the one above when it was last.
@@ -128,60 +135,64 @@ export function SubjectWorkspace({
         current === id ? (notes[index] ?? notes[index - 1])?.id : current
       );
     },
-    [subject.id, subject.notes, updateSubject]
+    [sid, subject.notes, updateSubject]
   );
 
   const addNote = useCallback(
     (title: string, body: string) => {
-      const id = "n" + Date.now();
-      updateSubject(subject.id, {
-        notes: [{ id, title, body, updated: new Date().toISOString() }, ...subject.notes],
-      });
+      const id = noteId();
+      updateSubject(sid, (s) => ({
+        notes: [{ id, title, body, updated: new Date().toISOString() }, ...s.notes],
+      }));
       setActiveId(id);
       setTab("notes");
       return id;
     },
-    [subject.id, subject.notes, updateSubject]
+    [sid, updateSubject]
   );
 
   // Quizzes persist onto the subject the same way notes do, so an unfinished
   // one survives a tab switch or a refresh. Newest first, matching the grid.
   const addQuiz = useCallback(
     (quiz: Quiz) => {
-      updateSubject(subject.id, { quizzes: [quiz, ...subject.quizzes] });
+      updateSubject(sid, (s) => ({ quizzes: [quiz, ...s.quizzes] }));
     },
-    [subject.id, subject.quizzes, updateSubject]
+    [sid, updateSubject]
   );
 
+  // A function patch reads the quiz as it stands, for writes that land after
+  // a wait (an explanation arriving while another is still being written).
   const updateQuiz = useCallback(
-    (id: string, patch: Partial<Quiz>) => {
-      updateSubject(subject.id, {
-        quizzes: subject.quizzes.map((q) => (q.id === id ? { ...q, ...patch } : q)),
-      });
+    (id: string, patch: Partial<Quiz> | ((quiz: Quiz) => Partial<Quiz>)) => {
+      updateSubject(sid, (s) => ({
+        quizzes: s.quizzes.map((q) =>
+          q.id === id ? { ...q, ...(typeof patch === "function" ? patch(q) : patch) } : q
+        ),
+      }));
     },
-    [subject.id, subject.quizzes, updateSubject]
+    [sid, updateSubject]
   );
 
   // §3.4 — a document is read once, on the way in; nothing here re-reads one.
   const addResource = useCallback(
     (resource: Resource) => {
-      updateSubject(subject.id, { resources: [...subject.resources, resource] });
+      updateSubject(sid, (s) => ({ resources: [...s.resources, resource] }));
     },
-    [subject.id, subject.resources, updateSubject]
+    [sid, updateSubject]
   );
 
   const deleteResource = useCallback(
     (id: string) => {
-      updateSubject(subject.id, { resources: subject.resources.filter((r) => r.id !== id) });
+      updateSubject(sid, (s) => ({ resources: s.resources.filter((r) => r.id !== id) }));
     },
-    [subject.id, subject.resources, updateSubject]
+    [sid, updateSubject]
   );
 
   const deleteQuiz = useCallback(
     (id: string) => {
-      updateSubject(subject.id, { quizzes: subject.quizzes.filter((q) => q.id !== id) });
+      updateSubject(sid, (s) => ({ quizzes: s.quizzes.filter((q) => q.id !== id) }));
     },
-    [subject.id, subject.quizzes, updateSubject]
+    [sid, updateSubject]
   );
 
   const openQuiz = quizOpenId ? subject.quizzes.find((q) => q.id === quizOpenId) : undefined;

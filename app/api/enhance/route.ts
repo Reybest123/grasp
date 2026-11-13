@@ -82,6 +82,19 @@ export async function POST(req: NextRequest) {
   }
   await tokens.charge(result.costUsd);
 
+  // A reply that ran out of room stops part-way through the note. Putting it
+  // in place of the note would silently drop everything after that point, so
+  // the note is left as it is. The call was still paid for, so it is charged.
+  if (result.truncated) {
+    return NextResponse.json(
+      {
+        error:
+          "This note is too long to enhance in one go. Highlight part of it and use Refine, or split it into shorter notes.",
+      },
+      { status: 413 }
+    );
+  }
+
   const { text, used } = splitUsed(stripFence(result.content), briefs);
   return NextResponse.json({ enhanced: text || body, used });
 }

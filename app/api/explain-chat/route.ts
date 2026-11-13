@@ -115,17 +115,34 @@ The part the student selected:
   }
   await tokens.charge(result.costUsd);
 
+  // A Refine reply carries the whole rewritten note, so one that ran out of
+  // room is a note cut off part-way and is never applied.
+  if (refine && result.truncated) {
+    return NextResponse.json(
+      {
+        error:
+          "This note is too long for Grasp to rewrite in one go. Split it into shorter notes and try again.",
+      },
+      { status: 413 }
+    );
+  }
+
   const raw = result.content || "{}";
   try {
     const parsed = JSON.parse(raw);
     const revised = typeof parsed.revisedNote === "string" ? stripFence(parsed.revisedNote) : "";
     return NextResponse.json({
-      reply: parsed.reply ?? "",
-      // Explain must never write to the note, whatever the model returns.
+      reply: typeof parsed.reply === "string" ? parsed.reply : "",
       revisedNote: refine ? revised || null : null,
       used: pickUsed(parsed.used, briefs),
     });
   } catch {
-    return NextResponse.json({ reply: raw, revisedNote: null, used: [] });
+    // The reply was not the JSON asked for (usually one cut off part-way).
+    // It used to be shown to the student as the answer, braces and all.
+    console.error("[grasp] explain JSON did not parse:", raw.slice(0, 300));
+    return NextResponse.json(
+      { error: "Grasp could not answer that just now. Try again in a moment." },
+      { status: 502 }
+    );
   }
 }

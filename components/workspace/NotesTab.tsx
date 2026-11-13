@@ -395,11 +395,22 @@ export function NotesTab({
   );
 
   /** Records a change made to the note from outside the editor (AI enhance/refine). */
+  // The note on screen now, which is not always the one a callback was made
+  // for: an enhance or a refine lands after a wait, and the student may have
+  // opened another note by then.
+  const openIdRef = useRef(active?.id);
+  openIdRef.current = active?.id;
+
   const commitHtml = useCallback(
     (html: string) => {
       if (!active) return;
-      historyRef.current.record(html, 0);
-      syncHistory();
+      // The undo stack belongs to the note on screen. A result arriving for a
+      // note the student has since left is still written to that note, but must
+      // not become an undo step in this one.
+      if (openIdRef.current === active.id) {
+        historyRef.current.record(html, 0);
+        syncHistory();
+      }
       updateNote(active.id, { body: html, updated: new Date().toISOString() });
     },
     [active, updateNote, syncHistory]
@@ -1271,7 +1282,9 @@ export function NotesTab({
       setEnhanceError(error);
       return;
     }
-    setEnhanceResult({ cited, output: htmlToText(html) });
+    // The result bar describes the note on screen, so it only shows if that
+    // is still the note this was run on.
+    if (openIdRef.current === active.id) setEnhanceResult({ cited, output: htmlToText(html) });
     commitHtml(html);
   }
 

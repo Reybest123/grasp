@@ -48,7 +48,8 @@ export function QuizRunner({
   context: string;
   /** the subject's Resource Bank, already read and extracted (§3.4) */
   resources: ResourceBrief[];
-  onUpdate: (patch: Partial<Quiz>) => void;
+  /** a function patch reads the quiz as it stands when the write lands */
+  onUpdate: (patch: Partial<Quiz> | ((quiz: Quiz) => Partial<Quiz>)) => void;
   onBack: () => void;
 }) {
   const [marking, setMarking] = useState(false);
@@ -66,8 +67,13 @@ export function QuizRunner({
 
   function setAnswer(id: string, patch: Partial<QuizResponse>) {
     // Unmarked until submit, so a fresh answer starts as `correct: false`.
-    const existing: QuizResponse = quiz.answers[id] ?? { correct: false };
-    onUpdate({ answers: { ...quiz.answers, [id]: { ...existing, ...patch } } });
+    // Read from the quiz as it stands, not from this render: an explanation
+    // lands after a wait, and a second one asked for in the meantime would
+    // otherwise be written over with the answers as they were before it.
+    onUpdate((current) => {
+      const existing: QuizResponse = current.answers[id] ?? { correct: false };
+      return { answers: { ...current.answers, [id]: { ...existing, ...patch } } };
+    });
   }
 
   const unanswered = quiz.questions.filter((q) => {

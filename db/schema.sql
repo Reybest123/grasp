@@ -190,6 +190,14 @@ create table if not exists subjects (
 
 create index if not exists subjects_user_idx on subjects (user_id, position);
 
+-- How many times the subject has been saved. The browser sends back the
+-- version it last read with every save, and a save that is behind (another tab
+-- or device has saved since) is refused rather than allowed to overwrite the
+-- newer one (lib/subjectsDb.ts saveSubject). Grown with alter, since the table
+-- already exists; code from before the column never names it, so it is safe to
+-- add ahead of the code that reads it.
+alter table subjects add column if not exists version integer not null default 0;
+
 create table if not exists class_slots (
   id         text primary key,
   subject_id text not null references subjects(id) on delete cascade,

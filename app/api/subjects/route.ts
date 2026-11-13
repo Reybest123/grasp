@@ -13,27 +13,40 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
-import { loadSubjects, replaceAllSubjects, saveOrder } from "@/lib/subjectsDb";
+import { loadWorkspace, replaceAllSubjects, saveOrder } from "@/lib/subjectsDb";
+import { MAX_SUBJECTS, bodyTooLarge, parseSubject } from "@/lib/subjectShape";
 import type { Subject } from "@/lib/subjects";
 
 export async function GET() {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  const result = await query(() => loadSubjects(guard.user.id));
+  const result = await query(() => loadWorkspace(guard.user.id));
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  return NextResponse.json({ subjects: result.data });
+  return NextResponse.json(result.data);
 }
 
 export async function PUT(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
+  if (bodyTooLarge(req)) {
+    return NextResponse.json({ error: "That is more than Grasp can save." }, { status: 413 });
+  }
   const body = await req.json().catch(() => ({}));
-  const list = Array.isArray(body.subjects) ? (body.subjects as Subject[]) : null;
-  if (!list) {
+  const sent: unknown[] | null = Array.isArray(body?.subjects) ? body.subjects : null;
+  if (!sent || sent.length > MAX_SUBJECTS) {
     return NextResponse.json({ error: "Expected a list of subjects." }, { status: 400 });
+  }
+  const list: Subject[] = [];
+  const seen = new Set<string>();
+  for (const item of sent) {
+    const parsed = parseSubject(item, (item as { id?: unknown } | null)?.id as string);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    if (seen.has(parsed.subject.id)) continue;
+    seen.add(parsed.subject.id);
+    list.push(parsed.subject);
   }
   // A timetable can list more subjects than the free trial holds: the first
   // FREE_SUBJECT_LIMIT are kept, and the store takes the list back from here.
@@ -42,11 +55,11 @@ export async function PUT(req: NextRequest) {
 
   const result = await query(async () => {
     await replaceAllSubjects(guard.user.id, subjects);
-    return loadSubjects(guard.user.id);
+    return loadWorkspace(guard.user.id);
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  return NextResponse.json({ subjects: result.data });
+  return NextResponse.json(result.data);
 }
 
 /** Reordering the grid, without rewriting the contents of anything. */

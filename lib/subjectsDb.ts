@@ -9,7 +9,7 @@
 //
 // Server-side only: imports lib/db.ts.
 
-import { sql, transaction } from "@/lib/db";
+import { sql, transaction, type Sql } from "@/lib/db";
 import type { Subject, Note, Quiz } from "@/lib/subjects";
 import type { ClassSlot, Exam } from "@/lib/schedule";
 import type { Resource } from "@/lib/resources";
@@ -21,6 +21,7 @@ type SubjectRow = {
   teacher: string | null;
   position: number;
   quiz_topics: unknown;
+  version: number;
 };
 
 /**
@@ -72,13 +73,25 @@ function asArray<T>(value: unknown): T[] {
  * out; at this size the extra round trips are cheaper than that.
  */
 export async function loadSubjects(userId: string): Promise<Subject[]> {
+  return (await loadWorkspace(userId)).subjects;
+}
+
+/**
+ * The subjects, and each one's `version`: a count of its saves. The browser
+ * sends back the version it last saw with every save, which is how a save from
+ * a tab that has fallen behind another tab or device is caught (`saveSubject`).
+ */
+export async function loadWorkspace(
+  userId: string
+): Promise<{ subjects: Subject[]; versions: Record<string, number> }> {
   const subjects = (await sql`
-    select id, name, color_key, teacher, position, quiz_topics
+    select id, name, color_key, teacher, position, quiz_topics, version
     from subjects where user_id = ${userId}
     order by position asc, created_at asc
   `) as SubjectRow[];
 
-  if (!subjects.length) return [];
+  if (!subjects.length) return { subjects: [], versions: {} };
+  const versions = Object.fromEntries(subjects.map((s) => [s.id, s.version]));
 
   const ids = subjects.map((s) => s.id);
 
@@ -107,7 +120,7 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
   const resourcesBy = bucket<{ subject_id: string; id: string; name: string; kind: string; summary: string; entries: unknown; status: string; error: string | null; added_at: unknown }>(resources);
   const quizzesBy = bucket<Record<string, unknown> & { subject_id: string }>(quizzes);
 
-  return subjects.map((s) => ({
+  const built = subjects.map<Subject>((s) => ({
     id: s.id,
     name: s.name,
     colorKey: s.color_key,
@@ -161,6 +174,7 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
       retaken: q.retaken ? true : undefined,
     })),
   }));
+  return { subjects: built, versions };
 }
 
 /**
@@ -172,11 +186,11 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
  * fifteen notes changed, for no gain at this size. `on conflict` on the parent
  * keeps the subject row itself stable so the cascade never fires on it.
  *
- * Returns false when the id belongs to somebody else, rather than throwing:
- * a throw here reaches `query()` in lib/db.ts, which cannot tell one apart from
- * a dropped connection and so reported a refused write as "Grasp could not
- * reach its database" — a 502 for what is really a 404, logged as a database
- * fault. The caller turns this into the right status.
+ * An id that belongs to somebody else comes back as "notYours" rather than a
+ * throw: a throw here reaches `query()` in lib/db.ts, which cannot tell one
+ * apart from a dropped connection and so reported a refused write as "Grasp
+ * could not reach its database" — a 502 for what is really a 404, logged as a
+ * database fault. The caller turns this into the right status.
  *
  * One transaction: the child rows are deleted and re-inserted together, so a
  * failed insert rolls the deletes back rather than losing the notes they held.
@@ -184,16 +198,37 @@ export async function loadSubjects(userId: string): Promise<Subject[]> {
  * of the same subject arriving at once run one after the other rather than
  * interleaving their deletes and inserts.
  */
+/** What a save came to. `version` is the subject's new one, to send with the next save. */
+export type SaveOutcome =
+  | { saved: true; version: number }
+  /** the free trial's subject cap */
+  | { saved: false; why: "full" }
+  /** the id belongs to another account */
+  | { saved: false; why: "notYours" }
+  /** saved elsewhere since this browser last read it: nothing was written */
+  | { saved: false; why: "conflict" }
+  /** deleted elsewhere since this browser last read it: nothing was written */
+  | { saved: false; why: "gone" };
+
 /**
  * Saves one subject. `maxSubjects` (the free trial's cap) refuses a new subject
- * once the account has that many, returning "full"; it is counted under a
- * per-account lock in this transaction, so saves sent together cannot all pass.
+ * once the account has that many; it is counted under a per-account lock in
+ * this transaction, so saves sent together cannot all pass.
+ *
+ * `baseVersion` is the version the browser last read: a number for a subject it
+ * loaded or has saved before, null for one it has just made, and undefined from
+ * a page loaded before versions existed, which is saved unchecked as it always
+ * was. A save writes the whole subject, so one from a tab that has not seen a
+ * newer save (another tab, or a phone) would delete whatever that save added.
+ * It is refused instead, and the browser merges and sends again
+ * (lib/subjectsStore.tsx).
  */
 export async function saveSubject(
   userId: string,
   subject: Subject,
-  maxSubjects?: number
-): Promise<boolean | "full"> {
+  maxSubjects?: number,
+  baseVersion?: number | null
+): Promise<SaveOutcome> {
   return transaction(async (sql) => {
     if (maxSubjects !== undefined) {
       await sql`select pg_advisory_xact_lock(hashtext(${`${userId}:subjects`}))`;
@@ -201,28 +236,43 @@ export async function saveSubject(
         select count(*)::int as n, coalesce(bool_or(id = ${subject.id}), false) as present
         from subjects where user_id = ${userId}
       `) as { n: number; present: boolean }[];
-      if (!rows[0]?.present && (rows[0]?.n ?? 0) >= maxSubjects) return "full";
+      if (!rows[0]?.present && (rows[0]?.n ?? 0) >= maxSubjects) return { saved: false, why: "full" };
     }
-    await sql`
-      insert into subjects (id, user_id, name, color_key, teacher, position, quiz_topics)
+
+    if (baseVersion !== undefined) {
+      // Locked until commit, so two saves of one subject take turns and the
+      // second sees the first's version.
+      const held = (await sql`
+        select version from subjects where id = ${subject.id} and user_id = ${userId} for update
+      `) as { version: number }[];
+      if (!held.length && baseVersion !== null) return { saved: false, why: "gone" };
+      if (held.length && held[0].version !== baseVersion) return { saved: false, why: "conflict" };
+    }
+    return writeSubject(sql, userId, subject);
+  });
+}
+
+/** The writes of one save, on the caller's transaction. */
+async function writeSubject(sql: Sql, userId: string, subject: Subject): Promise<SaveOutcome> {
+    const written = (await sql`
+      insert into subjects (id, user_id, name, color_key, teacher, position, quiz_topics, version)
       values (
         ${subject.id}, ${userId}, ${subject.name}, ${subject.colorKey},
-        ${subject.teacher ?? null}, ${0}, ${JSON.stringify(subject.quizTopics ?? [])}
+        ${subject.teacher ?? null}, ${0}, ${JSON.stringify(subject.quizTopics ?? [])}, 1
       )
       on conflict (id) do update set
         name = excluded.name,
         color_key = excluded.color_key,
         teacher = excluded.teacher,
-        quiz_topics = excluded.quiz_topics
+        quiz_topics = excluded.quiz_topics,
+        version = subjects.version + 1
       where subjects.user_id = ${userId}
-    `;
+      returning version
+    `) as { version: number }[];
 
     // If the row already existed under another account the update above matched
     // nothing, so nothing may be written beneath it either.
-    const owned = (await sql`
-      select 1 from subjects where id = ${subject.id} and user_id = ${userId}
-    `) as unknown[];
-    if (!owned.length) return false;
+    if (!written.length) return { saved: false, why: "notYours" };
 
     // One statement at a time: a transaction runs on a single connection, and
     // the driver has deprecated queueing overlapping queries on one.
@@ -305,8 +355,7 @@ export async function saveSubject(
       `;
     }
 
-    return true;
-  });
+    return { saved: true, version: written[0].version };
 }
 
 /** Positions are rewritten whenever the grid's order can have changed. */
@@ -323,11 +372,18 @@ export async function deleteSubject(userId: string, id: string): Promise<void> {
   await sql`delete from subjects where id = ${id} and user_id = ${userId}`;
 }
 
-/** Onboarding (§2): the extracted timetable becomes the whole subject list. */
+/**
+ * Onboarding (§2): the extracted timetable becomes the whole subject list. One
+ * transaction, so a subject that fails to save leaves the list as it was
+ * rather than deleted with only some of its replacement written.
+ */
 export async function replaceAllSubjects(userId: string, subjects: Subject[]): Promise<void> {
-  await sql`delete from subjects where user_id = ${userId}`;
-  for (const [i, subject] of subjects.entries()) {
-    await saveSubject(userId, subject);
-    await sql`update subjects set position = ${i} where id = ${subject.id} and user_id = ${userId}`;
-  }
+  await transaction(async (sql) => {
+    await sql`delete from subjects where user_id = ${userId}`;
+    for (const [i, subject] of subjects.entries()) {
+      const outcome = await writeSubject(sql, userId, subject);
+      if (!outcome.saved) throw new Error(`subject ${i} of a replaced list could not be written`);
+      await sql`update subjects set position = ${i} where id = ${subject.id} and user_id = ${userId}`;
+    }
+  });
 }

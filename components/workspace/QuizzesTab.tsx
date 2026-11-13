@@ -44,7 +44,7 @@ export function QuizzesTab({
   resources: ResourceBrief[];
   now: Date | null;
   addQuiz: (quiz: Quiz) => void;
-  updateQuiz: (id: string, patch: Partial<Quiz>) => void;
+  updateQuiz: (id: string, patch: Partial<Quiz> | ((quiz: Quiz) => Partial<Quiz>)) => void;
   deleteQuiz: (id: string) => void;
   /** held by SubjectWorkspace so its breadcrumb can name and close the open quiz */
   view: QuizView;

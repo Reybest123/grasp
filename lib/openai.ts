@@ -13,7 +13,17 @@ const UNAVAILABLE = "Grasp could not reach the AI just now. Try again in a momen
 
 export type ChatResult =
   /** `costUsd` is what the call cost, from the provider's own token counts. */
-  | { ok: true; content: string; costUsd: number }
+  | {
+      ok: true;
+      content: string;
+      costUsd: number;
+      /**
+       * The reply stopped at `max_completion_tokens` rather than finishing. A
+       * route whose reply replaces something the student wrote must not use a
+       * reply cut off part-way.
+       */
+      truncated: boolean;
+    }
   | { ok: false; response: NextResponse };
 
 /**
@@ -87,6 +97,7 @@ export async function chatCompletion(body: Record<string, unknown>): Promise<Cha
   return {
     ok: true,
     content: data.choices?.[0]?.message?.content ?? "",
+    truncated: data.choices?.[0]?.finish_reason === "length",
     costUsd: costUsd(
       String(body.model ?? ""),
       Number(data.usage?.prompt_tokens) || 0,

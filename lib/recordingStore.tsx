@@ -20,6 +20,7 @@ import { transcribeSegment, liveNotes, fetchUsage } from "@/lib/ai";
 import type { Citation, ResourceBrief } from "@/lib/resources";
 import { startSegmentedRecording, RecorderError, type RecorderHandle } from "@/lib/recorder";
 import { useSubjects } from "@/lib/subjectsStore";
+import { noteId } from "@/lib/subjects";
 import { useProfile } from "@/lib/profileStore";
 import { freesUpLabel, publishLimit } from "@/lib/limitNotice";
 import { subscribePlanEnded } from "@/lib/planEnded";
@@ -38,6 +39,13 @@ const MIN_NEW_CHARS = 220;
 // larger step here keeps the client under that, so the final pass is never the
 // draft that gets refused.
 const SPARSE_GROWTH = 0.2;
+
+/**
+ * How long to wait before each further try at a clip that failed to send.
+ * Under a segment's length in total, so a short drop does not put the notes
+ * far behind the lecture.
+ */
+const SEGMENT_RETRY_MS = [2_000, 5_000, 10_000];
 
 /** A saved transcript is split below LIMITS.noteChars, leaving room for the HTML around it. */
 const TRANSCRIPT_PART_CHARS = 50_000;
@@ -252,7 +260,22 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
   const ingest = useCallback(
     async (blob: Blob, ext: string) => {
-      const { text, error, limit } = await transcribeSegment(blob, ext, recordingIdRef.current);
+      const session = recordingIdRef.current;
+      let { text, error, limit, retry } = await transcribeSegment(blob, ext, session);
+      // A dropped connection, or a failure on Grasp's side, used to lose the
+      // clip: twenty seconds of the lecture gone from the notes. It is sent
+      // again a few times first. Clips recorded meanwhile wait their turn in
+      // the chain, so the lecture stays in order. Not once Stop is pressed,
+      // which would hold the save up behind the waits.
+      for (const wait of SEGMENT_RETRY_MS) {
+        if (!error || !retry || stoppingRef.current) break;
+        setNotice("Grasp lost its connection for a moment. Still recording, and it will catch up.");
+        await new Promise((done) => setTimeout(done, wait));
+        // Discarded, or replaced by a new recording, while waiting.
+        if (recordingIdRef.current !== session) return;
+        ({ text, error, limit, retry } = await transcribeSegment(blob, ext, session));
+      }
+      if (recordingIdRef.current !== session) return;
       if (limit) {
         // The refusal raised the limit dialog on its way through lib/ai.ts, so
         // there is nothing to say here as well.
@@ -273,6 +296,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       // The server drops what Whisper made up from room noise, so an empty
       // reply means nobody was heard, the same as a segment too quiet to send.
       if (!text) {
+        setNotice(null);
         setQuietSeconds((s) => s + SEGMENT_MS / 1000);
         return;
       }
@@ -433,10 +457,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     const bodies = notesRef.current
       ? [notesRef.current]
       : splitTranscript(transcriptRef.current).map(textToHtml);
-    const stamp = Date.now();
     const updated = new Date().toISOString();
     const notes = bodies.map((body, i) => ({
-      id: `n${stamp}${bodies.length > 1 ? `-${i + 1}` : ""}`,
+      id: noteId(),
       title: bodies.length > 1 ? `${titleRef.current} (part ${i + 1} of ${bodies.length})` : titleRef.current,
       body,
       updated,

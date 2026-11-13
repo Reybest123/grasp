@@ -116,7 +116,24 @@ export type Subject = {
 };
 
 let seq = 0;
-const uid = (p: string) => `${p}${Date.now().toString(36)}${(seq++).toString(36)}`;
+
+/** Six random base-36 characters. */
+function randomTail(): string {
+  const bytes = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => (b % 36).toString(36)).join("");
+}
+
+// Every content id is a primary key across all accounts (db/schema.sql), so a
+// timestamp and a per-page counter alone could collide between two students in
+// the same millisecond, and a collision fails every later save of that subject.
+// The random tail is what makes that not happen.
+const uid = (p: string) => `${p}${Date.now().toString(36)}${(seq++).toString(36)}${randomTail()}`;
+
+/** Ids for notes, typed or recorded. */
+export function noteId(): string {
+  return uid("n");
+}
 
 /** Ids for quizzes and their questions, so the client doesn't hand-roll its own. */
 export function quizId(): string {
@@ -149,7 +166,7 @@ export function createSubject(name: string, index: number): Subject {
     colorKey: autoColorKey(index),
     classes: [],
     exams: [],
-    notes: [{ id: uid("n"), title: "", body: "", updated: new Date().toISOString() }],
+    notes: [{ id: noteId(), title: "", body: "", updated: new Date().toISOString() }],
     resources: [],
     quizTopics: [],
     quizzes: [],
