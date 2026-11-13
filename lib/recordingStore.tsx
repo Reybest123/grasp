@@ -121,6 +121,9 @@ export type RecordingState = {
 
 const RecordingContext = createContext<RecordingState | null>(null);
 
+/** Marks the history entry the Back/Forward guard owns while recording. */
+const GUARD_MARK = "__graspRecordingGuard";
+
 export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const { updateSubject } = useSubjects();
   const { profile, ready: profileReady } = useProfile();
@@ -561,7 +564,11 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!active) return;
 
-    window.history.pushState(window.history.state, "");
+    // Marked, so the cleanup can tell whether the student is still standing on
+    // this entry when the recording ends.
+    const takeEntry = () =>
+      window.history.pushState({ ...window.history.state, [GUARD_MARK]: true }, "");
+    takeEntry();
     guardRef.current = true;
 
     const onPop = () => {
@@ -570,7 +577,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       // Re-take the entry the student just popped, so the app stays put.
-      window.history.pushState(window.history.state, "");
+      takeEntry();
       setLeaving(true);
     };
 
@@ -579,10 +586,16 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("popstate", onPop);
       // Give the entry back when the recording ends normally, or Back would
       // need two presses afterwards to get anywhere.
+      // Only when the student is still on that entry. Once they have moved
+      // on (to Home and back through the header chip, say), the entry is
+      // further down the stack, and a Back here would be a real navigation
+      // away from the Record tab at the moment the lecture is saved.
       if (guardRef.current) {
         guardRef.current = false;
-        bypassRef.current = true;
-        window.history.back();
+        if (window.history.state?.[GUARD_MARK]) {
+          bypassRef.current = true;
+          window.history.back();
+        }
       }
     };
   }, [active]);
