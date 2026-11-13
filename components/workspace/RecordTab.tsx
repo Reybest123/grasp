@@ -27,6 +27,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { MicIcon, AlertIcon, BankIcon, EditIcon } from "@/components/icons";
 import { WaitingState } from "@/components/WaitingState";
 import { RecordControls } from "@/components/workspace/RecordControls";
+import { RecordOutcome } from "@/components/workspace/RecordOutcome";
 
 const QUIET_WARN_SECONDS = 40;
 
@@ -97,6 +98,27 @@ export function RecordTab({
     onOpenNote(openNote.noteId);
     clearOpenNote();
   }, [openNote, subjectId, onOpenNote, clearOpenNote]);
+
+  // The "Nothing was picked up" panel sits in front of a saved recording, so
+  // picking one dismisses it, and Discard always lands on the start panel.
+  const { nothingHeard, clearNothingHeard } = rec;
+  function pick(id: string) {
+    if (nothingHeard === subjectId) clearNothingHeard();
+    setSelectedId(id);
+  }
+  function discardEmpty() {
+    clearNothingHeard();
+    setSelectedId(null);
+  }
+  // It does not follow the student out of the subject and wait for them.
+  const heardHere = useRef(false);
+  heardHere.current = nothingHeard === subjectId;
+  useEffect(
+    () => () => {
+      if (heardHere.current) clearNothingHeard();
+    },
+    [clearNothingHeard]
+  );
 
   function start() {
     void rec.start({ id: subjectId, name: subjectName, context, resources });
@@ -241,41 +263,21 @@ export function RecordTab({
            clip stopped almost as soon as it started. Said plainly here
            rather than as grey placeholder text under a heading claiming
            there are notes. */
-        <div className="mt-4 grid min-h-[240px] place-items-center rounded-2xl bg-amber-50 p-5 text-center">
-          <div>
-            <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700">
-              <AlertIcon className="h-5 w-5" />
-            </span>
-            <p className="mt-4 font-semibold text-amber-900">
-              Grasp couldn&apos;t capture enough to write notes
-            </p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-amber-800">
-              There wasn&apos;t enough recorded to write anything up. Saving it keeps the
+        <RecordOutcome className="mt-4" title="Grasp couldn't capture enough to write notes">
+            There wasn&apos;t enough recorded to write anything up. Saving it keeps the
               transcript, so nothing said is lost.
-            </p>
-          </div>
-        </div>
+          </RecordOutcome>
       ) : rec.nonsense ? (
         /* A different failure from noMaterial above: there was plenty
            recorded, but the transcription came back as noise rather than
            language — background noise, cross-talk, or a mic too far from
            the speaker. Telling the student "not enough was said" here would
            be the wrong diagnosis and send them looking in the wrong place. */
-        <div className="mt-4 grid min-h-[240px] place-items-center rounded-2xl bg-amber-50 p-5 text-center">
-          <div>
-            <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700">
-              <AlertIcon className="h-5 w-5" />
-            </span>
-            <p className="mt-4 font-semibold text-amber-900">
-              Grasp couldn&apos;t make out this recording
-            </p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-amber-800">
-              The audio wasn&apos;t clear enough to write up as notes — this usually means
+        <RecordOutcome className="mt-4" title="Grasp couldn't make out this recording">
+            The audio wasn&apos;t clear enough to write up as notes — this usually means
               background noise or the microphone was too far away. Saving it keeps the
               transcript, so you can still see what was picked up.
-            </p>
-          </div>
-        </div>
+          </RecordOutcome>
       ) : (
         /* Live note-taking view, and the finished article once the polish
            lands. The .editor class is reused so the drafted notes render
@@ -392,19 +394,10 @@ export function RecordTab({
   // way on is Discard, which goes back to the start panel.
   const nothingHeardPanel = (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-ring">
-      <div className="grid min-h-[240px] place-items-center rounded-2xl bg-amber-50 p-5 text-center">
-        <div>
-          <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700">
-            <AlertIcon className="h-5 w-5" />
-          </span>
-          <p className="mt-4 font-semibold text-amber-900" role="status">
-            Nothing was picked up
-          </p>
-        </div>
-      </div>
+      <RecordOutcome title="Nothing was picked up" />
       <div className="mt-5 flex justify-end">
         <button
-          onClick={rec.clearNothingHeard}
+          onClick={discardEmpty}
           className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400"
         >
           Discard
@@ -436,7 +429,7 @@ export function RecordTab({
         }))}
         activeId={selected?.id}
         current={active ? "Recording now" : elsewhere ? "Recording in another subject" : undefined}
-        onPick={setSelectedId}
+        onPick={pick}
         action={{
           label: rec.starting ? "Starting…" : "New recording",
           icon: <MicIcon className="h-5 w-5" />,
@@ -451,7 +444,7 @@ export function RecordTab({
           {recorded.map((n) => (
             <li key={n.id}>
               <button
-                onClick={() => setSelectedId(n.id)}
+                onClick={() => pick(n.id)}
                 className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
                   n.id === selected?.id && !active
                     ? "bg-brand-50 font-semibold text-brand-700"

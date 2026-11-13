@@ -80,6 +80,9 @@ const COMMON_PASSWORDS = new Set([
   "goodbye1", "hello123", "helloworld", "trustme1", "believe1", "imagine1",
 ]);
 
+/** One wording for a common password, a repeated character and a straight run. */
+const WEAK_PASSWORD = "This is a weak password. Please choose a different one.";
+
 /**
  * The rules the signup form states up front, checked again here because the
  * form is not the only way to reach the route.
@@ -92,25 +95,15 @@ const COMMON_PASSWORDS = new Set([
  * `email` is optional so a caller with nothing to compare against — a script, a
  * test — still gets the other checks.
  */
-/** One wording for a common password, a repeated character and a straight run. */
-const WEAK_PASSWORD = "This is a weak password. Please choose a different one.";
-
 export function passwordProblem(password: string, email = ""): string | null {
   if (password.length < 8) return "Your password must be at least 8 characters long.";
   if (password.length > 200) return "Your password must be 200 characters or fewer.";
 
   const lowered = password.toLowerCase();
 
-  if (COMMON_PASSWORDS.has(lowered)) {
-    return WEAK_PASSWORD;
-  }
-
-  // "aaaaaaaa" clears the length floor and has eight characters of one guess in
-  // it. The same for a straight run off the keyboard.
-  if (/^(.)\1+$/.test(password)) {
-    return WEAK_PASSWORD;
-  }
-  if (isSequential(lowered)) {
+  // On every wordlist, one character repeated ("aaaaaaaa"), or a straight run
+  // off the keyboard: each clears the length floor and is guessed at once.
+  if (COMMON_PASSWORDS.has(lowered) || /^(.)\1+$/.test(password) || isSequential(lowered)) {
     return WEAK_PASSWORD;
   }
 
