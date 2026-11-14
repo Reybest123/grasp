@@ -270,7 +270,11 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       for (const wait of SEGMENT_RETRY_MS) {
         if (!error || !retry || stoppingRef.current) break;
         setNotice("Grasp lost its connection for a moment. Still recording, and it will catch up.");
-        await new Promise((done) => setTimeout(done, wait));
+        // Waited in short steps, so Stop pressed meanwhile is not held up.
+        for (let waited = 0; waited < wait && !stoppingRef.current; waited += 250) {
+          await new Promise((done) => setTimeout(done, 250));
+        }
+        if (stoppingRef.current) break;
         // Discarded, or replaced by a new recording, while waiting.
         if (recordingIdRef.current !== session) return;
         ({ text, error, limit, retry } = await transcribeSegment(blob, ext, session));
