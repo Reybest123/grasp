@@ -10,17 +10,18 @@ import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
 import { deleteSubject, saveSubject } from "@/lib/subjectsDb";
-import { bodyTooLarge, parseSubject } from "@/lib/subjectShape";
+import { parseSubject, readCappedJson } from "@/lib/subjectShape";
 
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ subjectId: string }> }) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  if (bodyTooLarge(req)) {
-    return NextResponse.json({ error: "This subject holds more than Grasp can save." }, { status: 413 });
+  const read = await readCappedJson(req);
+  if (!read.ok) {
+    return NextResponse.json({ error: "This subject holds more than Grasp can save." }, { status: read.status });
   }
   const { subjectId } = await ctx.params;
-  const body = await req.json().catch(() => ({}));
+  const body = (read.body ?? {}) as { subject?: unknown; baseVersion?: unknown };
 
   // The id in the URL wins. Otherwise a body could name a different subject
   // than the one the URL authorised, and the ownership check in saveSubject

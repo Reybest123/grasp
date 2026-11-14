@@ -213,7 +213,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     lastDraftRef.current = text.length;
     lastDraftHeardRef.current = heardRef.current;
     setDrafting(true);
-    const { html, cited: used, error, outcome } = await liveNotes({
+    const { html, cited: used, error, outcome, tooLong } = await liveNotes({
       transcript: text,
       subjectName: subjectNameRef.current,
       context: contextRef.current,
@@ -226,7 +226,18 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     setDrafting(false);
     // A failed draft leaves the previous notes on screen; the next segment will
     // try again, and the transcript is still accumulating regardless.
-    if (error) return "failed";
+    if (error) {
+      // Too long for the final pass to write up whole. The mid-lecture draft
+      // is missing the end as well, so it is dropped and Save keeps the full
+      // transcript instead.
+      if (final && tooLong) {
+        notesRef.current = "";
+        setNotesHtml("");
+        setCited([]);
+        setNotice(error);
+      }
+      return "failed";
+    }
     if (html) {
       notesRef.current = html;
       setNotesHtml(html);

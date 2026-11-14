@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "This note is too long to enhance in one go. Highlight part of it and use Refine, or split it into shorter notes.",
+          "This note is too long to enhance in one go. Split it into shorter notes and enhance each one.",
       },
       { status: 413 }
     );

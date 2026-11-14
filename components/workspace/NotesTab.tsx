@@ -161,8 +161,14 @@ export function NotesTab({
   // `useNow` re-reads every minute, so the labels age on their own.
   const now = useNow();
 
-  const [enhancing, setEnhancing] = useState(false);
-  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  // Both belong to the note the enhance ran on, so neither shows on another
+  // note the student opens while the reply is on its way.
+  const [enhancingId, setEnhancingId] = useState<string | null>(null);
+  const [enhanceFailure, setEnhanceFailure] = useState<{ noteId: string; message: string } | null>(null);
+  const enhancing = enhancingId !== null && enhancingId === active?.id;
+  const enhanceError = enhanceFailure && enhanceFailure.noteId === active?.id ? enhanceFailure.message : null;
+  const setEnhanceError = (message: string | null) =>
+    setEnhanceFailure(message && active ? { noteId: active.id, message } : null);
   // The popup on the AI button, and what the last run drew on. The citation
   // is transient by design: it belongs to the press, not to the note.
   const [enhanceMenu, setEnhanceMenu] = useState(false);
@@ -1269,17 +1275,18 @@ export function NotesTab({
   /** Enhancement round-trips HTML, so bold, colours and checklists survive it. */
   async function enhance(instructions: string, useIds: string[]) {
     if (!active) return;
+    const noteId = active.id;
     setEnhanceMenu(false);
-    setEnhancing(true);
-    setEnhanceError(null);
+    setEnhancingId(noteId);
+    setEnhanceFailure(null);
     setEnhanceResult(null);
     const picked = resources.filter((r) => useIds.includes(r.id));
     const { html, cited, error } = blank
       ? await generateNote({ title: active.title, instructions, subjectName, context, resources: picked })
       : await enhanceNote({ html: ensureHtml(active.body), instructions, subjectName, context, resources: picked });
-    setEnhancing(false);
+    setEnhancingId((current) => (current === noteId ? null : current));
     if (error) {
-      setEnhanceError(error);
+      setEnhanceFailure({ noteId, message: error });
       return;
     }
     // The result bar describes the note on screen, so it only shows if that

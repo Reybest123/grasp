@@ -17,8 +17,13 @@ import type { ClassSlot, Exam } from "@/lib/schedule";
 import type { Resource } from "@/lib/resources";
 import { autoColorKey } from "@/lib/subjectColors";
 
-/** The largest request body a subject save may send. */
-export const MAX_SUBJECT_BYTES = 25 * 1024 * 1024;
+/**
+ * The largest request body a subject save may send. Matched to Next's own
+ * limit: proxy.ts runs on every route, and Next buffers only the first 10 MB of
+ * a body it passes through a proxy (experimental.proxyClientMaxBodySize), so a
+ * larger body reaches the route cut off rather than refused.
+ */
+export const MAX_SUBJECT_BYTES = 10 * 1024 * 1024;
 /** How many subjects one account may replace its list with. */
 export const MAX_SUBJECTS = 200;
 
@@ -187,8 +192,35 @@ export function parseSubject(
   return { ok: true, subject };
 }
 
-/** True when the request says it is carrying more than a subject save may. */
-export function bodyTooLarge(req: Request): boolean {
-  const length = Number(req.headers.get("content-length"));
-  return Number.isFinite(length) && length > MAX_SUBJECT_BYTES;
+/**
+ * The request body as JSON, read no further than MAX_SUBJECT_BYTES. A declared
+ * Content-Length past it is refused before anything is read, and a body sent
+ * without one (chunked) is counted as it arrives and abandoned once it passes
+ * the cap, so neither can make the server hold an unbounded body.
+ */
+export async function readCappedJson(req: Request): Promise<{ ok: true; body: unknown } | { ok: false; status: number }> {
+  const declared = Number(req.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_SUBJECT_BYTES) return { ok: false, status: 413 };
+  if (!req.body) return { ok: true, body: {} };
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_SUBJECT_BYTES) {
+      await reader.cancel().catch(() => {});
+      return { ok: false, status: 413 };
+    }
+    chunks.push(value);
+  }
+  try {
+    return { ok: true, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) };
+  } catch {
+    // A body that stops at the limit was cut off on the way in (see
+    // MAX_SUBJECT_BYTES), so it is too large rather than malformed.
+    return size >= MAX_SUBJECT_BYTES ? { ok: false, status: 413 } : { ok: true, body: {} };
+  }
 }

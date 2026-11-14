@@ -111,6 +111,13 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   const bases = useRef<Map<string, Subject>>(new Map());
   /** Subjects with a request under way: a save, or a delete. */
   const inFlight = useRef<Set<string>>(new Set());
+  /**
+   * Subjects deleted while a save of them was out. The delete is sent once
+   * that save answers: sent at once, it could reach the server first, and the
+   * save (of a brand-new subject, with no version to stop it) would then
+   * create the subject again.
+   */
+  const deleteAfterSave = useRef<Set<string>>(new Set());
   /** True while the timetable's replace-everything write is under way. */
   const replacing = useRef(false);
   /** Counts local edits, so a refresh can tell one landed while it was reading. */
@@ -179,6 +186,20 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * Held as in flight until the delete answers, so a refresh that lands first
+   * does not bring the subject back.
+   */
+  const sendDelete = useCallback((id: string) => {
+    inFlight.current.add(id);
+    fetch(`/api/subjects/${encodeURIComponent(id)}`, { method: "DELETE" })
+      .catch(() => {
+        // Gone from the screen either way; a failed delete resurfaces on reload,
+        // which is the honest outcome rather than a silent lie.
+      })
+      .finally(() => inFlight.current.delete(id));
+  }, []);
+
+  /**
    * Writes one subject. Returns true when it should be tried again later (the
    * server or the connection failed), false when it is settled: saved, or
    * refused in a way that sending it again would not change.
@@ -203,21 +224,36 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
 
         if (res.ok) {
           const data = await res.json().catch(() => null);
+          // Removed while this save was out: nothing to remember, and the
+          // delete waiting on it goes now (removeSubject).
+          if (!latest.current.some((s) => s.id === id)) return false;
           if (typeof data?.version === "number") versions.current.set(id, data.version);
           bases.current.set(id, subject);
           return false;
         }
         if (res.status === 410) {
-          dropLocal(id);
-          return false;
+          // Deleted on another tab or device. Untouched here since this browser
+          // last saved it, it leaves here too. Changed here (typing, or a
+          // lecture just saved into it), it is put back with those changes
+          // rather than throwing them away unseen: sent again as new.
+          const base = bases.current.get(id);
+          if (base && JSON.stringify(base) === JSON.stringify(subject)) {
+            dropLocal(id);
+            return false;
+          }
+          versions.current.delete(id);
+          bases.current.delete(id);
+          continue;
         }
         if (res.status === 409) {
           const fresh = await fetchWorkspace();
           if (!fresh.ok) return true;
           const theirs = fresh.data.subjects.find((s) => s.id === id);
           if (!theirs) {
-            dropLocal(id);
-            return false;
+            // Deleted between the refusal and this read: the 410 branch above
+            // decides on the next round.
+            versions.current.set(id, -1);
+            continue;
           }
           const base = bases.current.get(id);
           // Merged against the list as it stands now, so anything typed while
@@ -264,6 +300,10 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
           again = true;
         }
         inFlight.current.delete(id);
+        if (deleteAfterSave.current.delete(id)) {
+          sendDelete(id);
+          return;
+        }
         if (again) {
           // Put it back so the next flush retries rather than dropping the edit.
           dirty.current.add(id);
@@ -281,7 +321,7 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
     } else {
       setSaveFailed(false);
     }
-  }, [retrySoon, saveOne]);
+  }, [retrySoon, saveOne, sendDelete]);
   flushRef.current = flush;
 
   const scheduleFlush = useCallback(
@@ -306,6 +346,20 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
       refreshedAt.current = Date.now();
 
       const before = edits.current;
+      // The cheap check first: ids and versions, no note bodies. The whole
+      // workspace is only read when something has changed.
+      try {
+        const res = await fetch("/api/subjects?versions=1");
+        const check = await res.json().catch(() => null);
+        if (!res.ok || !check || !Array.isArray(check.ids)) return;
+        const ids = check.ids as string[];
+        const same =
+          ids.length === latest.current.length &&
+          ids.every((id, i) => latest.current[i].id === id && versions.current.get(id) === check.versions?.[id]);
+        if (same) return;
+      } catch {
+        return;
+      }
       const fresh = await fetchWorkspace();
       if (!fresh.ok) return;
       // Edited while this was being read: the copy just read may already be
@@ -428,8 +482,13 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json().catch(() => ({}));
       if (res.ok && Array.isArray(data.subjects)) {
         adopt({ subjects: data.subjects, versions: data.versions ?? {} });
-      } else if (!res.ok) {
+      } else if (res.status >= 500 || res.status === 401 || res.status === 429) {
         retryAll();
+      } else if (!res.ok) {
+        // Refused for good (a list that cannot be saved): nothing changed on
+        // the server, so the screen goes back to what is stored.
+        const stored = await fetchWorkspace();
+        if (stored.ok) adopt(stored.data);
       }
     } catch {
       // The list is on screen and the student can still edit it; it is written
@@ -450,24 +509,21 @@ export function SubjectsProvider({ children }: { children: React.ReactNode }) {
     [scheduleFlush]
   );
 
-  const removeSubject = useCallback((id: string) => {
-    edits.current++;
-    setSubjects((prev) => prev.filter((s) => s.id !== id));
-    // Dropped from the pending set first, or a queued edit would re-insert the
-    // subject moments after it was deleted.
-    dirty.current.delete(id);
-    versions.current.delete(id);
-    bases.current.delete(id);
-    // Held as in flight until the delete answers, so a refresh that lands
-    // first does not bring the subject back.
-    inFlight.current.add(id);
-    fetch(`/api/subjects/${encodeURIComponent(id)}`, { method: "DELETE" })
-      .catch(() => {
-        // Gone from the screen either way; a failed delete resurfaces on reload,
-        // which is the honest outcome rather than a silent lie.
-      })
-      .finally(() => inFlight.current.delete(id));
-  }, []);
+  const removeSubject = useCallback(
+    (id: string) => {
+      edits.current++;
+      latest.current = latest.current.filter((s) => s.id !== id);
+      setSubjects((prev) => prev.filter((s) => s.id !== id));
+      // Dropped from the pending set first, or a queued edit would re-insert the
+      // subject moments after it was deleted.
+      dirty.current.delete(id);
+      versions.current.delete(id);
+      bases.current.delete(id);
+      if (inFlight.current.has(id)) deleteAfterSave.current.add(id);
+      else sendDelete(id);
+    },
+    [sendDelete]
+  );
 
   return (
     <SubjectsContext.Provider

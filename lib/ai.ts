@@ -209,12 +209,14 @@ export async function liveNotes(params: {
   error: string | null;
   /** why the final pass came back with no notes — "short" (§3.1) or "nonsense" (garbled audio) */
   outcome?: "short" | "nonsense";
+  /** the final pass would not fit: only the transcript holds the whole lecture */
+  tooLong?: boolean;
 }> {
-  const data = await postJson<{ notes: string; outcome?: "short" | "nonsense" }>(
+  const data = await postJson<{ notes: string; outcome?: "short" | "nonsense"; tooLong?: boolean }>(
     "/api/live-notes",
     params
   );
-  if (data.error) return { html: "", cited: [], error: data.error };
+  if (data.error) return { html: "", cited: [], error: data.error, tooLong: data.tooLong === true };
   // Sanitise first, then restructure: folding only ever produces <ul>/<li>,
   // which the sanitiser already allows.
   return {

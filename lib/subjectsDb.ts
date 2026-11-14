@@ -375,15 +375,32 @@ export async function deleteSubject(userId: string, id: string): Promise<void> {
 /**
  * Onboarding (§2): the extracted timetable becomes the whole subject list. One
  * transaction, so a subject that fails to save leaves the list as it was
- * rather than deleted with only some of its replacement written.
+ * rather than deleted with only some of its replacement written. Returns false,
+ * with nothing changed, when an id in the list belongs to another account.
  */
-export async function replaceAllSubjects(userId: string, subjects: Subject[]): Promise<void> {
-  await transaction(async (sql) => {
+export async function replaceAllSubjects(userId: string, subjects: Subject[]): Promise<boolean> {
+  return transaction(async (sql) => {
     await sql`delete from subjects where user_id = ${userId}`;
     for (const [i, subject] of subjects.entries()) {
       const outcome = await writeSubject(sql, userId, subject);
-      if (!outcome.saved) throw new Error(`subject ${i} of a replaced list could not be written`);
+      // Thrown to roll the delete back; caught just below.
+      if (!outcome.saved) throw new NotYours();
       await sql`update subjects set position = ${i} where id = ${subject.id} and user_id = ${userId}`;
     }
+    return true;
+  }).catch((err) => {
+    if (err instanceof NotYours) return false;
+    throw err;
   });
+}
+
+class NotYours extends Error {}
+
+/** Each subject's id and version, in grid order: the cheap check behind a tab's refresh. */
+export async function loadVersions(userId: string): Promise<{ ids: string[]; versions: Record<string, number> }> {
+  const rows = (await sql`
+    select id, version from subjects where user_id = ${userId}
+    order by position asc, created_at asc
+  `) as { id: string; version: number }[];
+  return { ids: rows.map((r) => r.id), versions: Object.fromEntries(rows.map((r) => [r.id, r.version])) };
 }

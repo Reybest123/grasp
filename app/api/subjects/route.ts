@@ -13,13 +13,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { FREE_SUBJECT_LIMIT } from "@/lib/plan";
-import { loadWorkspace, replaceAllSubjects, saveOrder } from "@/lib/subjectsDb";
-import { MAX_SUBJECTS, bodyTooLarge, parseSubject } from "@/lib/subjectShape";
+import { loadVersions, loadWorkspace, replaceAllSubjects, saveOrder } from "@/lib/subjectsDb";
+import { MAX_SUBJECTS, parseSubject, readCappedJson } from "@/lib/subjectShape";
 import type { Subject } from "@/lib/subjects";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
+
+  // `?versions=1` is the cheap check a tab makes when the student comes back
+  // to it: each subject's id and version, in order, and no note bodies. The
+  // whole workspace is only read when that shows something changed.
+  if (req.nextUrl.searchParams.get("versions") === "1") {
+    const versions = await query(() => loadVersions(guard.user.id));
+    if (!versions.ok) return NextResponse.json({ error: versions.error }, { status: versions.status });
+    return NextResponse.json(versions.data);
+  }
 
   const result = await query(() => loadWorkspace(guard.user.id));
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
@@ -31,11 +40,10 @@ export async function PUT(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  if (bodyTooLarge(req)) {
-    return NextResponse.json({ error: "That is more than Grasp can save." }, { status: 413 });
-  }
-  const body = await req.json().catch(() => ({}));
-  const sent: unknown[] | null = Array.isArray(body?.subjects) ? body.subjects : null;
+  const read = await readCappedJson(req);
+  if (!read.ok) return NextResponse.json({ error: "That is more than Grasp can save." }, { status: read.status });
+  const body = (read.body ?? {}) as { subjects?: unknown };
+  const sent: unknown[] | null = Array.isArray(body.subjects) ? body.subjects : null;
   if (!sent || sent.length > MAX_SUBJECTS) {
     return NextResponse.json({ error: "Expected a list of subjects." }, { status: 400 });
   }
@@ -53,11 +61,15 @@ export async function PUT(req: NextRequest) {
   const subjects =
     guard.user.plan === "free" && !guard.user.unlimited ? list.slice(0, FREE_SUBJECT_LIMIT) : list;
 
-  const result = await query(async () => {
-    await replaceAllSubjects(guard.user.id, subjects);
-    return loadWorkspace(guard.user.id);
-  });
+  const result = await query(async () =>
+    (await replaceAllSubjects(guard.user.id, subjects)) ? loadWorkspace(guard.user.id) : null
+  );
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  // An id in the list already belongs to another account. Nothing was
+  // changed, and sending the same list again would fail the same way.
+  if (!result.data) {
+    return NextResponse.json({ error: "Those subjects could not be saved." }, { status: 409 });
+  }
 
   return NextResponse.json(result.data);
 }

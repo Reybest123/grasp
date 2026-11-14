@@ -117,6 +117,21 @@ ${transcript.trim()}`;
   });
   if (!result.ok) return result.response;
 
+  // The final pass becomes the saved lecture note on its own, so one cut off
+  // part-way would lose the end of the lecture without a word. Refused
+  // instead: the Record tab then keeps the last draft on screen, says the end
+  // may be missing, and offers to save the transcript. A mid-lecture draft cut
+  // off is only on screen until the next one, so it is kept.
+  if (final && result.truncated) {
+    return NextResponse.json(
+      {
+        error: "This lecture was too long for Grasp to write up in one go. Save the transcript to keep all of it.",
+        tooLong: true,
+      },
+      { status: 413 }
+    );
+  }
+
   // NONSENSE means the transcription came out as noise, not language — a
   // distinct failure from "short" above, and told apart in the UI (§3.1): a
   // short clip says so plainly, a garbled one says the audio wasn't clear
