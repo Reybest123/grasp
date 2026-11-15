@@ -474,6 +474,8 @@ Worth an afternoon, not more. List on each with the kit above:
 
 **Status (2026-10-30):** AlternativeTo submitted as "Grasp Study" (the name Grasp was taken), signed in with graspstudyai, with Otter.ai, TalkNotes.tech, Jamworks, Noter AI and TwinMind as alternatives. It sits in a long free queue unless a one-time priority review is paid for (US$9 or US$29). There's An AI For That costs at least US$49, so it was skipped, as were the other directories.
 
+**Status (2026-11-15):** AlternativeTo has still not approved it. `alternativeto.net/software/grasp-study/` is a 404 and a site search for "grasp study" finds nothing, so it is still in the free queue (16 days since submitting).
+
 **Status (2026-11-07), from `outreach/schools.csv` (not committed):**
 - **Live links: none confirmed.** The Search Console Links report shows 0 external links (2026-11-07).
 - **Brisbane State High School** (library page): Nicole said on 14 October the request is with the IT committee. Not yet live as far as is known; no more chasing, check the page now and then.
