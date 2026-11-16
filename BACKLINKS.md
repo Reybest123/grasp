@@ -500,3 +500,5 @@ new ones take a few weeks to show.
 - Send the same email to a whole staff list, or follow up more than once
 
 Google ignores or penalises all of these, and a new site cannot afford it.
+
+**Update 2026-11-16.** Search Console's Links report still shows 0 external links (94 internal). AlternativeTo still not approved (checked 2026-11-15). The graspstudyai inbox has nothing new. The liamspencer549 mailbox was not checked.

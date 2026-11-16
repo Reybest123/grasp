@@ -16,6 +16,12 @@ How to use it:
 
 ## Snapshots
 
+### 2026-11-16 (pulled through Chrome, last 28 days: 18 October to 14 November)
+
+Performance: 6 clicks, 776 impressions, CTR 0.8%, average position 33.8, 127 queries. Top queries: "cornell notes" 0 from 128, "grasp study" 0 from 45, "grasp.study" 0 from 25, "how to use cornell notes to study" 0 from 23, "cornell method" 0 from 21, "record lectures" 0 from 19, "how to record lectures" 0 from 18, "cornell note" 0 from 14, "cornell style notes" 0 from 12, "cornell notes example" 0 from 9. Top pages: home 4 clicks from 142, login 1 from 57, study planner 1 from 9, `/blog/how-to-take-cornell-notes` 0 from 305, `/blog/best-apps-for-recording-lectures` 0 from 146, signup 0 from 35, forgot-password 0 from 34, the Indian students post 0 from 28, `/blog/how-to-record-lectures` 0 from 22, the rubric post 0 from 17. Links report: 0 external links, 94 internal.
+
+Read: a 28-day window, so not comparable with the 3-month figures below. Impressions keep growing, led by the Cornell notes post (305) and the best-apps post (146), but both sit too far down the page to be clicked (average position 33.8). "grasp study" got no clicks in these 28 days from 45 impressions; the early-October brand clicks were mostly the user and friends. Still no external links, so the Cornell and recording posts need links more than more posts.
+
 ### 2026-11-12 (pulled through Chrome; the Performance chart runs 22 September to 10 November, the totals' window was not read)
 
 Performance: 36 clicks, 672 impressions, CTR 5.4%, average position 28.1. Top queries: "grasp study" 9 clicks from 85 impressions, "how to take cornell notes" 1 from 1, "grasp.study" 0 from 24, "how to use cornell notes to study" 0 from 19, "cornell notes" 0 from 15, "cornell method" 0 from 15, "how to record lectures" 0 from 15, "record lectures" 0 from 12, "cornell note" 0 from 9, "cornell style notes" 0 from 7. 97 queries in all.
